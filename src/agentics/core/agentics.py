@@ -713,7 +713,7 @@ class Agentics(BaseModel):
                 output.states.append(merged)
         elif isinstance(other, Iterable) and all(isinstance(i, str) for i in other):
             for i in range(len(other)):
-                if type(output_states[i]) == self.atype:
+                if isinstance(output_states[i] , self.atype):
                     output.states.append(self.atype(**output_states[i].model_dump()))
                 else:
                     output.states.append(self.atype(**output_states[i][0].model_dump()))
