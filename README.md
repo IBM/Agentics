@@ -11,14 +11,20 @@ Agentics is a Python framework that provides structured, scalable, and semantica
 
 ## Authors
 
-- Principal Investigator 
-    - Alfio Massimiliano Gliozzo, IBM Research, gliozzo@us.ibm.com
-- Core Contributors:
-    - Junkyu Lee, IBM Research
-    - Naweed Ahmad, IBM Research
-    - Nahuel Defosse, IBM Research
-    - Christodoulos Constantinides, IBM Watson
-    - Mustafa Eyceoz, RedHat
+- **Principal Investigator**
+    - *Alfio Massimiliano Gliozzo*, IBM Research, gliozzo@us.ibm.com
+- **Core Contributors**:
+    - *Junkyu Lee*, IBM Research, Junkyu.Lee@ibm.com
+    - *Naweed Aghmad Khan*, IBM Research, naweed.khan@ibm.com
+    - *Nahuel Defosse*, IBM Research, nahuel.defosse@ibm.com
+    - *Christodoulos Constantinides*, IBM Watson, Christodoulos.Constantinides@ibm.com
+    - *Mustafa Eyceoz*, RedHat, Mustafa.Eyceoz@partner.ibm.com
+
+
+
+Agentics is an implementation of **Logical Transduction Algebra**, described in 
+- Alfio Gliozzo, Naweed Khan, Christodoulos Constantinides,  Nandana Mihindukulasooriya, Nahuel Defosse, Junkyu Lee. *Transduction is All You Need for Structured Data Workflows. August 2025*, [arXiv:2508.15610](https://arxiv.org/abs/2508.15610)
+
 
 We welcome new AG entusiasts to extend this framework with new applications and extension to the language. 
 
