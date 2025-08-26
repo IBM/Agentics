@@ -40,6 +40,16 @@ Set Up LLM provider, Chose one of the following:
 - `OPENAI_API_KEY` - Your OpenAI APIKey
 - `OPENAI_MODEL_ID` - Your favorute model, default to **openai/gpt-4**
 
+#### Ollama (local)
+- Download and install [Ollama](https://ollama.com/)
+- Download a Model. You should use a model that support reasoning and fit your GPU. So smaller are preferred. 
+```
+ollama pull ollama/deepseek-r1:latest
+```
+- "OLLAMA_MODEL_ID" - ollama/gpt-oss:latest (better quality), ollama/deepseek-r1:latest (smaller)
+
+
+
 
 #### IBM WatsonX:
 

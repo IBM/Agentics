@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from agentics import Agentics as AG
 from typing import Optional
 from dotenv import load_dotenv
-from agentics.core.llm_connections import watsonx_crewai_llm
+from agentics.core.llm_connections import watsonx_llm
 
 load_dotenv()
 
@@ -31,7 +31,7 @@ async def main():
     ## You can customize this providing different llms and instructions. 
 
     answers = await (AG(atype=Answer, 
-                        llm= watsonx_crewai_llm,
+                        llm= watsonx_llm,
                         instructions="""Provide an Answer for the following input text 
                         only if it contains an appropriate question that do not contain
                         violent or adult language """

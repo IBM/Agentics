@@ -33,7 +33,7 @@ from agentics.abstractions.pydantic_transducer import (
 from agentics.abstractions.structured_output import generate_structured_output
 
 # from agentics.core.globals import Memory
-from agentics.core.llm_connections import watsonx_crewai_llm
+from agentics.core.llm_connections import watsonx_llm
 from agentics.core.utils import (
     are_models_structurally_identical,
     chunk_list,
@@ -136,7 +136,7 @@ class Agentics(BaseModel):
         None,
         description="""this is the list of field that will be used for the transduction, both incoming and outcoming""",
     )
-    llm: Any = Field(watsonx_crewai_llm, exclude=True)
+    llm: Any = Field(watsonx_llm, exclude=True)
     tools: Optional[List[Any]] = Field(None, exclude=True, description="   ")
     instructions: Optional[str] = Field(
         """Generate an object of the specified type from the following input.""",
@@ -228,7 +228,7 @@ class Agentics(BaseModel):
                 end_time = time.time()
                 if self.verbose_transduction:
                     logger.debug(
-                        f"{i * self.batch_size_amap if i > 1 else len(chunk)} states processed in {(end_time - begin_time) / self.batch_size_amap} seconds average per state ..."
+                        f"{i * self.batch_size_amap if i > 1 else len(chunk)} states processed. {(end_time - begin_time) / self.batch_size_amap} seconds average per state in the last chunk ..."
                     )
                 i += 1
             except asyncio.TimeoutError and Exception as e:
@@ -690,7 +690,9 @@ class Agentics(BaseModel):
             if self.transduction_logs_path:
                 with open(self.transduction_logs_path, "a") as f:
                     for state in output_states:
-                        f.write(state.model_dump_json() + "\n")
+                        if state :
+                            f.write(state.model_dump_json() + "\n")
+                        else: f.write(self.atype().model_dump_json() + "\n")
             if self.verbose_transduction:
                 logger.debug(
                     f"{i * self.batch_size_transduction if i > 1 else len(chunk)} states processed in {(end_time - begin_time) / self.batch_size_transduction} seconds average per state ..."
@@ -715,8 +717,9 @@ class Agentics(BaseModel):
             for i in range(len(other)):
                 if isinstance(output_states[i] , self.atype):
                     output.states.append(self.atype(**output_states[i].model_dump()))
-                else:
+                elif output_states[i]:
                     output.states.append(self.atype(**output_states[i][0].model_dump()))
+                else: output.states.append(self.atype())
         return output
 
     async def apply_to_states(
