@@ -1,7 +1,7 @@
 from agentics.core.agentics import Agentics as AG
 from pydantic import BaseModel, Field
 from typing import Optional
-from agentics.core.llm_connections import openai_llm, ollama_llm
+from agentics.core.llm_connections import ollama_llm
 import os
 
 import asyncio
@@ -33,12 +33,18 @@ def split_into_chunks(text, chunk_size=200):
 
 
 async def main():
-    emotion_detector = AG(atype=EmotionDector, 
-                          llm = ollama_llm,
-                          transduction_logs_path="/tmp/emotion_extractor.logs",
-                          batch_size_transduction=1)
+    emotion_detector = AG(
+        atype=EmotionDector,
+        llm=ollama_llm,
+        transduction_logs_path="/tmp/emotion_extractor.logs",
+        batch_size_transduction=1,
+    )
     text = None
-    with open(os.path.join(os.getcwd(), "agentics/data/emotion_detection/The_Brothers_Karamazov.txt")) as f:
+    with open(
+        os.path.join(
+            os.getcwd(), "agentics/data/emotion_detection/The_Brothers_Karamazov.txt"
+        )
+    ) as f:
         text = f.read()
     emotion_detector.verbose_transduction = True
     emotions = await (emotion_detector << split_into_chunks(text)[:10])

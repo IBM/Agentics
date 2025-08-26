@@ -167,7 +167,7 @@ class PydanticTransducerCrewAI:
             return ans.pydantic
         elif isinstance(input, Iterable) and all(isinstance(i, str) for i in input):
             input_states = [
-                {"task_description": x[:self.MAX_CHAR_PROMPT]} for x in input
+                {"task_description": x[: self.MAX_CHAR_PROMPT]} for x in input
             ]
             answer_list = await self.crew.kickoff_for_each_async(input_states)
 

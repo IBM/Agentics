@@ -690,9 +690,10 @@ class Agentics(BaseModel):
             if self.transduction_logs_path:
                 with open(self.transduction_logs_path, "a") as f:
                     for state in output_states:
-                        if state :
+                        if state:
                             f.write(state.model_dump_json() + "\n")
-                        else: f.write(self.atype().model_dump_json() + "\n")
+                        else:
+                            f.write(self.atype().model_dump_json() + "\n")
             if self.verbose_transduction:
                 logger.debug(
                     f"{i * self.batch_size_transduction if i > 1 else len(chunk)} states processed in {(end_time - begin_time) / self.batch_size_transduction} seconds average per state ..."
@@ -715,11 +716,12 @@ class Agentics(BaseModel):
                 output.states.append(merged)
         elif isinstance(other, Iterable) and all(isinstance(i, str) for i in other):
             for i in range(len(other)):
-                if isinstance(output_states[i] , self.atype):
+                if isinstance(output_states[i], self.atype):
                     output.states.append(self.atype(**output_states[i].model_dump()))
                 elif output_states[i]:
                     output.states.append(self.atype(**output_states[i][0].model_dump()))
-                else: output.states.append(self.atype())
+                else:
+                    output.states.append(self.atype())
         return output
 
     async def apply_to_states(
