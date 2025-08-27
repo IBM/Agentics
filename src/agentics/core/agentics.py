@@ -6,6 +6,7 @@ import time
 from collections.abc import Iterable
 from copy import copy, deepcopy
 from functools import partial, reduce
+from io import StringIO
 from typing import (
     Any,
     Awaitable,
@@ -920,15 +921,20 @@ class Agentics(BaseModel):
         output.states = random.sample(self.states, sample_size)
         return output
 
-    def to_csv(self, csv_file: str) -> Any:
+    def to_csv(self, csv_file: Optional[str] = None) -> str:
+        """Writes to file if the csv_file is provided, returns the str being written."""
         if self.verbose_transduction:
             logger.debug(f"Exporting {len(self.states)} Agentics to CSV {csv_file}")
         field_names = self.atype.model_fields.keys()
-        with open(csv_file, mode="w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=field_names)
-            writer.writeheader()
-            for state in self.states:
-                writer.writerow(state.model_dump())
+        data = [state.model_dump() for state in self.states]
+        csv_string = StringIO()
+        writer = csv.DictWriter(csv_string, fieldnames=field_names)
+        writer.writeheader()
+        writer.writerows(data)
+        if csv_file:
+            with open(csv_file, "w", encoding="utf-8") as f:
+                f.write(csv_string)
+        return csv_string.getvalue()
 
     def to_jsonl(self, jsonl_file: Optional[str] = None) -> str:
         """Writes to file if the jsonl_file is provided, returns the str being written."""
