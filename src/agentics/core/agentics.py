@@ -24,13 +24,12 @@ import yaml
 from langchain_core.prompts import PromptTemplate
 from loguru import logger
 from pandas import DataFrame
-from pydantic import BaseModel, Field, conlist, create_model
+from pydantic import BaseModel, Field, create_model
 
 from agentics.abstractions.pydantic_transducer import (
     PydanticTransducerCrewAI,
     PydanticTransducerVLLM,
 )
-from agentics.abstractions.structured_output import generate_structured_output
 
 # from agentics.core.globals import Memory
 from agentics.core.llm_connections import watsonx_llm
@@ -169,17 +168,12 @@ class Agentics(BaseModel):
     verbose_transduction: bool = True
     verbose_agent: bool = False
 
-    @staticmethod
-    def create_crewai_llm(**kwargs):
-        from crewai import LLM
-
-        return LLM(**kwargs)
-
-    ### Turn agentics into lists iterating on the states
     def __iter__(self):
+        """Returns an iterator through the states"""
         return iter(self.states)
 
     def __len__(self):
+        """Returns the number of states"""
         return len(self.states)
 
     def __call__(self, *fields) -> AG:
@@ -325,7 +319,11 @@ class Agentics(BaseModel):
 
     @classmethod
     def from_dataframe(
-        cls, dataframe: DataFrame, atype: Type[BaseModel] = None, max_rows: int = None
+        cls,
+        dataframe: DataFrame,
+        atype: Type[BaseModel] = None,
+        max_rows: int = None,
+        llm: Optional[crewai.LLM] = None,
     ) -> AG:
         """
         Import an object of type Agentics from a Pandas DataFrame object.
@@ -333,7 +331,9 @@ class Agentics(BaseModel):
         all attributes will be set as strings
         """
         states: List[BaseModel] = []
-        new_type = atype or pydantic_model_from_dataframe(dataframe)
+        new_type = atype or make_all_fields_optional(
+            pydantic_model_from_dataframe(dataframe)
+        )
         logger.debug(f"Importing Agentics of type {new_type.__name__} from DataFrame")
 
         for i, row in dataframe.iterrows():
@@ -341,7 +341,7 @@ class Agentics(BaseModel):
                 break
             state = new_type(**row.to_dict())
             states.append(state)
-        return cls(states=states, atype=new_type)
+        return cls(states=states, atype=new_type, llm=llm)
 
     @classmethod
     def from_json(
@@ -504,9 +504,7 @@ class Agentics(BaseModel):
         """
         output = self.clone()
         output.states = []
-        input_prompts = (
-            []
-        )  ## gather input prompts for transduction by dumping input states
+        input_prompts = []  # prompt construction by dumping input states
         target_type = (
             self.subset_atype(self.transduce_fields)
             if self.transduce_fields
@@ -571,7 +569,7 @@ class Agentics(BaseModel):
         if self.skip_intensional_definiton:
             instructions = f"{self.instructions}" if self.instructions else "\n"
         else:
-            instructions += "\nYour task is to transduce a source Pydantic Object into the specified Output type. Generate only slots that are logically deduced from the input information, otherwise live then null.\n"
+            instructions += "\nYour task is to transduce a source Pydantic Object into the specified Output type. Generate only slots that are logically deduced from the input information, otherwise make them null.\n"
             if self.instructions:
                 instructions += (
                     "\nRead carefully the following instructions for executing your task:\n"
@@ -604,7 +602,7 @@ class Agentics(BaseModel):
         i = 1
         transducer_class = (
             PydanticTransducerCrewAI
-            if type(self.llm) == crewai.LLM
+            if self.llm is None or type(self.llm) == crewai.LLM
             else PydanticTransducerVLLM
         )
         if self.verbose_transduction:
@@ -902,7 +900,7 @@ class Agentics(BaseModel):
         source_fields: List[str],
         target_fields: List[str],
         instructions: str = None,
-    ):
+    ) -> AG:
         target = self.clone()
         self.transduce_fields = source_fields
         if instructions:
@@ -932,16 +930,21 @@ class Agentics(BaseModel):
             for state in self.states:
                 writer.writerow(state.model_dump())
 
-    def to_jsonl(self, jsonl_file: str) -> Any:
+    def to_jsonl(self, jsonl_file: Optional[str] = None) -> str:
+        """Writes to file if the jsonl_file is provided, returns the str being written."""
         if self.verbose_transduction:
             logger.debug(f"Exporting {len(self.states)} Agentics to CSV {jsonl_file}")
-        with open(jsonl_file, mode="w", newline="", encoding="utf-8") as f:
-            for state in self.states:
-                try:
-                    f.write(json.dumps(clean_for_json(state)) + "\n")
-                except Exception as e:
-                    logger.debug(f"⚠️ Failed to serialize state: {e}")
-                    f.write(json.dumps(self.atype().model_dump()))
+        data = ""
+        for state in self.states:
+            try:
+                data += json.dumps(clean_for_json(state)) + "\n"
+            except Exception as e:
+                logger.debug(f"⚠️ Failed to serialize state: {e}")
+                data += json.dumps(self.atype().model_dump())
+        if jsonl_file:
+            with open(jsonl_file, mode="w", newline="", encoding="utf-8") as f:
+                f.write(data)
+        return data
 
     def to_dataframe(self) -> DataFrame:
         """

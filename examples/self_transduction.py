@@ -1,11 +1,12 @@
-# The following program exemplify the use of self transduction from an input csv file
-# of movies, to generate tweets asyncronously for each of them
+"""The following program exemplifies the use of self transduction from an input csv file of movies, to generate tweets asyncronously for each of them."""
 
 import asyncio
-from agentics import Agentics as AG
-from dotenv import load_dotenv
-from agentics.core.llm_connections import openai_llm
 import os
+
+from dotenv import load_dotenv
+
+from agentics import Agentics as AG
+from agentics.core.llm_connections import openai_llm
 
 load_dotenv()
 

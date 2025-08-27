@@ -1,10 +1,12 @@
 """This script exemplifies the most basic use of Agentics as a pydantic transducer from a list of strings."""
 
 import asyncio
-from pydantic import BaseModel
-from agentics import Agentics as AG
 from typing import Optional
+
 from dotenv import load_dotenv
+from pydantic import BaseModel
+
+from agentics import Agentics as AG
 from agentics.core.llm_connections import ollama_llm
 
 load_dotenv()

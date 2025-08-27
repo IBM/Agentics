@@ -6,6 +6,8 @@ dist/
 *.pyc
 *.py[cod]
 .DS_Store
+.vscode/
+__*__
 
 # pyenv
 .python-version

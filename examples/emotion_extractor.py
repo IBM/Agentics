@@ -1,10 +1,11 @@
-from agentics.core.agentics import Agentics as AG
-from pydantic import BaseModel, Field
-from typing import Optional
-from agentics.core.llm_connections import ollama_llm
-import os
-
 import asyncio
+import os
+from typing import Optional
+
+from pydantic import BaseModel, Field
+
+from agentics.core.agentics import Agentics as AG
+from agentics.core.llm_connections import ollama_llm
 
 
 class Emotion(BaseModel):
