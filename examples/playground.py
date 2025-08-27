@@ -62,7 +62,7 @@ def load_dataframe() -> pd.DataFrame:
             df = df[:N_SAMPLES]
             st.write("##### Sample data")
             st.dataframe(df.head(), hide_index=True)
-            st.session_state["df"] = df  # .fillna(value="")
+            st.session_state["df"] = df.fillna(value="")
 
 
 class AGType(BaseModel):
@@ -283,8 +283,8 @@ def self_transduction(df: pd.DataFrame):
                 st.session_state["self_transduction_types"] = types_ag.to_dataframe()
             source_ph.empty()
 
-    a = types_ag.to_dataframe()
-    st.dataframe(a)
+    # a = types_ag.to_dataframe()
+    # st.dataframe(a)
     self_transduction_types = st.session_state["self_transduction_types"] = (
         types_ag.to_dataframe()
     )
