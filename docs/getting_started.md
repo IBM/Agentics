@@ -13,18 +13,19 @@ Agentics is a lightweight, Python-native framework for building structured, agen
     cd agentics
   ```
 
-* Install poetry (skip if available)
+* Install uv (skip if available) 
 
   ```bash
-  curl -sSL https://install.python-poetry.org | python3 -
+  curl -LsSf https://astral.sh/uv/install.sh | sh
   ```
 
-* Clone and install agentics
+  Other installation options [here](curl -LsSf https://astral.sh/uv/install.sh | sh)
+
+* Install the dependencies
 
   ```bash
   
-  poetry install
-  source $(poetry env info --path)/bin/activate 
+  uv sync
   ```
 
 

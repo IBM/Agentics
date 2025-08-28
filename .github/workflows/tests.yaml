@@ -1,0 +1,34 @@
+name: Run Python Tests with uv
+
+on:
+  push:        # Run on push to any branch
+  pull_request:  # Run on pull requests to any branch
+
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install uv (curl method)
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+
+    - name: Cache uv virtualenv
+      uses: actions/cache@v4
+      with:
+        path: .venv
+        key: uv-venv-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+        restore-keys: |
+          uv-venv-${{ runner.os }}-
+
+    - name: Create virtualenv and install dependencies
+      run: |
+        uv sync
+        
+    - name: Run tests
+      run: |
+        uv run pytest

@@ -35,9 +35,9 @@ We welcome new AG entusiasts to extend this framework with new applications and 
 
 **Typed Agentic Computation**: Define workflows over structured types using standard Pydantic schemas.
 
-**Logical Transduction (<<)**: Transform data between types using LLMs with few-shot examples, tools, and memory.
+**Logical Transduction (`<<`)**: Transform data between types using LLMs with few-shot examples, tools, and memory.
 
-**Async Mapping and Reduction**: Apply async mapping (amap) and aggregation (areduce) functions over datasets.
+**Async Mapping and Reduction**: Apply async mapping (`amap`) and aggregation (`areduce`) functions over datasets.
 
 **Batch Execution & Retry**: Automatically handles batch-based asynchronous execution with graceful fallback.
 
@@ -86,56 +86,49 @@ for result in qa_agent.states:
 
 ```
 
-🧠 Conceptual Overview
+### 🧠 Conceptual Overview
 
 Agentics models workflows as transformations between typed states. Each instance of Agentics includes:
 
-atype: A Pydantic model representing the schema.
+`atype`: A Pydantic model representing the schema.
 
-states: A list of objects of that type.
+`states`: A list of objects of that type.
 
-Optional llm, tools, prompt_template, memory, and batch_size.
+Optional `llm`, `tools`, `prompt_template`, `memory`, and `batch_size`.
 
-Operations:
+#### Operations:
 
-amap(func): Applies an async function over each state.
+`amap`(func): Applies an async function over each state.
 
-areduce(func): Reduces a list of states into a single value.
+`areduce`(func): Reduces a list of states into a single value.
 
-<<: Performs logical transduction from source to target Agentics.
+`<<`: Performs logical transduction from source to target Agentics.
 
-🔧 Advanced Usage
+#### 🔧 Advanced Usage
 
-Customizing Prompts
+##### Customizing Prompts
 
 agent.prompt_template = """
 You are an assistant that extracts key information.
 Please respond using the format {answer}, {justification}, {confidence}.
 """
 
-📚 Documentation
+# 📚 Documentation
 
 Full documentation and examples are available at:  
 
-🧪 Tests
+# 🧪 Tests
 
 Run all tests using:
 
-pytest tests/
+`pytest`
 
-🛠️ Requirements
 
-Python 3.11+
-
-pydantic >= 2.0
-
-langchain, crewai 
-
-📄 License
+## $ 📄 License
 
 Apache 2.0
 
-👥 Authors
+## 👥 Authors
 
 Developed by Alfio Gliozzo and contributors. 
 
