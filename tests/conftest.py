@@ -17,7 +17,7 @@ def venv(
     with ctx.cd(tmp_path):
         ctx.run(f"uv venv --seed --python {python_version}", in_stream=False)
 
-    monkeypatch.setenv("VIRTUAL_ENV", tmp_path / ".venv")
+    monkeypatch.setenv("VIRTUAL_ENV", str(tmp_path / ".venv"))
     return tmp_path
 
 
