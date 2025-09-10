@@ -104,7 +104,7 @@ Agentics models workflows as transformations between typed states. Each instance
 
 `states`: A list of objects of that type.
 
-Optional `llm`, `tools`, `prompt_template`, `memory`, and `batch_size`.
+Optional `llm`, `tools`, `prompt_template`, `memory`.
 
 #### Operations:
 

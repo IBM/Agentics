@@ -30,3 +30,6 @@ dmypy.json
 agentics.code-workspace
 # Test reports
 report.html
+
+# IDE
+.vscode
