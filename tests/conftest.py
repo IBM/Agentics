@@ -1,7 +1,12 @@
+# pylint: disable=redefined-outer-name,
+# pylint: disable=possibly-unbound-attribute
+import json
 from pathlib import Path
+from typing import Dict
 
 import pytest
 from invoke.context import Context
+from loguru import logger
 from typing_extensions import Annotated
 
 
@@ -49,3 +54,26 @@ def wheel(
         ctx.run(f"uv build -o {output}", in_stream=False)
     wheel_file, *_ = output.glob("*.whl")
     return wheel_file
+
+
+@pytest.fixture()
+def jupyter_kernel(ctx: Context) -> str:
+    """Returns the name of a valid Jupyter kernel"""
+    kernel_list: Dict[str, Any] = json.loads(
+        ctx.run("jupyter kernelspec list --json", in_stream=False, hide=True).stdout
+    )
+    kernelspecs: Dict[str, Any] = kernel_list.get("kernelspecs", {})
+    if not kernelspecs:
+        kernel = "python3"
+        logger.info(f"Creating kernel {kernel}")
+        ctx.run(
+            # https://github.com/jupyter/jupyter_client/issues/72
+            f"python -m ipykernel install --user --name {kernel} --display-name 'tests'",
+            echo=True,
+            in_stream=False,
+            hide=True,
+        )
+    else:
+        kernel, *_ = kernelspecs.keys()
+    logger.info(f"Using kernel {kernel}")
+    return kernel

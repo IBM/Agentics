@@ -14,23 +14,20 @@ import pytest
         # tutorials/mcp_tools.ipynb"
     ),
 )
-def test_tutorials(git_root, tmp_path: Path, notebook):
-
+def test_tutorials(git_root, tmp_path: Path, notebook, jupyter_kernel: str):
     input_notebook = Path(git_root) / notebook
 
     out_nb = tmp_path / "report_out.ipynb"
     pm.execute_notebook(
         input_notebook,
         out_nb,
-        parameters={"RUN_MODE": "test", "LIMIT": 100},
         cwd=".",
-        kernel_name="python3",
+        kernel_name=jupyter_kernel,
     )
 
 
 @pytest.mark.asyncio
 async def test_hello_world():
-
     import asyncio
     import os
     from typing import Optional
