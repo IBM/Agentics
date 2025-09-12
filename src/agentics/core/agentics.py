@@ -666,7 +666,7 @@ class Agentics(BaseModel):
                     llm=self.llm,
                     intensional_definiton=instructions,
                     verbose=self.verbose_agent,
-                    max_iter=self.max_iter
+                    max_iter=self.max_iter,
                     **self.crew_prompt_params,
                 )
                 for state in chunk:
