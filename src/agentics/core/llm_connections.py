@@ -25,11 +25,10 @@ def get_llm_provider(provider_name: str = None) -> LLM:
         ValueError: If the specified provider is not available.
     """
 
-    if provider_name is None:
-        logger.debug("No LLM provider specified. Using the first available provider.")
+    if provider_name is None or provider_name == "":
         if len(available_llms) > 0:
             logger.debug(
-                f"Available LLM providers: {list(available_llms.keys())}. Using '{list(available_llms.keys())[0]}'"
+                f"Available LLM providers: {list(available_llms)}. None specified, defaulting to '{list(available_llms)[0]}'"
             )
             return list(available_llms.values())[0]
         else:
@@ -84,8 +83,8 @@ watsonx_llm = (
         base_url=os.getenv("WATSONX_URL"),
         project_id=os.getenv("WATSONX_PROJECTID"),
         api_key=os.getenv("WATSONX_APIKEY"),
-        max_tokens=8000,
-        temperature=0.9,
+        temperature=0.3,
+        max_input_tokens=100000,
     )
     if os.getenv("WATSONX_APIKEY")
     and os.getenv("WATSONX_URL")
@@ -111,25 +110,19 @@ vllm_crewai = (
         model=os.getenv("VLLM_MODEL_ID"),
         api_key="EMPTY",
         base_url=os.getenv("VLLM_URL"),
-        max_tokens=8000,
+        max_tokens=1000,
         temperature=0.0,
     )
     if os.getenv("VLLM_URL") and os.getenv("VLLM_MODEL_ID")
     else None
 )
 
-logger.debug("AGENTICS is connecting to the following LLM API providers:")
 i = 0
 if watsonx_llm:
-    logger.debug(f"{i} - WatsonX")
     available_llms["watsonx"] = watsonx_llm
     i += 1
 if gemini_llm:
     available_llms["gemini"] = gemini_llm
-    logger.debug(f"{i} - Gemini")
     i += 1
 if openai_llm:
     available_llms["openai"] = openai_llm
-    logger.debug(f"{i} - OpenAI")
-
-logger.debug("Please add API keys in .env file to add or disconnect providers.")

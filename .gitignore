@@ -30,3 +30,9 @@ dmypy.json
 agentics.code-workspace
 # Test reports
 report.html
+
+# IDE
+.vscode
+
+# local folders
+__*__/

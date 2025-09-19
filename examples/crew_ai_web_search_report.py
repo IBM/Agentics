@@ -6,7 +6,7 @@ from crewai import Agent, Crew, Task
 from crewai_tools import MCPServerAdapter
 from pydantic import BaseModel, Field
 
-from agentics.core.llm_connections import get_llm_provider
+from agentics import AG
 from mcp import StdioServerParameters  # For Stdio Server
 
 
@@ -62,9 +62,7 @@ with (
         reasoning_steps=10,  ## maximum number of steps that will be executed in the plan
         memory=True,  ## Set true to provide context of conversation
         verbose=True,
-        llm=get_llm_provider(
-            "openai"
-        ),  ## OpenAI is recommended for reasoning tasks. Try out your own model
+        llm=AG.get_llm_provider(),  ## OpenAI is recommended for reasoning tasks. Try out your own model
     )
 
     doc_task = Task(

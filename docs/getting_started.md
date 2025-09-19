@@ -130,7 +130,7 @@ The hello_world.py code below illustrates how to use Agentics to transduce a lis
 ```python
 import asyncio
 from pydantic import BaseModel
-from agentics import Agentics as AG
+from agentics import AG
 from typing import Optional
 
 class Answer(BaseModel):

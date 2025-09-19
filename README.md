@@ -72,7 +72,7 @@ We welcome new AG entusiasts to extend this framework with new applications and 
 
 ## 📘 Example Usage
 ```python
-from agentics import Agentics as AG
+from agentics import AG
 from pydantic import BaseModel
 
 class Answer(BaseModel):
@@ -104,7 +104,7 @@ Agentics models workflows as transformations between typed states. Each instance
 
 `states`: A list of objects of that type.
 
-Optional `llm`, `tools`, `prompt_template`, `memory`, and `batch_size`.
+Optional `llm`, `tools`, `prompt_template`, `memory`.
 
 #### Operations:
 

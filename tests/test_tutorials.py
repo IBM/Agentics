@@ -35,7 +35,7 @@ async def test_hello_world(llm_provider):
     from dotenv import load_dotenv
     from pydantic import BaseModel
 
-    from agentics import Agentics as AG
+    from agentics import AG
 
     load_dotenv()
 

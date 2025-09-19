@@ -1,1 +1,1 @@
-from .agentics import Agentics
+from .agentics import AG

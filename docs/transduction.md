@@ -34,7 +34,7 @@ The example below transduces orders into notification emails.
 from pydantic import BaseModel, Field
 from typing import Optional
 import asyncio
-from agentics import Agentics as AG
+from agentics import AG
 
 class NotificationEmail(BaseModel):
     """Generate an email to notify the customer of an executed order"""
