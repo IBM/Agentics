@@ -437,7 +437,6 @@ def are_models_structurally_identical(
     return True
 
 
-
 def pretty_print_atype(atype, indent: int = 2):
     """
     Recursively pretty print an 'atype' (Agentics/Pydantic typing model).

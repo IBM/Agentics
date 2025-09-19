@@ -6,6 +6,7 @@ dist/
 *.pyc
 *.py[cod]
 .DS_Store
+.vscode
 
 # pyenv
 .python-version
@@ -30,3 +31,5 @@ dmypy.json
 agentics.code-workspace
 # Test reports
 report.html
+
+__*__/

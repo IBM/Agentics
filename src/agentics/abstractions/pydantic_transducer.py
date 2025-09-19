@@ -10,7 +10,7 @@ from loguru import logger
 from openai import AsyncOpenAI
 from pydantic import BaseModel
 
-from agentics.core.llm_connections import watsonx_llm
+from agentics.core.llm_connections import get_llm_provider
 from agentics.core.utils import openai_response
 
 load_dotenv()
@@ -119,7 +119,7 @@ class PydanticTransducerCrewAI:
         **kwargs,
     ):
         self.atype = atype
-        self.llm = llm if llm else watsonx_llm
+        self.llm = llm if llm else get_llm_provider()
         self.intensional_definiton = (
             intensional_definiton
             if intensional_definiton
