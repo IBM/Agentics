@@ -1,31 +1,4 @@
-from pathlib import Path
-
-import papermill as pm
 import pytest
-
-
-@pytest.mark.skip(reason="User input not mocked")
-@pytest.mark.parametrize(
-    "notebook",
-    (
-        "tutorials/llms.ipynb",
-        # "tutorials/transduction.ipynb",
-        # "tutorials/agentics_basics.ipynb",
-        # "tutorials/amap_reduce.ipynb",
-        # tutorials/mcp_tools.ipynb"
-    ),
-)
-def test_tutorials(git_root, tmp_path: Path, notebook):
-    input_notebook = Path(git_root) / notebook
-
-    out_nb = tmp_path / "report_out.ipynb"
-    pm.execute_notebook(
-        input_notebook,
-        out_nb,
-        parameters={"RUN_MODE": "test", "LIMIT": 100},
-        cwd=".",
-        kernel_name="python3",
-    )
 
 
 @pytest.mark.asyncio

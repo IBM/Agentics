@@ -30,5 +30,9 @@ jobs:
         uv sync
         
     - name: Run tests
+      env:
+        # WATSONX_APIKEY: ${{ secrets.WATSONX_APIKEY }}
+        # WATSONX_PROJECTID: ${{ secrets.WATSONX_PROJECTID }}
+        # WATSONX_URL: ${{ secrets.WATSONX_URL }}
       run: |
         uv run pytest

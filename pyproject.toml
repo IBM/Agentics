@@ -64,6 +64,9 @@ dev = [
   "invoke>=2.2.0",
   "papermill>=2.6.0",
   "pytest-xdist>=3.8.0",
+  "nbconvert>=7.16.6",
+  "ipykernel>=6.30.1",
+  "pre-commit-uv>=4.1.5",
 ]
 docling = [
   "langchain-docling >=0.2.0,<0.3.0"

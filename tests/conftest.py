@@ -46,7 +46,11 @@ def wheel(
 ) -> Annotated[Path, "The wheel file to install"]:
     with ctx.cd(git_root):
         output = tmp_path_factory.mktemp("dist")
-        ctx.run(f"uv build -o {output}", in_stream=False)
+        # uv build is not compatible with uv-dynamic-versioning
+        ctx.run(
+            f"uvx --with uv-dynamic-versioning hatchling build -d {output} -t wheel",
+            in_stream=False,
+        )
     wheel_file, *_ = output.glob("*.whl")
     return wheel_file
 
@@ -59,3 +63,8 @@ def llm_provider():
         return get_llm_provider()
     except ValueError:
         raise pytest.skip(reason="No available LLM")
+
+
+@pytest.fixture()
+def jupyter_kernel(ctx):
+    ctx.run()
