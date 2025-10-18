@@ -57,6 +57,7 @@ from agentics.core.utils import (
     remap_dict_keys,
     sanitize_dict_keys,
 )
+from agentics.core.vector_store import VectorStore
 
 AG = TypeVar("AG", bound="AG")
 T = TypeVar("T", bound="BaseModel")
@@ -120,8 +121,8 @@ class AG(BaseModel, Generic[T]):
     transduction_timeout: float | None = None
     verbose_transduction: bool = True
     verbose_agent: bool = False
-    areduce_batch_size: int = Field(
-        10,
+    areduce_batch_size: int | None = Field(
+        None,
         description="The size of the bathes to be used when transduction type is areduce",
     )
     areduce_batches: List[BaseModel] = []
@@ -135,6 +136,7 @@ class AG(BaseModel, Generic[T]):
         },
         description="prompt parameter for initializing Crew and Task",
     )
+    vector_store: VectorStore = VectorStore()
 
     class Config:
         model_config = {"arbitrary_types_allowed": True}
@@ -652,21 +654,40 @@ class AG(BaseModel, Generic[T]):
                 return [x.string for x in input_messages.states]
 
         if self.transduction_type == "areduce":
-            if is_str_or_list_of_str(other):
-                chunks = chunk_list(other, chunk_size=self.areduce_batch_size)
+            # other = [x.model_dump_json(include=other.transduce_fields) for x in other]
+            new_other = other(*other.transduce_fields)
+            if is_str_or_list_of_str(new_other):
+
+                chunks = chunk_list(new_other, chunk_size=self.areduce_batch_size)
             else:
-                chunks = chunk_list(other.states, chunk_size=self.areduce_batch_size)
-            if len(chunks) == 1:
-                self.transduction_type = "amap"
-                self = await (self << str(chunks[0]))
-                self.transduction_type = "areduce"
-                return self
-            else:
-                self.transduction_type = "amap"
-                reduced_chunks = await (self << [str(x) for x in chunks])
-                self.transduction_type = "areduce"
-                self.areduce_batches += reduced_chunks.states
-                return await (self << reduced_chunks)
+                chunks = chunk_list(
+                    new_other.states, chunk_size=self.areduce_batch_size
+                )
+            # if len(chunks) > 0:
+            # self.transduction_type = "amap"
+            # self = await (self << str(chunks[0]))
+            # self.transduction_type = "areduce"
+            # return self
+            # else:
+            self.transduction_type = "amap"
+            ReducedOtherAtype = create_model(
+                "ReducedOtherAtype",
+                reduced_other_states=(list[new_other.atype] | None, Field([])),
+            )
+
+            reduced_other_ag = AG(
+                atype=ReducedOtherAtype,
+                states=[
+                    ReducedOtherAtype(reduced_other_states=chunk) for chunk in chunks
+                ],
+            )
+
+            self = await (self << reduced_other_ag)
+            # self.transduction_type = "areduce"
+            # self.areduce_batches += reduced_chunks.states
+            return self
+            # else:
+            #     raise ValidationError("empty list of states has been provided")
 
         output = self.clone()
         output.states = []
@@ -1144,3 +1165,45 @@ class AG(BaseModel, Generic[T]):
 
         # Optionally re-assign it to self.atype
         return self.rebind_atype(new_model)
+
+    ###################################
+    #### Vector Store Capabilities ####
+    ###################################
+    def build_index(self):
+        logger.debug(
+            f"Indexing AG. {len(self)} states will be indexed, this might take a while"
+        )
+        texts = [x.model_dump_json() for x in self]
+        self.vector_store.import_data(texts)
+
+    def search(self, query: str, k: int = 5) -> AG:
+        if self.vector_store.store.next_id != len(self):
+            self.build_index()
+        filtered_ag = self.clone()
+        filtered_ag.states = []
+        results = self.vector_store.search(query, k=k)
+
+        for result in results:
+            filtered_ag.append(self.states[result[1]["id"]])
+        return filtered_ag
+
+    def cluster(self, n_partitions: int = None) -> list[AG]:
+        if self.vector_store.store.next_id != len(self):
+            self.build_index()
+        if not n_partitions:
+            n_partitions = len(self) / 10
+        logger.debug(
+            f"Clustering AG containing {len(self)} states into {n_partitions} AGs. This might take a while ..."
+        )
+        clusters = self.vector_store.cluster(k=n_partitions)
+
+        results = []
+        cluster_ag = self.clone()
+        cluster_ag.states = []
+        for cluster in clusters:
+            current_cluster_ag = cluster_ag.clone()
+
+            for state in cluster:
+                current_cluster_ag.append(self.states[state["id"]])
+            results.append(current_cluster_ag)
+        return results

@@ -105,7 +105,7 @@ def sanitize_dict_keys(obj):
         return obj
 
 
-def chunk_list(lst, chunk_size):
+def chunk_list(lst, chunk_size: int = None):
     """
     Splits a list into a list of lists, each of a given size.
 
@@ -116,7 +116,10 @@ def chunk_list(lst, chunk_size):
     Returns:
         list of lists: A list where each element is a sublist of length `chunk_size`, except possibly the last one.
     """
-    return [lst[i : i + chunk_size] for i in range(0, len(lst), chunk_size)]
+    if chunk_size:
+        return [lst[i : i + chunk_size] for i in range(0, len(lst), chunk_size)]
+    else:
+        return [lst]
 
 
 def clean_for_json(obj: Any) -> Any:
