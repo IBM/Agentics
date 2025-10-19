@@ -168,6 +168,14 @@ class AG(BaseModel, Generic[T]):
         new_self.states = self.states[start:end]
         return new_self
 
+    def set_default_value(self, field: str, default_value: Any = None) -> AG:
+        new_self = self.clone()
+        for state in self:
+            if getattr(state, field):
+                setattr(state, field, default_value)
+            new_self.append(state)
+        return new_self
+
     def get_random_sample(self, percent: float) -> AG:
         if not (0 <= percent <= 1):
             raise ValueError("Percent must be between 0 and 1")

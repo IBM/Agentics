@@ -177,12 +177,18 @@ def pydantic_model_from_csv(
 
 
 def infer_pydantic_type(dtype: Any, sample_values: pd.Series = None) -> Any:
+    is_dict_mask = sample_values.apply(lambda x: isinstance(x, dict))
+
     if pd.api.types.is_integer_dtype(dtype):
         return Optional[int]
     elif pd.api.types.is_float_dtype(dtype):
         return Optional[float]
     elif pd.api.types.is_bool_dtype(dtype):
         return Optional[bool]
+    elif is_dict_mask.all():
+        return Optional[dict]
+    elif pd.api.types.is_list_like(dtype):
+        return Optional[list]
     elif pd.api.types.is_datetime64_any_dtype(dtype):
         return Optional[str]  # Or datetime.datetime
     elif sample_values is not None:

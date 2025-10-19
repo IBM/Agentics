@@ -64,6 +64,8 @@ def infer_pydantic_type(dtype: Any, sample_values: pd.Series = None) -> Any:
         return Optional[int]
     elif pd.api.types.is_float_dtype(dtype):
         return Optional[float]
+    elif pd.api.types.is_dict_like(dtype):
+        return Optional[dict]
     elif pd.api.types.is_bool_dtype(dtype):
         return Optional[bool]
     elif pd.api.types.is_datetime64_any_dtype(dtype):
@@ -102,7 +104,7 @@ def sanitize_dict_keys(obj):
     elif isinstance(obj, list):
         return [sanitize_dict_keys(item) for item in obj]
     else:
-        return obj
+        return str(obj)
 
 
 def chunk_list(lst, chunk_size: int = None):
