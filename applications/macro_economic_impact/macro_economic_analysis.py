@@ -16,7 +16,7 @@ def macro_economic_analysis_ui():
 
     if "market_dataset" not in st.session_state:
         st.session_state.market_dataset = AG.from_csv(
-            "/Users/gliozzo/Code/agentics911/agentics/data/macro_economic_analysis/market_factors_new.csv"
+            "./data/macro_economic_analysis/market_factors_new.csv"
         )
 
     if "market_dataset_index" not in st.session_state:
