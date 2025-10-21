@@ -404,7 +404,7 @@ def pydantic_model_bulilder_ui():
                 )
             else:
                 output_path = Path(
-                    "/Users/gliozzo/Code/agentics911/agentics/applications/macro_economic_impact/predefined_types"
+                    "./applications/macro_economic_impact/predefined_types"
                 ) / (st.session_state.new_model_name + ".py")
                 with open(output_path, "w") as f:
                     f.write(

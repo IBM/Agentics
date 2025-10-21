@@ -60,7 +60,7 @@ with st.sidebar:
 
     st.subheader("self_transduction")
     uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
-    # dataframe_path = st.text_input("Import Dataframe", value="/Users/gliozzo/Code/agentics/data/top_movies.csv")
+    # dataframe_path = st.text_input("Import Dataframe", value="./data/top_movies.csv")
     max_rows = st.number_input("Number of Rows", min_value=1, value=10)
     load_dataframe = st.button("load_dataframe")
     source_fields = st.multiselect(
