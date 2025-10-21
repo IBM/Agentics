@@ -1,3 +1,4 @@
+import asyncio
 import re
 import unicodedata
 from typing import List, Set, Tuple
@@ -5,6 +6,10 @@ from typing import List, Set, Tuple
 from pydantic import BaseModel, Field
 
 from agentics import AG
+from pathlib import Path
+
+DATA_DIR = Path("./data/")
+OUTPUT_DIR = Path(DATA_DIR) / "outputs/"
 
 # ---------- Helpers: normalization ----------
 
@@ -288,7 +293,6 @@ import os
 
 async def run_benchmark(input_data, output_path):
     table_bench = AG.from_jsonl(input_data)
-    table_bench_gt = table_bench.clone()
     table_bench.set_default_value("answer")
     table_bench.verbose_agent = True
     if not os.path.exists(output_path):
@@ -321,11 +325,11 @@ def evaluate(system: str, gt: str, qtype=None, verbose=False):
     return positives / (positives + negatives)
 
 
-system = AG.from_jsonl("basline_exp/output_full.json")
-gt = AG.from_jsonl("TableBench.jsonl")
-categories = set([x.qtype for x in system])
-for category in categories:
-    accuracy = evaluate(system, gt, qtype=category)
-    print(f"Evaluated Category {category} with accuracy {accuracy}")
+# system = AG.from_jsonl(str(OUTPUT_DIR / "/output_full.json"))
+# gt = AG.from_jsonl(str(DATA_DIR / "TableBench.jsonl"))
+# categories = set([x.qtype for x in system])
+# for category in categories:
+#     accuracy = evaluate(system, gt, qtype=category)
+#     print(f"Evaluated Category {category} with accuracy {accuracy}")
 
-# asyncio.run(run_benchmark("./sandbox/QA/TableBench.jsonl" , "./sandbox/QA/basline_exp/"))
+asyncio.run(run_benchmark(str(DATA_DIR / "TableBench.jsonl"), str(OUTPUT_DIR)))
