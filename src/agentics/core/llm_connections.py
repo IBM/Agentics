@@ -59,11 +59,11 @@ gemini_llm = (
 )
 
 
-ollama_llm = (
-    LLM(model=os.getenv("OLLAMA_MODEL_ID"), base_url="http://localhost:11434")
-    if os.getenv("OLLAMA_MODEL_ID")
-    else None
-)
+# ollama_llm = (
+#     LLM(model=os.getenv("OLLAMA_MODEL_ID"), base_url="http://localhost:11434")
+#     if os.getenv("OLLAMA_MODEL_ID")
+#     else None
+# )
 
 
 openai_llm = (

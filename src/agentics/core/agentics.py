@@ -1190,7 +1190,7 @@ class AG(BaseModel, Generic[T]):
         if self.vector_store.store.next_id != len(self):
             self.build_index()
         if not n_partitions:
-            n_partitions = len(self) / 10
+            n_partitions = int(len(self) / 10)
         logger.debug(
             f"Clustering AG containing {len(self)} states into {n_partitions} AGs. This might take a while ..."
         )
