@@ -150,11 +150,9 @@ Apache 2.0
 
 ## 👥 Authors
 
-Developed by Alfio Gliozzo and contributors. 
-
+Developed by Alfio Gliozzo and contributors.
 
 Contributions welcome!
-
 
 Core team  Alfio Gliozzo, Junkyu Lee, Naweed Aghmad, Nahuel Defosse, Christodoulos Constantinides, Mustafa Eyceoz and contributors.
 
