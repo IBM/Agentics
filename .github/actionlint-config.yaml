@@ -1,0 +1,19 @@
+# .github/actionlint-config.yaml
+
+# Rules to enable/disable
+rules:
+  # Enable all rules by default
+  all: true
+  
+  # Disable specific rules if needed
+  # actions-have-safe-quotes: disable
+  # expression-syntax: disable
+
+# Shellcheck configuration
+shellcheck:
+  # Enable shellcheck for run steps
+  enabled: true
+
+# Pyflakes configuration  
+pyflakes:
+  enabled: false
