@@ -3,7 +3,7 @@ name: Run Python Tests with uv
 on:
   push:        # Run on push to any branch
   pull_request:  # Run on pull requests to any branch
-
+  workflow_call:
 
 jobs:
   test:
