@@ -1,11 +1,16 @@
 import csv
+import datetime
 import json
 import types
 from typing import (
+    Annotated,
     Any,
     Dict,
     List,
+    Literal,
+    Mapping,
     Optional,
+    Sequence,
     Set,
     Tuple,
     Type,
@@ -26,6 +31,7 @@ class AGString(BaseModel):
 
 #################
 ##### Utils #####
+#################
 
 
 def copy_attribute_values(
@@ -85,19 +91,6 @@ def get_pydantic_fields(atype: Type[BaseModel]):
         )
 
     return fields_list
-
-
-# def get_pydantic_fields(atype: Type[BaseModel]) -> pd.DataFrame:
-#     rows = []
-#     for field_name, field in atype.model_fields.items():
-#         rows.append({
-#             "Field": field_name,
-#             "Type": str(field.annotation),         # Type annotation
-#             "Description": field.description       # Description from Field(...)
-#         })
-
-#     # Create DataFrame
-#     return pd.DataFrame(rows)
 
 
 def get_active_fields(state: BaseModel, allowed_fields: Set[str] = None) -> Set[str]:
@@ -177,12 +170,18 @@ def pydantic_model_from_csv(
 
 
 def infer_pydantic_type(dtype: Any, sample_values: pd.Series = None) -> Any:
+    is_dict_mask = sample_values.apply(lambda x: isinstance(x, dict))
+
     if pd.api.types.is_integer_dtype(dtype):
         return Optional[int]
     elif pd.api.types.is_float_dtype(dtype):
         return Optional[float]
     elif pd.api.types.is_bool_dtype(dtype):
         return Optional[bool]
+    elif is_dict_mask.all():
+        return Optional[dict]
+    elif pd.api.types.is_list_like(dtype):
+        return Optional[list]
     elif pd.api.types.is_datetime64_any_dtype(dtype):
         return Optional[str]  # Or datetime.datetime
     elif sample_values is not None:
@@ -286,8 +285,6 @@ def create_pydantic_model(
     field_definitions = {}
     print(fields)
     for field_name, type_name, description, required in fields:
-        # ptype = type_mapping.get(model_name, str)  # default to str if unknown
-
         ptype = type_mapping[type_name] if type_name in type_mapping else Any
         if required:
             field_definitions[field_name] = (ptype, ...)
@@ -346,27 +343,6 @@ def pretty_print_atype(atype, indent: int = 2):
         for arg in args:
             pretty_print_atype(arg, indent + 2)
         print(f"{prefix}]")
-
-
-import datetime
-from typing import (
-    Annotated,
-    Any,
-    Dict,
-    List,
-    Literal,
-    Mapping,
-    Optional,
-    Sequence,
-    Set,
-    Tuple,
-    Type,
-    Union,
-    get_args,
-    get_origin,
-)
-
-from pydantic import BaseModel, Field
 
 
 def import_pydantic_from_code(code: str):

@@ -37,3 +37,4 @@ report.html
 
 # local folders
 __*__/
+_[a-z]*.py

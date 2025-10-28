@@ -33,6 +33,7 @@ dependencies = [
     "ipywidgets>=8.1.7",
     "aiosqlite>=0.21.0",
     "numerize>=0.12",
+    "hnswlib>=0.8.0",
 ]
 
 

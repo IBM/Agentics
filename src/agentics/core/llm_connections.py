@@ -59,11 +59,11 @@ gemini_llm = (
 )
 
 
-ollama_llm = (
-    LLM(model=os.getenv("OLLAMA_MODEL_ID"), base_url="http://localhost:11434")
-    if os.getenv("OLLAMA_MODEL_ID")
-    else None
-)
+# ollama_llm = (
+#     LLM(model=os.getenv("OLLAMA_MODEL_ID"), base_url="http://localhost:11434")
+#     if os.getenv("OLLAMA_MODEL_ID")
+#     else None
+# )
 
 
 openai_llm = (
@@ -88,6 +88,7 @@ watsonx_llm = (
         project_id=os.getenv("WATSONX_PROJECTID"),
         api_key=os.getenv("WATSONX_APIKEY"),
         temperature=0,
+        max_tokens=4000,
         max_input_tokens=100000,
     )
     if os.getenv("WATSONX_APIKEY")
