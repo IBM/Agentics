@@ -666,7 +666,11 @@ class AG(BaseModel, Generic[T]):
                 return [x.string for x in input_messages.states]
 
         if self.transduction_type == "areduce":
-            new_other = other(*other.transduce_fields)
+
+            if other.transduce_fields is not None:
+                new_other = other.subset_atype(other.transduce_fields)
+            else:
+                new_other = other
             if is_str_or_list_of_str(new_other):
 
                 chunks = chunk_list(new_other, chunk_size=self.areduce_batch_size)

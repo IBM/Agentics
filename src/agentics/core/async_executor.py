@@ -107,6 +107,100 @@ class PydanticTransducer(AsyncExecutor):
         pass
 
 
+from typing import Optional
+
+import mellea
+from langchain_core.output_parsers import PydanticOutputParser
+from langchain_core.prompts import PromptTemplate
+from pydantic import BaseModel, Field
+
+from agentics.core.utils import extract_json_objects
+
+
+class PydanticTransducerMellea(PydanticTransducer):
+    llm: AsyncOpenAI
+    intentional_definiton: str
+    verbose: bool = False
+    MAX_CHAR_PROMPT: int = 15000
+
+    def __init__(
+        self,
+        atype: Type[BaseModel],
+        verbose: bool = False,
+        llm=None,
+        tools=None,
+        intentional_definiton=None,
+        timeout=10000,
+        **kwargs,
+    ):
+        self.atype = atype
+        self.verbose = verbose
+        self.llm = llm
+        self.tools = tools
+        self.timeout = timeout
+        self.intentional_definiton = (
+            intentional_definiton
+            or "Generate an object of the specified Pydantic Type from the following input."
+        )
+        self.llm_params = {
+            "extra_body": {"guided_json": self.atype.model_json_schema()},
+            "logprobs": False,
+            "n": 1,
+        }
+        self.llm_params.update(kwargs)
+
+    async def execute(
+        self,
+        input: Union[str, Iterable[str]],
+        logprobs: bool = False,
+        n_samples: int = 1,
+        **kwargs,
+    ) -> Union[BaseModel, Iterable[BaseModel]]:
+
+        parser = PydanticOutputParser(pydantic_object=self.atype)
+
+        prompt = PromptTemplate(
+            template="Transduce the SOURCE object into a target JSON object matching this schema: {format_instructions}\n\nSOURCE: {target}\n\nTARGET:",
+            input_variables=["target"],
+            partial_variables={"format_instructions": parser.get_format_instructions()},
+        )
+
+        if isinstance(input, str):
+            formatted_prompt = prompt.format(target=input)
+            m = mellea.start_session()
+            result = m.chat(formatted_prompt)
+            res = m.chat(formatted_prompt)
+            result = extract_json_objects(res.content, expected_type=self.atype)
+
+            return result
+
+        elif isinstance(input, Iterable) and all(isinstance(i, str) for i in input):
+            processes = []
+            for state in input:
+                corutine = openai_response(
+                    model=os.getenv("VLLM_MODEL_ID"),
+                    base_url=os.getenv("VLLM_URL"),
+                    user_prompt=default_user_prompt + str(state),
+                    **self.llm_params,
+                )
+                processes.append(corutine)
+            results = await asyncio.wait_for(
+                asyncio.gather(*processes, return_exceptions=True), timeout=self.timeout
+            )
+
+            decoded_results = []
+            for result in results:
+                if issubclass(type(result), Exception):
+                    if self.verbose:
+                        logger.debug("Something went wrongs, generating empty states")
+                    decoded_results.append(self.atype())
+                else:
+                    decoded_results.append(self.atype.model_validate_json(result))
+            return decoded_results
+        else:
+            return NotImplemented
+
+
 class PydanticTransducerVLLM(PydanticTransducer):
     llm: AsyncOpenAI
     intentional_definiton: str
