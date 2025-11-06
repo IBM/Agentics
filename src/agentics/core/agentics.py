@@ -1,6 +1,7 @@
 import csv
 import io
 import json
+import logging
 import os
 import random
 from collections.abc import Iterable
@@ -28,6 +29,9 @@ from langchain_core.prompts import PromptTemplate
 from loguru import logger
 from pandas import DataFrame
 from pydantic import BaseModel, Field, ValidationError, create_model
+
+logging.getLogger("sentence_transformers").setLevel(logging.WARNING)
+
 
 from agentics.core.async_executor import (
     PydanticTransducerCrewAI,
@@ -972,7 +976,7 @@ class AG(BaseModel, Generic[T]):
 
         return reduce((lambda x, y: AG.add_states(x, y)), extended_ags)
 
-    def merge(self, other: "AG") -> "AG":
+    def merge(self, other: "AG", merge_type="pairwise") -> "AG":
         """
         Merge two AGs positionally:
         - The result atype = union of fields from self.atype and other.atype.
@@ -1006,13 +1010,25 @@ class AG(BaseModel, Generic[T]):
 
         # 2) Pairwise merge states (right wins on value conflicts)
         merged_states = []
-        for left_state, right_state in zip_longest(
-            self.states, other.states, fillvalue=None
-        ):
-            left = left_state.model_dump() if left_state is not None else {}
-            right = right_state.model_dump() if right_state is not None else {}
-            data = left | right  # right overwrites left for same keys
-            merged_states.append(merged_atype(**data))
+        if merge_type == "pairwise":
+            for left_state, right_state in zip_longest(
+                self.states, other.states, fillvalue=None
+            ):
+                left = left_state.model_dump() if left_state is not None else {}
+                right = right_state.model_dump() if right_state is not None else {}
+                data = left | right  # right overwrites left for same keys
+                merged_states.append(merged_atype(**data))
+        elif merge_type == "stochastic":
+
+            # In stochastic mode, we want to merge all possible combinations
+            # (cartesian product of states) or blend distributions.
+            # We'll do a cartesian merge here.
+            for left_state in self.states:
+                left = left_state.model_dump()
+                for right_state in other.states:
+                    right = right_state.model_dump()
+                    data = left | right
+                    merged_states.append(merged_atype(**data))
 
         return AG(atype=merged_atype, states=merged_states)
 
@@ -1106,7 +1122,7 @@ class AG(BaseModel, Generic[T]):
         Returns:
             AG: a new Agentics object with states of type `new_atype`.
         """
-        new_ag = deepcopy(self)
+        new_ag = self.clone()
         new_ag.atype = new_atype
         new_ag.states = []
 
