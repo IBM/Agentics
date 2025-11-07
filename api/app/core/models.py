@@ -1,6 +1,6 @@
 from __future__ import annotations
 from enum import Enum
-from typing import Any, List, Dict, Optional
+from typing import Any, List, Dict, Optional, Literal
 from pydantic import BaseModel, Field
 
 
@@ -30,3 +30,26 @@ class AtypeInfo(BaseModel):
     name: str
     code: str
     json_schema: Dict[str, Any]
+
+
+class AgentCreate(BaseModel):
+    atype_name: str | None = None  # reference an existing type
+    atype_code: str | None = None  # or supply raw code
+    states: list[dict] | None = None  # optional initial states
+
+
+class AgentMeta(BaseModel):
+    session_id: str
+    atype_name: str
+    n_states: int
+
+
+class StatesUpdate(BaseModel):
+    mode: Literal["append", "replace"] = "append"
+    states: list[dict]
+
+
+class TransduceRequest(BaseModel):
+    other: str | list[str]  # accept simple prompt(s) for MVP
+    transduction_type: Literal["amap", "areduce"] = "amap"
+    areduce_batch_size: int | None = None
