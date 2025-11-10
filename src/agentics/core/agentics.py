@@ -30,8 +30,18 @@ from loguru import logger
 from pandas import DataFrame
 from pydantic import BaseModel, Field, ValidationError, create_model
 
-logging.getLogger("sentence_transformers").setLevel(logging.WARNING)
+logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
+logging.getLogger("crewai.events.listeners.tracing.trace_batch_manager").setLevel(
+    logging.ERROR
+)
+logging.getLogger("LiteLLM").setLevel(logging.ERROR)
+logging.getLogger("LiteLLM.utils").setLevel(logging.ERROR)
 
+# Or disable propagation
+logging.getLogger("crewai.events.listeners.tracing.trace_batch_manager").propagate = (
+    False
+)
+logging.getLogger("LiteLLM").propagate = False
 
 from agentics.core.async_executor import (
     PydanticTransducerCrewAI,
@@ -54,7 +64,6 @@ from agentics.core.llm_connections import available_llms, get_llm_provider
 from agentics.core.mapping import AttributeMapping, ATypeMapping
 from agentics.core.utils import (
     chunk_list,
-    clean_for_json,
     is_str_or_list_of_str,
     sanitize_dict_keys,
 )
@@ -124,8 +133,8 @@ class AG(BaseModel, Generic[T]):
     verbose_transduction: bool = True
     verbose_agent: bool = False
     areduce_batch_size: Optional[int] = Field(
-        None,
-        description="The size of the bathes to be used when transduction type is areduce",
+        1000,
+        description="The size of the batches to be used when transduction type is areduce in number of tokens",
     )
     areduce_batches: List[BaseModel] = []
 
@@ -364,9 +373,13 @@ class AG(BaseModel, Generic[T]):
         if "return" in hints and issubclass(hints["return"], BaseModel):
             self.atype = hints["return"]
         try:
+            process_states = [
+                x if isinstance(x, dict) else x.model_dump() for x in self.states
+            ]
             results = await mapper.execute(
-                *self.states, description=f"Executing amap on {func.__name__}"
+                *process_states, description=f"Executing amap on {func.__name__}"
             )
+            results = results if isinstance(results, list) else [results]
             if self.transduction_logs_path:
                 with open(self.transduction_logs_path, "a") as f:
                     for state in results:
@@ -377,6 +390,7 @@ class AG(BaseModel, Generic[T]):
 
         _states = []
         n_errors = 0
+
         for i, result in enumerate(results):
             if isinstance(result, Exception):
                 if self.verbose_transduction:
@@ -545,7 +559,8 @@ class AG(BaseModel, Generic[T]):
         for i, row in dataframe.iterrows():
             if max_rows and i >= max_rows:
                 break
-            state = new_type(**row.to_dict())
+            sanitized_row = sanitize_dict_keys(row.to_dict())
+            state = new_type(**sanitized_row)
             states.append(state)
         return cls(states=states, atype=new_type)
 
@@ -568,6 +583,7 @@ class AG(BaseModel, Generic[T]):
             if atype:
                 new_type = atype
             else:
+
                 new_type = pydantic_model_from_jsonl(path_to_json_file)
             for line in open(path_to_json_file, encoding="utf-8"):
                 if not max_rows or c_row < max_rows:
@@ -622,15 +638,17 @@ class AG(BaseModel, Generic[T]):
             for state in self.states:
                 writer.writerow(state.model_dump())
 
-    def to_jsonl(self, jsonl_file: str) -> Any:
+    def to_jsonl(self, jsonl_file: str, append: bool = False) -> Any:
         if self.verbose_transduction:
             logger.debug(
                 f"Exporting {len(self.states)} states or atype {self.atype} to {jsonl_file}"
             )
-        with open(jsonl_file, mode="w", newline="", encoding="utf-8") as f:
+        with open(
+            jsonl_file, mode="w" if not append else "a", newline="", encoding="utf-8"
+        ) as f:
             for state in self.states:
                 try:
-                    f.write(json.dumps(clean_for_json(state)) + "\n")
+                    f.write(state.model_dump_json() + "\n")
                 except Exception as e:
                     logger.debug(f"⚠️ Failed to serialize state: {e}")
                     f.write(json.dumps(self.atype().model_dump()))
@@ -760,23 +778,23 @@ class AG(BaseModel, Generic[T]):
                     + self.instructions
                 )
 
-        # Gather few shots
-        few_shots = ""
-        for i in range(len(self.states)):
-            if self.states[i] and get_active_fields(
-                self.states[i], allowed_fields=set(self.transduce_fields)
-            ) == set(self.transduce_fields):
-                few_shots += (
-                    "Example\nSOURCE:\n"
-                    + other.states[i].model_dump_json(include=other.transduce_fields)
-                    + "\nTARGET:\n"
-                    + self.states[i].model_dump_json(include=self.transduce_fields)
-                    + "\n"
-                )
-        if len(few_shots) > 0:
-            instructions += (
-                "Here is a list of few shots examples for your task:\n" + few_shots
-            )
+        # # Gather few shots
+        # few_shots = ""
+        # for i in range(len(self.states)):
+        #     if self.states[i] and get_active_fields(
+        #         self.states[i], allowed_fields=set(self.transduce_fields)
+        #     ) == set(self.transduce_fields):
+        #         few_shots += (
+        #             "Example\nSOURCE:\n"
+        #             + other.states[i].model_dump_json(include=other.transduce_fields)
+        #             + "\nTARGET:\n"
+        #             + self.states[i].model_dump_json(include=self.transduce_fields)
+        #             + "\n"
+        #         )
+        # if len(few_shots) > 0:
+        #     instructions += (
+        #         "Here is a list of few shots examples for your task:\n" + few_shots
+        #     )
 
         # Perform Transduction
         transducer_class = (

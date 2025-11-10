@@ -30,54 +30,84 @@ class AsyncExecutor(ABC):
 
     async def execute(
         self,
-        *inputs: Union[BaseModel, str],
+        *inputs: Union[Any],
         description: str = "Executing",
         transient_pbar: bool = False,
-    ) -> Union[BaseModel, Iterable[BaseModel]]:
-        _inputs = []
-        _indices = []
-        if len(inputs) == 1:
-            # singular input awaits a single async call
+    ) -> Union[Any, Iterable[Any]]:
+        """
+        Execute over one or many inputs.
+        Now also supports: execute([input1, input2, ...])
+        """
+        # -------------------------------------------------
+        # 0. normalize inputs
+        # -------------------------------------------------
+        if len(inputs) == 1 and isinstance(inputs[0], (list, tuple)):
+            flat_inputs: List[Any] = list(inputs[0])
+        else:
+            flat_inputs = list(inputs)
+
+        _inputs: List[Any] = []
+        _indices: List[int] = []
+
+        # -------------------------------------------------
+        # 1. single input → single await
+        # -------------------------------------------------
+        if len(flat_inputs) == 1:
             try:
                 return await asyncio.wait_for(
-                    self._execute(inputs[0]), timeout=self.timeout
+                    self._execute(flat_inputs[0]), timeout=self.timeout
                 )
             except Exception as e:
-                if isinstance(e, Exception) and self._retry < self.max_retries:
+                # prepare for retry
+                if self._retry < self.max_retries:
                     _indices = [0]
-                    _inputs = [inputs[0]]
+                    _inputs = [flat_inputs[0]]
                 answers = [e]
         else:
-            # A list of inputs gathers all async calls as tasks
+            # -------------------------------------------------
+            # 2. multiple inputs → gather all
+            # -------------------------------------------------
             answers = await async_odered_progress(
-                inputs,
+                flat_inputs,
                 self._execute,
                 description=description,
                 timeout=self.timeout,
                 transient_pbar=transient_pbar,
             )
 
+            # collect the ones that failed
             for i, answer in enumerate(answers):
                 if isinstance(answer, Exception) and self._retry < self.max_retries:
-                    _inputs.append(inputs[i])
+                    _inputs.append(flat_inputs[i])
                     _indices.append(i)
+
+        # -------------------------------------------------
+        # 3. retry logic
+        # -------------------------------------------------
         self._retry += 1
         if _inputs:
-            logger.debug(f"retrying {len(_inputs)} state(s), attempt {self._retry}")
+            # retry only failed ones
             _answers = await self.execute(
-                *_inputs,
+                _inputs,  # note: pass as single list so it normalizes again
                 description=f"Retrying {len(_inputs)} state(s), attempt {self._retry}",
                 transient_pbar=True,
             )
+            # if a single retry result came back, make it a list
+            if not isinstance(_answers, list):
+                _answers = [_answers]
             for i, answer in zip(_indices, _answers):
                 answers[i] = answer
 
+        # reset for next call
         self._retry = 0
         return answers
 
     @abstractmethod
     async def _execute(self, input: Union[BaseModel, str], **kwargs) -> BaseModel:
         pass
+
+
+import inspect
 
 
 class aMap(AsyncExecutor):
@@ -87,9 +117,25 @@ class aMap(AsyncExecutor):
         self.func = func
         super().__init__(**kwargs)
 
-    async def _execute(self, state: BaseModel, **kwargs) -> BaseModel:
-        """Function Tranduction (amap) returns a pydantic model"""
-        output = await self.func(state, **kwargs)
+    async def _execute(self, state: BaseModel | dict, **kwargs):
+        """
+        Function transduction (amap): call the underlying func with the fields
+        of `state` as keyword arguments.
+        """
+        # 1. turn state into a plain dict
+        if isinstance(state, BaseModel):
+            payload = state.model_dump()
+        elif isinstance(state, dict):
+            payload = state
+        else:
+            raise TypeError(f"state must be a BaseModel or dict, got {type(state)}")
+
+        # 2. call the mapped function with **payload
+        if inspect.iscoroutinefunction(self.func):
+            output = await self.func(**payload, **kwargs)
+        else:
+            output = self.func(**payload, **kwargs)
+
         return output
 
 

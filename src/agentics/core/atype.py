@@ -22,7 +22,7 @@ from typing import (
 import pandas as pd
 from pydantic import BaseModel, Field, create_model
 
-from agentics.core.utils import sanitize_field_name
+from agentics.core.utils import sanitize_dict_keys, sanitize_field_name
 
 
 class AGString(BaseModel):
@@ -222,6 +222,13 @@ def pydantic_model_from_jsonl(
     file_path: str, sample_size: int = 100
 ) -> type[BaseModel]:
     df = pd.read_json(file_path, lines=True, nrows=sample_size, encoding="utf-8")
+    return pydantic_model_from_dataframe(df, sample_size=sample_size)
+
+
+def pydantic_model_from_dataframe(
+    df: pd.DataFrame, sample_size: int = 100
+) -> type[BaseModel]:
+    # df = pd.read_json(file_path, lines=True, nrows=sample_size, encoding="utf-8")
 
     model_name = "AType#" + ":".join(df.columns)
     fields = {}
@@ -230,25 +237,16 @@ def pydantic_model_from_jsonl(
         sample_values = df[col].head(5)
         pydantic_type = infer_pydantic_type(df[col].dtype, sample_values=sample_values)
         fields[col] = (pydantic_type, Field(default=None))
-    new_fields = {}
-    for field, value in fields.items():
-        new_fields[sanitize_field_name(field)] = value
+    # sanitize_dict_keys
+    # new_fields = {}
+    # for field, value in fields.items():
+    #     new_fields[sanitize_field_name(field)] = value
+    new_fields = sanitize_dict_keys(fields)
 
-    return create_model(model_name, **new_fields)
+    new_type = create_model(model_name, __module__=__name__, **new_fields)
+    new_type.model_rebuild(_types_namespace=globals())
 
-
-def pydantic_model_from_dataframe(
-    dataframe: pd.DataFrame, sample_size: int = 100
-) -> Type[BaseModel]:
-    df_sample = dataframe.head(sample_size)
-
-    model_name = "AType#" + ":".join(df_sample.columns)
-    fields = {}
-    for col in df_sample.columns:
-        pydantic_type = infer_pydantic_type(df_sample[col].dtype)
-        fields[col] = (pydantic_type, Field(default=None))
-
-    return create_model(model_name, **fields)
+    return new_type
 
 
 def create_pydantic_model(

@@ -74,3 +74,14 @@ def merge_pydantic_models(
     )
 
     return Merged
+
+
+from typing import get_args, get_origin
+
+
+def unwrap_optional(t):
+    if get_origin(t) is not None:
+        args = [a for a in get_args(t) if a is not type(None)]
+        if args:
+            return args[0]
+    return t
