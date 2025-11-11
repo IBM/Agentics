@@ -4,6 +4,8 @@ from ...core import atype_store as store
 from ...core import ag_registry as reg
 from agentics import AG
 from ...core.models import StatesUpdate, TransduceRequest
+from ...core.models import AmapRequest, AreduceRequest
+from ...core import function_registry as fr
 
 router = APIRouter(prefix="/agents", tags=["agents"])
 
@@ -93,3 +95,29 @@ async def transduce(sid: str, req: TransduceRequest):
     result_ag = await (ag << other)
     reg.touch(sid)
     return {"states": [s.model_dump() for s in result_ag.states]}
+
+
+# ----------  amap ----------
+@router.post("/{sid}/amap")
+async def amap_endpoint(sid: str, req: AmapRequest):
+    ag = _require_agent(sid)
+    try:
+        fn = fr.get(req.function_name)
+    except KeyError:
+        raise HTTPException(404, "function not registered")
+    await ag.amap(fn, timeout=req.timeout)
+    reg.touch(sid)
+    return {"states": [s.model_dump() for s in ag.states]}
+
+
+# ----------  areduce ----------
+@router.post("/{sid}/areduce")
+async def areduce_endpoint(sid: str, req: AreduceRequest):
+    ag = _require_agent(sid)
+    try:
+        fn = fr.get(req.function_name)
+    except KeyError:
+        raise HTTPException(404, "function not registered")
+    await ag.areduce(fn)
+    reg.touch(sid)
+    return {"states": [s.model_dump() for s in ag.states]}

@@ -53,3 +53,12 @@ class TransduceRequest(BaseModel):
     other: str | list[str]  # accept simple prompt(s) for MVP
     transduction_type: Literal["amap", "areduce"] = "amap"
     areduce_batch_size: int | None = None
+
+
+class AmapRequest(BaseModel):
+    function_name: str
+    timeout: float | None = None
+
+
+class AreduceRequest(BaseModel):
+    function_name: str
