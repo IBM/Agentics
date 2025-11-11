@@ -35,6 +35,8 @@ dependencies = [
     "numerize>=0.12",
     "hnswlib>=0.8.0",
     "jsonfinder>=0.4.2",
+    "crewai[google-genai]",
+    "litellm",
 ]
 
 
