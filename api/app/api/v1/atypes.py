@@ -6,13 +6,27 @@ from ...core.utils import make_class_code
 router = APIRouter(prefix="/atypes", tags=["atypes"])
 
 
-@router.get("/", response_model=list[str])
+@router.get("/", response_model=list[str], summary="List all saved atypes")
 def list_atypes():
+    """
+    Retrieve names of all Pydantic atypes saved in the predefined_types directory.
+
+    Returns a simple array of type names (e.g., ["Answer", "Person"]).
+    """
     return store.list_names()
 
 
-@router.post("/", response_model=m.AtypeInfo)
+@router.post("/", response_model=m.AtypeInfo, summary="Create a new atype")
 async def create(req: m.AtypeCreate):
+    """
+    Create a new Pydantic type from either:
+    - **field_spec** mode: provide a list of fields with types and metadata
+    - **natural_language** mode: describe the type in plain English; an LLM generates the code
+
+    Optionally saves the generated .py file to disk (default: save=true).
+
+    Returns the generated Python code and JSON schema.
+    """
     if req.mode == m.Mode.field_spec:
         if not req.fields:
             raise HTTPException(400, "fields list required for field_spec mode")
@@ -27,20 +41,35 @@ async def create(req: m.AtypeCreate):
     return m.AtypeInfo(name=req.name, code=code, json_schema=atype.model_json_schema())
 
 
-@router.get("/{name}", response_model=m.AtypeInfo)
+@router.get("/{name}", response_model=m.AtypeInfo, summary="Fetch atype details")
 def fetch(name: str):
+    """
+    Retrieve the Python code and JSON schema for a saved atype.
+
+    Useful for inspecting existing types before creating an agent.
+    """
     code = store.load_code(name)
     atype = store.code_to_type(code)
     return m.AtypeInfo(name=name, code=code, json_schema=atype.model_json_schema())
 
 
-@router.delete("/{name}", status_code=204)
+@router.delete("/{name}", status_code=204, summary="Delete an atype")
 def delete(name: str):
+    """
+    Remove the .py file for the specified atype from predefined_types.
+
+    Returns 204 on success; 404 if the type does not exist.
+    """
     store.delete(name)
 
 
-@router.post("/{name}/validate")
+@router.post("/{name}/validate", summary="Validate JSON against atype")
 def validate(name: str, payload: dict):
+    """
+    Check whether an arbitrary JSON payload conforms to the specified atype schema.
+
+    Returns `{"valid": true}` on success, or 422 with validation errors.
+    """
     code = store.load_code(name)
     atype = store.code_to_type(code)
     try:
