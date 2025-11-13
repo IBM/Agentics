@@ -1,9 +1,171 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Type, get_type_hints
+from typing import Any, Dict, Optional, Type, get_type_hints
 
 from pydantic import BaseModel, create_model
 from pydantic.fields import FieldInfo
+
+
+def pydantic_models_from_function(fn):
+    """
+    Build:
+    - InputModel:
+        * if the function has exactly 1 param and it's already a Pydantic model,
+          use that model directly
+        * otherwise, build a synthetic Input model with one field per parameter
+    - Target:
+        * from return annotation, but ALL fields optional
+    """
+    sig = inspect.signature(fn)
+    hints = get_type_hints(fn)
+
+    # ----- figure out the input model -----
+    params = list(sig.parameters.items())
+    single_param_name = params[0][0] if len(params) == 1 else None
+    single_param_ann = hints.get(single_param_name) if single_param_name else None
+
+    if (
+        len(params) == 1
+        and isinstance(single_param_ann, type)
+        and issubclass(single_param_ann, BaseModel)
+    ):
+        # user already said: def f(x: MyModel)
+        InputModel = single_param_ann
+    else:
+        # build a composite pydantic model from all params
+        input_fields = {}
+        for name, param in sig.parameters.items():
+            ann = hints.get(name, Any)
+            if param.default is inspect._empty:
+                input_fields[name] = (ann, ...)
+            else:
+                input_fields[name] = (ann, param.default)
+        InputModel = create_model(f"{fn.__name__}Input", **input_fields)
+
+    # ----- figure out the target model -----
+    ret_ann = hints.get("return", Any)
+
+    if isinstance(ret_ann, type) and issubclass(ret_ann, BaseModel):
+        # clone as all-optional
+        optional_fields = {
+            f_name: (Optional[f_field.annotation], None)
+            for f_name, f_field in ret_ann.model_fields.items()
+        }
+        Target = create_model(f"{fn.__name__}Target", **optional_fields)
+    else:
+        # single optional field called "result"
+        Target = create_model(
+            f"{fn.__name__}Target",
+            result=(Optional[ret_ann], None),
+        )
+
+    return InputModel, Target
+
+
+import ast
+import inspect
+
+
+def has_explicit_return_none(fn) -> bool:
+    """
+    Return True if the function has an explicit 'return None' or bare 'return'.
+    """
+    tree = ast.parse(inspect.getsource(fn))
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Return):
+            # bare `return`
+            if node.value is None:
+                return True
+            # explicit `return None`
+            if isinstance(node.value, ast.Constant) and node.value.value is None:
+                return True
+    return False
+
+
+def get_function_io_types(fn: Callable) -> Tuple[Dict[str, Any], Any]:
+    """
+    Given a function like:
+        async def f(state: EmailInput) -> Email: ...
+    return:
+        ({"state": EmailInput}, Email)
+    Works for sync/async, 1+ params, and falls back to Any.
+    """
+    if not callable(fn):
+        raise TypeError(f"{fn} is not callable")
+
+    sig = inspect.signature(fn)
+    hints = get_type_hints(fn)
+
+    input_types: Dict[str, Any] = {}
+
+    for name, param in sig.parameters.items():
+        # if the parameter is annotated, use that
+        if name in hints:
+            input_types[name] = hints[name]
+        else:
+            # no annotation → Any
+            input_types[name] = Any
+
+    # return annotation (may be missing)
+    output_type = hints.get("return", Any)
+
+    return input_types, output_type
+
+
+def pydantic_models_from_function(fn):
+    """
+    Build:
+    - InputModel:
+        * if the function has exactly 1 param and it's already a Pydantic model,
+          use that model directly
+        * otherwise, build a synthetic Input model with one field per parameter
+    - Target:
+        * from return annotation, but ALL fields optional
+    """
+    sig = inspect.signature(fn)
+    hints = get_type_hints(fn)
+
+    # ----- figure out the input model -----
+    params = list(sig.parameters.items())
+    single_param_name = params[0][0] if len(params) == 1 else None
+    single_param_ann = hints.get(single_param_name) if single_param_name else None
+
+    if (
+        len(params) == 1
+        and isinstance(single_param_ann, type)
+        and issubclass(single_param_ann, BaseModel)
+    ):
+        # user already said: def f(x: MyModel)
+        InputModel = single_param_ann
+    else:
+        # build a composite pydantic model from all params
+        input_fields = {}
+        for name, param in sig.parameters.items():
+            ann = hints.get(name, Any)
+            if param.default is inspect._empty:
+                input_fields[name] = (ann, ...)
+            else:
+                input_fields[name] = (ann, param.default)
+        InputModel = create_model(f"{fn.__name__}Input", **input_fields)
+
+    # ----- figure out the target model -----
+    ret_ann = hints.get("return", Any)
+
+    if isinstance(ret_ann, type) and issubclass(ret_ann, BaseModel):
+        # clone as all-optional
+        optional_fields = {
+            f_name: (Optional[f_field.annotation], None)
+            for f_name, f_field in ret_ann.model_fields.items()
+        }
+        Target = create_model(f"{fn.__name__}Target", **optional_fields)
+    else:
+        # single optional field called "result"
+        Target = create_model(
+            f"{fn.__name__}Target",
+            result=(Optional[ret_ann], None),
+        )
+
+    return InputModel, Target
 
 
 def merge_pydantic_models(

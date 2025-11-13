@@ -25,15 +25,8 @@ async def main():
     # Collect input text
     input_questions = [
         "What is the capital of Italy?",
-        "When is the end of the world expected",
     ]
-
-    """
-    Transduce input strings into objects of type Answer.
-    You can customize this providing different llms and instructions.
-    """
-
-    answers = await (AG(atype=Answer) << input_questions)
+    answers = await (AG(atype=Answer) << "What is the capital of Italy?")
 
     answers.pretty_print()
 

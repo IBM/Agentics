@@ -19,7 +19,6 @@ from typing import (
 
 import httpx
 import pandas as pd
-import tiktoken
 from dotenv import load_dotenv
 from loguru import logger
 from numerize.numerize import numerize
@@ -103,8 +102,6 @@ def sanitize_field_name(name: str) -> str:
 
 import math
 
-import pandas as pd
-
 
 def sanitize_dict_keys(obj):
     """
@@ -132,86 +129,38 @@ def sanitize_dict_keys(obj):
         return obj
 
 
-# def sanitize_dict_keys(obj):
-
-#     if isinstance(obj, dict):
-#         return {sanitize_field_name(k): sanitize_dict_keys(v) for k, v in obj.items()}
-#     elif isinstance(obj, list):
-#         return [sanitize_dict_keys(item) for item in obj]
-#     else:
-#         return obj
-
-
-# def chunk_list(lst, chunk_size: int = None):
-#     """
-#     Splits a list into a list of lists, each of a given size.
-
-#     Args:
-#         lst (list): The list to split.
-#         chunk_size (int): The size of each chunk.
-
-#     Returns:
-#         list of lists: A list where each element is a sublist of length `chunk_size`, except possibly the last one.
-#     """
-#     if chunk_size:
-#         return [lst[i : i + chunk_size] for i in range(0, len(lst), chunk_size)]
-#     else:
-#         return [lst]
-
-
-def chunk_list(
-    lst,
-    chunk_size: int = None,
-    model_name: str = "gpt-4-turbo",
-):
+def chunk_list(lst, chunk_size: int = None):
     """
-    Splits a list of text elements into sublists such that the total number of
-    tokens in each chunk does not exceed `max_tokens`.
+    Splits a list into a list of lists, each of a given size.
 
     Args:
-        lst (list[str]): The list of strings to split.
-        model_name (str): The model tokenizer to use (e.g., 'gpt-4-turbo', 'gpt-3.5-turbo').
-        max_tokens (int): Maximum tokens per chunk.
+        lst (list): The list to split.
+        chunk_size (int): The size of each chunk.
 
     Returns:
-        list[list[str]]: A list of chunks, each a list of strings.
+        list of lists: A list where each element is a sublist of length `chunk_size`, except possibly the last one.
     """
-    enc = tiktoken.encoding_for_model(model_name)
-    chunks = []
-    current_chunk = []
-    current_tokens = 0
-    max_tokens = chunk_size or 1000
-
-    for item in lst:
-        # Count tokens for this element
-
-        item_tokens = len(
-            enc.encode(
-                item.model_dump_json() if isinstance(item, BaseModel) else str(item)
-            )
-        )
-
-        # If adding this would exceed the limit, start a new chunk
-        if current_tokens + item_tokens > max_tokens:
-            if current_chunk:
-                chunks.append(current_chunk)
-            current_chunk = [item]
-            current_tokens = item_tokens
-        else:
-            current_chunk.append(item)
-            current_tokens += item_tokens
-
-    # Add last chunk if any
-    if current_chunk:
-        chunks.append(current_chunk)
-
-    return chunks
+    if chunk_size:
+        return [lst[i : i + chunk_size] for i in range(0, len(lst), chunk_size)]
+    else:
+        return [lst]
 
 
-import inspect
-from typing import Any
-
-from pydantic import BaseModel
+def clean_for_json(obj: Any) -> Any:
+    if isinstance(obj, BaseModel):
+        return {k: clean_for_json(v) for k, v in obj.model_dump().items()}
+    elif isinstance(obj, dict):
+        return {k: clean_for_json(v) for k, v in obj.items()}
+    elif isinstance(obj, (list, tuple, set)):
+        return [clean_for_json(v) for v in obj]
+    elif isinstance(obj, type):
+        return str(obj.__name__)  # convert classes like ModelMetaclass to string
+    elif inspect.isfunction(obj) or inspect.ismethod(obj):
+        return f"<function {obj.__name__}>"
+    elif isinstance(obj, (int, float, str, bool)) or obj is None:
+        return obj
+    else:
+        return str(obj)
 
 
 def remap_dict_keys(data: dict, mapping: dict) -> dict:

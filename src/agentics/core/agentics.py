@@ -30,19 +30,6 @@ from loguru import logger
 from pandas import DataFrame
 from pydantic import BaseModel, Field, ValidationError, create_model
 
-logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
-logging.getLogger("crewai.events.listeners.tracing.trace_batch_manager").setLevel(
-    logging.ERROR
-)
-logging.getLogger("LiteLLM").setLevel(logging.ERROR)
-logging.getLogger("LiteLLM.utils").setLevel(logging.ERROR)
-
-# Or disable propagation
-logging.getLogger("crewai.events.listeners.tracing.trace_batch_manager").propagate = (
-    False
-)
-logging.getLogger("LiteLLM").propagate = False
-
 from agentics.core.async_executor import (
     PydanticTransducerCrewAI,
     PydanticTransducerVLLM,
@@ -64,10 +51,13 @@ from agentics.core.llm_connections import available_llms, get_llm_provider
 from agentics.core.mapping import AttributeMapping, ATypeMapping
 from agentics.core.utils import (
     chunk_list,
+    clean_for_json,
     is_str_or_list_of_str,
     sanitize_dict_keys,
 )
 from agentics.core.vector_store import VectorStore
+
+logging.basicConfig(level=logging.ERROR)
 
 AG = TypeVar("AG", bound="AG")
 T = TypeVar("T", bound="BaseModel")
@@ -133,8 +123,8 @@ class AG(BaseModel, Generic[T]):
     verbose_transduction: bool = True
     verbose_agent: bool = False
     areduce_batch_size: Optional[int] = Field(
-        1000,
-        description="The size of the batches to be used when transduction type is areduce in number of tokens",
+        None,
+        description="The size of the bathes to be used when transduction type is areduce",
     )
     areduce_batches: List[BaseModel] = []
 
@@ -373,13 +363,9 @@ class AG(BaseModel, Generic[T]):
         if "return" in hints and issubclass(hints["return"], BaseModel):
             self.atype = hints["return"]
         try:
-            process_states = [
-                x if isinstance(x, dict) else x.model_dump() for x in self.states
-            ]
             results = await mapper.execute(
-                *process_states, description=f"Executing amap on {func.__name__}"
+                *self.states, description=f"Executing amap on {func.__name__}"
             )
-            results = results if isinstance(results, list) else [results]
             if self.transduction_logs_path:
                 with open(self.transduction_logs_path, "a") as f:
                     for state in results:
@@ -390,7 +376,8 @@ class AG(BaseModel, Generic[T]):
 
         _states = []
         n_errors = 0
-
+        if not isinstance(results, list):
+            results = [results]
         for i, result in enumerate(results):
             if isinstance(result, Exception):
                 if self.verbose_transduction:
@@ -559,8 +546,7 @@ class AG(BaseModel, Generic[T]):
         for i, row in dataframe.iterrows():
             if max_rows and i >= max_rows:
                 break
-            sanitized_row = sanitize_dict_keys(row.to_dict())
-            state = new_type(**sanitized_row)
+            state = new_type(**sanitize_dict_keys(row.to_dict()))
             states.append(state)
         return cls(states=states, atype=new_type)
 
@@ -583,7 +569,6 @@ class AG(BaseModel, Generic[T]):
             if atype:
                 new_type = atype
             else:
-
                 new_type = pydantic_model_from_jsonl(path_to_json_file)
             for line in open(path_to_json_file, encoding="utf-8"):
                 if not max_rows or c_row < max_rows:
@@ -651,7 +636,7 @@ class AG(BaseModel, Generic[T]):
                     f.write(state.model_dump_json() + "\n")
                 except Exception as e:
                     logger.debug(f"⚠️ Failed to serialize state: {e}")
-                    f.write(json.dumps(self.atype().model_dump()))
+                    f.write(json.dumps(self.atype().model_dump()) + "\n")
 
     def to_dataframe(self) -> DataFrame:
         """
@@ -778,23 +763,23 @@ class AG(BaseModel, Generic[T]):
                     + self.instructions
                 )
 
-        # # Gather few shots
-        # few_shots = ""
-        # for i in range(len(self.states)):
-        #     if self.states[i] and get_active_fields(
-        #         self.states[i], allowed_fields=set(self.transduce_fields)
-        #     ) == set(self.transduce_fields):
-        #         few_shots += (
-        #             "Example\nSOURCE:\n"
-        #             + other.states[i].model_dump_json(include=other.transduce_fields)
-        #             + "\nTARGET:\n"
-        #             + self.states[i].model_dump_json(include=self.transduce_fields)
-        #             + "\n"
-        #         )
-        # if len(few_shots) > 0:
-        #     instructions += (
-        #         "Here is a list of few shots examples for your task:\n" + few_shots
-        #     )
+        # Gather few shots
+        few_shots = ""
+        for i in range(len(self.states)):
+            if self.states[i] and get_active_fields(
+                self.states[i], allowed_fields=set(self.transduce_fields)
+            ) == set(self.transduce_fields):
+                few_shots += (
+                    "Example\nSOURCE:\n"
+                    + other.states[i].model_dump_json(include=other.transduce_fields)
+                    + "\nTARGET:\n"
+                    + self.states[i].model_dump_json(include=self.transduce_fields)
+                    + "\n"
+                )
+        if len(few_shots) > 0:
+            instructions += (
+                "Here is a list of few shots examples for your task:\n" + few_shots
+            )
 
         # Perform Transduction
         transducer_class = (
@@ -994,7 +979,7 @@ class AG(BaseModel, Generic[T]):
 
         return reduce((lambda x, y: AG.add_states(x, y)), extended_ags)
 
-    def merge(self, other: "AG", merge_type="pairwise") -> "AG":
+    def merge(self, other: "AG") -> "AG":
         """
         Merge two AGs positionally:
         - The result atype = union of fields from self.atype and other.atype.
@@ -1028,25 +1013,13 @@ class AG(BaseModel, Generic[T]):
 
         # 2) Pairwise merge states (right wins on value conflicts)
         merged_states = []
-        if merge_type == "pairwise":
-            for left_state, right_state in zip_longest(
-                self.states, other.states, fillvalue=None
-            ):
-                left = left_state.model_dump() if left_state is not None else {}
-                right = right_state.model_dump() if right_state is not None else {}
-                data = left | right  # right overwrites left for same keys
-                merged_states.append(merged_atype(**data))
-        elif merge_type == "stochastic":
-
-            # In stochastic mode, we want to merge all possible combinations
-            # (cartesian product of states) or blend distributions.
-            # We'll do a cartesian merge here.
-            for left_state in self.states:
-                left = left_state.model_dump()
-                for right_state in other.states:
-                    right = right_state.model_dump()
-                    data = left | right
-                    merged_states.append(merged_atype(**data))
+        for left_state, right_state in zip_longest(
+            self.states, other.states, fillvalue=None
+        ):
+            left = left_state.model_dump() if left_state is not None else {}
+            right = right_state.model_dump() if right_state is not None else {}
+            data = left | right  # right overwrites left for same keys
+            merged_states.append(merged_atype(**data))
 
         return AG(atype=merged_atype, states=merged_states)
 
@@ -1140,7 +1113,7 @@ class AG(BaseModel, Generic[T]):
         Returns:
             AG: a new Agentics object with states of type `new_atype`.
         """
-        new_ag = self.clone()
+        new_ag = deepcopy(self)
         new_ag.atype = new_atype
         new_ag.states = []
 

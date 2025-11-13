@@ -113,11 +113,19 @@ class AgenticsTransduction(AG):
         else:
             return target
 
-        # if isinstance(result, AgenticsTransduction):
-        #     # Assuming the base AG class has probabilities and explanations attributes
-        #     self.probabilities = result.probabilities
-        #     self.explanations = result.explanations
-        return self
+    def filter_by_attribute_value(self, attribute, value):
+        """
+        Return a cloned AG containing only states where state.<attribute> == value.
+        Works for both dict states and Pydantic states.
+        """
+        out = self.clone()
+        out.states = []
+        for state in self.states:
+            if hasattr(state, attribute):
+                if getattr(state, attribute) == value:
+                    out.states.append(state)
+                continue
+        return out
 
 
 class Answer(BaseModel):
