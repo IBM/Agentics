@@ -1,17 +1,21 @@
 from pathlib import Path
+from typing import TYPE_CHECKING, Any, Callable
 
 import pytest
 from invoke.context import Context
 from typing_extensions import Annotated
 
+if TYPE_CHECKING:
+    from agentics.core.llm_connections import LLM
+
 
 @pytest.fixture()
 def venv(
     request: pytest.FixtureRequest, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, ctx
-):
+) -> Path:
     """
-    Creates a virtualenv backend by venv, returns a Path
-    that has its .venv directory with a clean venv created with uv
+    Creates a Python virtual environment using uv.
+    Ensures that VIRTUAL_ENV is not passed down down to avoid conflicts.
     """
     python_version = request.config.getoption("python_version", default="3.12")
     with ctx.cd(tmp_path):
@@ -22,8 +26,8 @@ def venv(
 
 
 @pytest.fixture()
-def git_root():
-    """Returns the root directory of the repo"""
+def git_root() -> str:
+    """Returns the root directory of the repo."""
     return (
         Context().run("git rev-parse --show-toplevel", in_stream=False).stdout.strip()
     )
@@ -44,15 +48,23 @@ def ctx() -> Context:
 def wheel(
     ctx, git_root, tmp_path_factory
 ) -> Annotated[Path, "The wheel file to install"]:
+    """
+    Build a wheel file from the source code that should be pip installable.
+    You can combine this fixture with the virtualenv
+    """
     with ctx.cd(git_root):
         output = tmp_path_factory.mktemp("dist")
-        ctx.run(f"uv build -o {output}", in_stream=False)
+        ctx.run(
+            f"uvx --with uv-dynamic-versioning hatchling build -t wheel -d {output}",
+            in_stream=False,
+        )
     wheel_file, *_ = output.glob("*.whl")
     return wheel_file
 
 
 @pytest.fixture()
-def llm_provider():
+def llm_provider() -> "LLM":
+    """LLLm provider function"""
     try:
         from agentics.core.llm_connections import get_llm_provider
 

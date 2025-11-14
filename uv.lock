@@ -43,6 +43,7 @@ dependencies = [
     { name = "json-schema-to-pydantic" },
     { name = "jsonfinder" },
     { name = "langchain-huggingface" },
+    { name = "litellm" },
     { name = "loguru" },
     { name = "mcp" },
     { name = "numerize" },
@@ -82,6 +83,7 @@ rhel = [
 [package.metadata]
 requires-dist = [
     { name = "aiosqlite", specifier = ">=0.21.0" },
+    { name = "crewai", extras = ["google-genai"] },
     { name = "crewai", extras = ["tools"] },
     { name = "crewai-tools", extras = ["mcp"] },
     { name = "datasets", specifier = ">=4.0.0,<5.0.0" },
@@ -92,6 +94,7 @@ requires-dist = [
     { name = "json-schema-to-pydantic", specifier = ">=0.3.0,<0.4.0" },
     { name = "jsonfinder", specifier = ">=0.4.2" },
     { name = "langchain-huggingface", specifier = ">=0.2.0,<0.3.0" },
+    { name = "litellm" },
     { name = "loguru", specifier = ">=0.7.3,<0.8.0" },
     { name = "mcp", specifier = ">=1.13.1,<2.0.0" },
     { name = "numerize", specifier = ">=0.12" },

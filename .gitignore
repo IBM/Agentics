@@ -38,3 +38,5 @@ report.html
 # local folders
 __*__/
 _[a-z]*.py
+invoke.json
+invoke.y*ml
