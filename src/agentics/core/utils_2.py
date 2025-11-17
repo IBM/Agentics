@@ -1,112 +1,129 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Type, get_type_hints
+import inspect
+from typing import Any, Callable, Dict, Optional, Tuple, Type, get_type_hints
 
 from pydantic import BaseModel, create_model
 from pydantic.fields import FieldInfo
 
+# def pydantic_models_from_function(fn):
+#     """
+#     Build:
+#     - InputModel:
+#         * if the function has exactly 1 param and it's already a Pydantic model,
+#           use that model directly
+#         * otherwise, build a synthetic Input model with one field per parameter
+#     - Target:
+#         * from return annotation, but ALL fields optional
+#     """
+#     sig = inspect.signature(fn)
+#     hints = get_type_hints(fn)
 
-def pydantic_models_from_function(fn):
+#     # ----- figure out the input model -----
+#     params = list(sig.parameters.items())
+#     single_param_name = params[0][0] if len(params) == 1 else None
+#     single_param_ann = hints.get(single_param_name) if single_param_name else None
+
+#     if (
+#         len(params) == 1
+#         and isinstance(single_param_ann, type)
+#         and issubclass(single_param_ann, BaseModel)
+#     ):
+#         # user already said: def f(x: MyModel)
+#         InputModel = single_param_ann
+#     else:
+#         # build a composite pydantic model from all params
+#         input_fields = {}
+#         for name, param in sig.parameters.items():
+#             ann = hints.get(name, Any)
+#             if param.default is inspect._empty:
+#                 input_fields[name] = (ann, ...)
+#             else:
+#                 input_fields[name] = (ann, param.default)
+#         InputModel = create_model(f"{fn.__name__}Input", **input_fields)
+
+#     # ----- figure out the target model -----
+#     ret_ann = hints.get("return", Any)
+
+#     if isinstance(ret_ann, type) and issubclass(ret_ann, BaseModel):
+#         # clone as all-optional
+#         optional_fields = {
+#             f_name: (Optional[f_field.annotation], None)
+#             for f_name, f_field in ret_ann.model_fields.items()
+#         }
+#         Target = create_model(f"{fn.__name__}Target", **optional_fields)
+#     else:
+#         # single optional field called "result"
+#         Target = create_model(
+#             f"{fn.__name__}Target",
+#             result=(Optional[ret_ann], None),
+#         )
+
+#     return InputModel, Target
+
+
+# import ast
+# import inspect
+
+
+# def has_explicit_return_none(fn) -> bool:
+#     """
+#     Return True if the function has an explicit 'return None' or bare 'return'.
+#     """
+#     tree = ast.parse(inspect.getsource(fn))
+#     for node in ast.walk(tree):
+#         if isinstance(node, ast.Return):
+#             # bare `return`
+#             if node.value is None:
+#                 return True
+#             # explicit `return None`
+#             if isinstance(node.value, ast.Constant) and node.value.value is None:
+#                 return True
+#     return False
+
+
+def get_function_io_types(
+    fn: Callable,
+    *,
+    skip_self: bool = True,
+) -> Tuple[Dict[str, Any], Any]:
     """
-    Build:
-    - InputModel:
-        * if the function has exactly 1 param and it's already a Pydantic model,
-          use that model directly
-        * otherwise, build a synthetic Input model with one field per parameter
-    - Target:
-        * from return annotation, but ALL fields optional
-    """
-    sig = inspect.signature(fn)
-    hints = get_type_hints(fn)
+    Infer input and output types from a function's annotations.
 
-    # ----- figure out the input model -----
-    params = list(sig.parameters.items())
-    single_param_name = params[0][0] if len(params) == 1 else None
-    single_param_ann = hints.get(single_param_name) if single_param_name else None
+    Examples
+    --------
+    async def f(state: EmailInput) -> Email: ...
+        -> ({"state": EmailInput}, Email)
 
-    if (
-        len(params) == 1
-        and isinstance(single_param_ann, type)
-        and issubclass(single_param_ann, BaseModel)
-    ):
-        # user already said: def f(x: MyModel)
-        InputModel = single_param_ann
-    else:
-        # build a composite pydantic model from all params
-        input_fields = {}
-        for name, param in sig.parameters.items():
-            ann = hints.get(name, Any)
-            if param.default is inspect._empty:
-                input_fields[name] = (ann, ...)
-            else:
-                input_fields[name] = (ann, param.default)
-        InputModel = create_model(f"{fn.__name__}Input", **input_fields)
+    Works for:
+      - sync / async functions
+      - decorated functions (uses inspect.unwrap)
+      - functions with 1+ parameters
+      - methods (optionally skips `self` / `cls`)
 
-    # ----- figure out the target model -----
-    ret_ann = hints.get("return", Any)
-
-    if isinstance(ret_ann, type) and issubclass(ret_ann, BaseModel):
-        # clone as all-optional
-        optional_fields = {
-            f_name: (Optional[f_field.annotation], None)
-            for f_name, f_field in ret_ann.model_fields.items()
-        }
-        Target = create_model(f"{fn.__name__}Target", **optional_fields)
-    else:
-        # single optional field called "result"
-        Target = create_model(
-            f"{fn.__name__}Target",
-            result=(Optional[ret_ann], None),
-        )
-
-    return InputModel, Target
-
-
-import ast
-import inspect
-
-
-def has_explicit_return_none(fn) -> bool:
-    """
-    Return True if the function has an explicit 'return None' or bare 'return'.
-    """
-    tree = ast.parse(inspect.getsource(fn))
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Return):
-            # bare `return`
-            if node.value is None:
-                return True
-            # explicit `return None`
-            if isinstance(node.value, ast.Constant) and node.value.value is None:
-                return True
-    return False
-
-
-def get_function_io_types(fn: Callable) -> Tuple[Dict[str, Any], Any]:
-    """
-    Given a function like:
-        async def f(state: EmailInput) -> Email: ...
-    return:
-        ({"state": EmailInput}, Email)
-    Works for sync/async, 1+ params, and falls back to Any.
+    If a parameter or return type is not annotated, it falls back to `Any`.
     """
     if not callable(fn):
-        raise TypeError(f"{fn} is not callable")
+        raise TypeError(f"{fn!r} is not callable")
 
-    sig = inspect.signature(fn)
-    hints = get_type_hints(fn)
+    # Unwrap decorators (respects functools.wraps / __wrapped__)
+    original = inspect.unwrap(fn)
+
+    # Signature and resolved type hints (handles forward refs)
+    sig = inspect.signature(original)
+    hints = get_type_hints(original)
 
     input_types: Dict[str, Any] = {}
 
     for name, param in sig.parameters.items():
-        # if the parameter is annotated, use that
-        if name in hints:
-            input_types[name] = hints[name]
-        else:
-            # no annotation → Any
-            input_types[name] = Any
+        # Optionally skip typical method receivers
+        if skip_self and name in {"self", "cls"}:
+            continue
 
-    # return annotation (may be missing)
+        # Use annotation if present, otherwise Any
+        input_types[name] = hints.get(name, Any)
+
+    # Return annotation (may be missing)
     output_type = hints.get("return", Any)
 
     return input_types, output_type

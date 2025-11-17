@@ -32,6 +32,7 @@ from pydantic import BaseModel, Field, ValidationError, create_model
 
 from agentics.core.async_executor import (
     PydanticTransducerCrewAI,
+    PydanticTransducerMellea,
     PydanticTransducerVLLM,
     aMap,
 )
@@ -55,6 +56,7 @@ from agentics.core.utils import (
     is_str_or_list_of_str,
     sanitize_dict_keys,
 )
+from agentics.core.utils_2 import get_function_io_types
 from agentics.core.vector_store import VectorStore
 
 logging.basicConfig(level=logging.ERROR)
@@ -356,12 +358,13 @@ class AG(BaseModel, Generic[T]):
 
         mapper = aMap(func=func, timeout=timeout)
         hints = get_type_hints(func)
+        SourceType, Target_type = get_function_io_types(func)
         if "state" in hints and not issubclass(hints["state"], self.atype):
             raise AmapError(
                 f"The input type {hints['state']} of the provided function is not a subclass of the required atype {self.atype}"
             )
         if "return" in hints and issubclass(hints["return"], BaseModel):
-            self.atype = hints["return"]
+            self.atype = Target_type
         try:
             results = await mapper.execute(
                 *self.states, description=f"Executing amap on {func.__name__}"
@@ -382,7 +385,7 @@ class AG(BaseModel, Generic[T]):
             if isinstance(result, Exception):
                 if self.verbose_transduction:
                     logger.debug(f"⚠️ Error processing state {i}: {result}")
-                _states.append(self.states[i])
+                _states.append(self.atype(**self.states[i].model_dump()))
                 n_errors += 1
             else:
                 _states.append(result)
@@ -785,8 +788,12 @@ class AG(BaseModel, Generic[T]):
         transducer_class = (
             PydanticTransducerCrewAI
             if type(self.llm) == LLM
-            else PydanticTransducerVLLM
+            else PydanticTransducerMellea if type(self.llm) == str else None
         )
+        if not transducer_class:
+            raise TypeError(
+                "Provided llm object is neither a crew ai llm nor a string (for mellea's llm)"
+            )
         try:
             transduced_type = (
                 self.subset_atype(self.transduce_fields)

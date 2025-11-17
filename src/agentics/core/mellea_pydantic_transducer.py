@@ -1,0 +1,63 @@
+# Put this at the top of your script
+import asyncio
+import logging
+import warnings
+from typing import Optional, Type
+
+import mellea
+from mellea.stdlib.sampling import RejectionSamplingStrategy
+from pydantic import BaseModel
+
+# Silence asyncio’s “Unclosed client session” ERROR logs
+logging.getLogger("asyncio").setLevel(logging.CRITICAL)
+logging.getLogger("aiohttp").setLevel(logging.CRITICAL)
+logging.getLogger("fancy_logger").disabled = True
+
+# Also silence possible ResourceWarnings about unclosed sessions/connectors
+warnings.filterwarnings(
+    "ignore", category=ResourceWarning, message="unclosed client session"
+)
+warnings.filterwarnings(
+    "ignore", category=ResourceWarning, message="unclosed connector"
+)
+
+
+async def structured_decoding_using_mellea(
+    input: str,
+    targetAtype: Type[BaseModel],
+    instructions: str = None,
+    llm: str = "watsonx/openai/gpt-oss-120b",
+) -> BaseModel | None:
+    """
+    Run Mellea with Granite and parse the result into `TargetAtype`.
+    Returns an instance of TargetAtype or None if no output.
+    """
+    # The context manager should take care of opening/closing the HTTP client
+    with mellea.start_session(
+        "litellm",
+        model_id="watsonx/openai/gpt-oss-120b",
+    ) as m:
+        mellea_output = await m.ainstruct(
+            instructions,
+            grounding_context={"": input},
+            # requirements="Generate an object of the requested Pydantic type",
+            strategy=RejectionSamplingStrategy(loop_budget=5),
+            format=targetAtype,
+            return_sampling_results=True,
+        )
+
+    # At this point we're outside the `with`: session should be closed
+
+    if mellea_output is None or mellea_output.result is None:
+        return targetAtype()
+
+    raw = mellea_output.value
+    # If Mellea gave us a dict-like object:
+    if isinstance(raw, dict):
+        return targetAtype.model_validate(raw)
+    # If it’s a JSON string:
+    if isinstance(raw, str):
+        return targetAtype.model_validate_json(raw)
+
+    # Fallback: try generic validation
+    return targetAtype.model_validate(raw)

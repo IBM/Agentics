@@ -1,10 +1,9 @@
-import asyncio
-from typing import Dict, Generic, List, Optional, Tuple, Type, TypeVar, get_type_hints
+from typing import Generic, List, Optional, TypeVar
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 from agentics import AG
-from agentics.core.agentics2.utils import merge_pydantic_models
+from agentics.core.utils_2 import merge_pydantic_models
 
 
 class Provenance(BaseModel):
@@ -39,28 +38,6 @@ class Explanation(BaseModel, Generic[T]):
         None,
         description="A confidence score (0.0 to 1.0) indicating the certainty of the inference.",
     )
-
-    # @field_validator("source_slot_provenance")
-    # @classmethod
-    # def check_keys_match_slots(cls, v, info):
-    #     if v is None:
-    #         return v
-    #     source_type = info.data.get("source_type")
-    #     if source_type is None:
-    #         raise ValueError("source_type must be set before validating provenance.")
-    #     valid_fields = set(get_type_hints(source_type).keys())
-    #     invalid = [k for k in v.keys() if k not in valid_fields]
-    #     if invalid:
-    #         raise ValueError(
-    #             f"Invalid provenance keys: {invalid}. "
-    #             f"Valid slots are: {sorted(valid_fields)}"
-    #         )
-    #     return v
-
-
-from typing import List
-
-from pydantic import BaseModel
 
 
 class AgenticsTransduction(AG):
@@ -126,25 +103,6 @@ class AgenticsTransduction(AG):
                     out.states.append(state)
                 continue
         return out
-
-
-class Answer(BaseModel):
-    answer: str
-
-
-class Question(BaseModel):
-    question: str
-
-
-async def main():
-    agent = AgenticsTransduction(atype=Answer, provide_explanations=False)
-    response = await (
-        agent
-        << AgenticsTransduction(
-            atype=Question, states=[Question(question="What is the capital of France?")]
-        )
-    )
-    print(response)
 
 
 # asyncio.run(main())

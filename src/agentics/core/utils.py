@@ -396,3 +396,29 @@ def to_valid_json(obj: Any, pretty: bool = True) -> str:
     if pretty:
         return json.dumps(obj, ensure_ascii=False, sort_keys=True, indent=2)
     return json.dumps(obj, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+def llm_friendly_json(model: type[BaseModel]) -> str:
+    """
+    Convert a Pydantic BaseModel subclass into a clean LLM-friendly JSON template.
+    Returns a JSON string the LLM can easily follow.
+    """
+    schema = model.model_json_schema()
+
+    # keep only properties → field: type
+    props: Dict[str, Any] = schema.get("properties", {})
+
+    # Build a simple template the LLM can follow
+    simple = {}
+    for name, info in props.items():
+        field_type = info.get("type", "any")
+        example = info.get("examples", [None])[0] if info.get("examples") else None
+
+        simple[name] = {
+            "type": field_type,
+            "description": info.get("description", ""),
+            "example": example,
+        }
+
+    # Return pretty-formatted JSON string
+    return json.dumps(simple, indent=4)

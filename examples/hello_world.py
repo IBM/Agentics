@@ -26,7 +26,10 @@ async def main():
     input_questions = [
         "What is the capital of Italy?",
     ]
-    answers = await (AG(atype=Answer) << "What is the capital of Italy?")
+    answers = await (
+        AG(atype=Answer, llm="watsonx/openai/gpt-oss-120b")
+        << "What is the capital of Italy?"
+    )
 
     answers.pretty_print()
 

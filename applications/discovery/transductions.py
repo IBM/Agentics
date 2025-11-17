@@ -2,25 +2,21 @@ from agentic_db import AgenticDB
 from atypes import Answer, IntermediateEvidence, Question
 from pandas import DataFrame
 
-from agentics.core.agentics2.agentics_2 import AG
-from agentics.core.agentics2.transducible_functions import (
-    ParameterWrapper,
+from agentics.core.agentics_2 import AgenticsTransduction as AG
+from agentics.core.transducible_functions import (
+    Transduce,
     transducible,
 )
 
-transducible()
+# @transducible()
+# async def describe_dataset(state: AgenticDB) -> str:
+#     """Provide a paragraph long description for the following dataset"""
+#     return Transduce(state)
+#     # # new_ag = AgenticDB(df=state.df)
+#     # # return ParameterWrapper(new_ag)
 
 
-async def describe_dataset(state: AgenticDB) -> str:
-    """Provide a paragraph long description for the following dataset"""
-    return ParameterWrapper(state)
-    # # new_ag = AgenticDB(df=state.df)
-    # # return ParameterWrapper(new_ag)
-
-
-transducible()
-
-
+@transducible()
 async def answer_question_from_data(state: Question) -> Question:
 
     if state.question:

@@ -123,27 +123,27 @@ if execute_query_button:
         "Agentics is reading your documents and generating intermediate evidence before answering your question. This might take some time ..."
     ):
 
-        state = Question(
+        question = Question(
             question=question,
             dbs=st.session_state.databases,
             domain_knowledge=domain_knowledge,
         )
-        answer = asyncio.run(answer_question_from_data(state))
+        answer = asyncio.run(answer_question_from_data(question))
         st.markdown(
             f"""
 #### Short Answer: 
 
-{state.full_answer.short_answer}
+{question.full_answer.short_answer}
 
 #### Full Answer 
 
-{state.full_answer.full_answer}
+{question.full_answer.full_answer}
 
 ##### evidence 
 """
         )
-    if state.full_answer.selected_evidence:
-        for evidence in state.full_answer.selected_evidence:
+    if question.full_answer.selected_evidence:
+        for evidence in question.full_answer.selected_evidence:
             if evidence.evidence_found:
                 st.markdown(
                     f"""

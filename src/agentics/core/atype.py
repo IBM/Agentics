@@ -514,3 +514,115 @@ def pydantic_to_markdown(obj: BaseModel, title: str | None = None) -> str:
         lines.append(f"| `{key}` | {formatted} |")
 
     return "\n".join(lines)
+
+
+from pydantic import BaseModel, create_model
+from pydantic._internal._model_construction import ModelMetaclass
+
+
+def _check_compatibility(A, B):
+    """
+    Returns True if A and B have no conflicting field annotations.
+    Else raises TypeError.
+    """
+    for fname, fA in A.model_fields.items():
+        if fname in B.model_fields:
+            fB = B.model_fields[fname]
+            if fA.annotation != fB.annotation:
+                raise TypeError(
+                    f"Cannot merge {A.__name__} and {B.__name__}: "
+                    f"field '{fname}' has incompatible types "
+                    f"{fA.annotation} vs {fB.annotation}"
+                )
+    return True
+
+
+# Global cache to avoid duplicate model generation
+_merge_model_cache = {}
+
+
+def merge_models_inherit(A: type[BaseModel], B: type[BaseModel]):
+    """
+    Multiple inheritance merge:
+    A & B → class AAndB(A, B)
+    with symmetric subclass behavior.
+    """
+    key = tuple(sorted([A, B], key=lambda m: m.__name__))
+
+    if key in _merge_model_cache:
+        return _merge_model_cache[key]
+
+    _check_compatibility(A, B)
+
+    name = f"{A.__name__}And{B.__name__}"
+
+    # Collect merged fields
+    fields = {}
+
+    for fname, f in A.model_fields.items():
+        fields[fname] = (f.annotation, f.default if f.default is not None else ...)
+    for fname, f in B.model_fields.items():
+        fields[fname] = (f.annotation, f.default if f.default is not None else ...)
+
+    # Create merged class
+    if A == B:
+        MergedType = A
+    else:
+        MergedType = create_model(name, __base__=(A, B), **fields)
+
+    parents = (A, B)  # preserve for hook
+
+    # -----------------------------
+    # ⭐ Custom subclass behavior
+    # -----------------------------
+    @classmethod
+    def __subclasscheck__(cls, subclass):
+        # Normal Python behavior
+        if super(MergedType, cls).__subclasscheck__(subclass):
+            return True
+
+        # Symmetric algebra behavior:
+        # Treat A and B as if they were subtypes of A&B.
+        if subclass in parents:
+            return True
+
+        return False
+
+    MergedType.__subclasscheck__ = __subclasscheck__
+    # -----------------------------
+
+    _merge_model_cache[key] = MergedType
+    return MergedType
+
+
+def merge_instances(a: BaseModel, b: BaseModel):
+    """
+    Merge instance A & B → instance of merged model type.
+    """
+    MergedType = merge_models_inherit(type(a), type(b))
+    data = {**a.model_dump(), **b.model_dump()}
+    return MergedType(**data)
+
+
+# ----------------------------------------------------
+# TYPE-LEVEL merge operator: A & B → merged model class
+# ----------------------------------------------------
+def _model_and(A, B):
+    if isinstance(B, ModelMetaclass):
+        return merge_models_inherit(A, B)
+    raise TypeError("Right operand must be a Pydantic model class")
+
+
+ModelMetaclass.__and__ = _model_and
+
+
+# ----------------------------------------------------
+# INSTANCE-LEVEL merge operator: a & b → merged instance
+# ----------------------------------------------------
+def _instance_and(self, other):
+    if isinstance(other, BaseModel):
+        return merge_instances(self, other)
+    raise TypeError("Right operand must be a Pydantic model instance")
+
+
+BaseModel.__and__ = _instance_and

@@ -6,7 +6,7 @@ from typing import Optional, Union
 from agentic_db import AgenticDB
 from pydantic import BaseModel, Field
 
-from agentics.core.agentics2.agentics_2 import AgenticsTransduction as AG
+from agentics.core.agentics_2 import AgenticsTransduction as AG
 
 
 class IntermediateEvidence(BaseModel):
