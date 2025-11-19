@@ -8,6 +8,7 @@ dependencies = [
   "python-dotenv>=1.0",
   "httpx>=0.27",
   "pydantic>=2.7",
+  "slowapi>=0.1.9",
 ]
 [project.optional-dependencies]
 dev = [

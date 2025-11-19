@@ -1,13 +1,14 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from ...core import atype_store as store, llm
 from ...core import models as m
 from ...core.utils import make_class_code
+from ...core.auth import verify_api_key
 
 router = APIRouter(prefix="/atypes", tags=["atypes"])
 
 
 @router.get("/", response_model=list[str], summary="List all saved atypes")
-def list_atypes():
+def list_atypes(api_key: str = Depends(verify_api_key)):
     """
     Retrieve names of all Pydantic atypes saved in the predefined_types directory.
 
@@ -17,7 +18,7 @@ def list_atypes():
 
 
 @router.post("/", response_model=m.AtypeInfo, summary="Create a new atype")
-async def create(req: m.AtypeCreate):
+async def create(req: m.AtypeCreate, api_key: str = Depends(verify_api_key)):
     """
     Create a new Pydantic type from either:
     - **field_spec** mode: provide a list of fields with types and metadata
@@ -42,7 +43,7 @@ async def create(req: m.AtypeCreate):
 
 
 @router.get("/{name}", response_model=m.AtypeInfo, summary="Fetch atype details")
-def fetch(name: str):
+def fetch(name: str, api_key: str = Depends(verify_api_key)):
     """
     Retrieve the Python code and JSON schema for a saved atype.
 
@@ -54,7 +55,7 @@ def fetch(name: str):
 
 
 @router.delete("/{name}", status_code=204, summary="Delete an atype")
-def delete(name: str):
+def delete(name: str, api_key: str = Depends(verify_api_key)):
     """
     Remove the .py file for the specified atype from predefined_types.
 
@@ -64,7 +65,7 @@ def delete(name: str):
 
 
 @router.post("/{name}/validate", summary="Validate JSON against atype")
-def validate(name: str, payload: dict):
+def validate(name: str, payload: dict, api_key: str = Depends(verify_api_key)):
     """
     Check whether an arbitrary JSON payload conforms to the specified atype schema.
 

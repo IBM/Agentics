@@ -1,7 +1,10 @@
-from fastapi import APIRouter, Header, HTTPException, Depends
+from fastapi import APIRouter, Header, HTTPException, Depends, Request
 from ...core import models as m
 from ...core import atype_store as store
 from ...core import ag_registry as reg
+from ...core.auth import verify_api_key
+from ...core.rate_limit import limiter
+from ...core import llm_tracker
 from agentics import AG
 from ...core.models import StatesUpdate, TransduceRequest
 from ...core.models import AmapRequest, AreduceRequest
@@ -11,14 +14,19 @@ router = APIRouter(prefix="/agents", tags=["agents"])
 
 
 def get_session_id(x_session: str = Header(...)):
-    """Dependency that extracts and validates the X-Session header."""
     return x_session
 
 
 @router.post(
     "/", response_model=m.AgentMeta, status_code=201, summary="Create an agent"
 )
-def create_agent(req: m.AgentCreate, sid: str = Depends(get_session_id)):
+@limiter.limit("60/minute")
+def create_agent(
+    request: Request,
+    req: m.AgentCreate,
+    sid: str = Depends(get_session_id),
+    api_key: str = Depends(verify_api_key),
+):
     """
     Instantiate a new Agentics (AG) object for this session.
 
@@ -31,7 +39,6 @@ def create_agent(req: m.AgentCreate, sid: str = Depends(get_session_id)):
     Only one agent per session is allowed; subsequent calls return 409.
     """
     try:
-        # choose atype
         if req.atype_name:
             code = store.load_code(req.atype_name)
             atype = store.code_to_type(code)
@@ -55,7 +62,8 @@ def create_agent(req: m.AgentCreate, sid: str = Depends(get_session_id)):
 
 
 @router.get("/{sid}", response_model=m.AgentMeta, summary="Get agent metadata")
-def get_agent_meta(sid: str):
+@limiter.limit("100/minute")
+def get_agent_meta(request: Request, sid: str, api_key: str = Depends(verify_api_key)):
     """
     Retrieve high-level info about the agent: atype name and current state count.
 
@@ -75,18 +83,18 @@ def get_agent_meta(sid: str):
 
 
 @router.delete("/{sid}", status_code=204, summary="Delete agent and session")
-def drop_agent(sid: str):
+@limiter.limit("60/minute")
+def drop_agent(request: Request, sid: str, api_key: str = Depends(verify_api_key)):
     """
     Remove the agent and its session from the registry.
 
     Returns 204 on success. Idempotent; calling multiple times is safe.
     """
     reg.drop_session(sid)
+    llm_tracker.reset_usage(sid)
 
 
-# --- helper to fetch AG with safety ----------------
 def _require_agent(sid: str):
-    """Internal helper: fetch agent or raise 404."""
     try:
         ag = reg.get_agent(sid)
         if ag is None:
@@ -96,9 +104,14 @@ def _require_agent(sid: str):
         raise HTTPException(404, "session not found")
 
 
-# ----------  States  ----------
 @router.post("/{sid}/states", summary="Append or replace agent states")
-def update_states(sid: str, req: StatesUpdate):
+@limiter.limit("60/minute")
+def update_states(
+    request: Request,
+    sid: str,
+    req: StatesUpdate,
+    api_key: str = Depends(verify_api_key),
+):
     """
     Modify the agent's internal state list.
 
@@ -112,15 +125,20 @@ def update_states(sid: str, req: StatesUpdate):
     ag = _require_agent(sid)
     if req.mode == "replace":
         ag.states = [ag.atype(**d) for d in req.states]
-    else:  # append
+    else:
         ag.states.extend(ag.atype(**d) for d in req.states)
     reg.touch(sid)
     return {"n_states": len(ag.states)}
 
 
-# ----------  Transduce  ----------
 @router.post("/{sid}/transduce", summary="Run logical transduction (<<)")
-async def transduce(sid: str, req: TransduceRequest):
+@limiter.limit("10/minute")
+async def transduce(
+    request: Request,
+    sid: str,
+    req: TransduceRequest,
+    api_key: str = Depends(verify_api_key),
+):
     """
     Execute the Agentics transduction operator (`<<`) on the agent.
 
@@ -132,21 +150,35 @@ async def transduce(sid: str, req: TransduceRequest):
     Returns the resulting states after LLM-based transformation.
 
     Example: transform ["Who is the US president?"] into structured Answer objects.
+
+    Rate limited to 10 requests per minute due to LLM cost.
+    Subject to per-session token quota (50k tokens).
     """
+    ok, used, remaining = llm_tracker.check_quota(sid)
+    if not ok:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Token quota exceeded. Used: {used}, Limit: {llm_tracker.MAX_TOKENS_PER_SESSION}",
+        )
+
     ag = _require_agent(sid)
     ag.transduction_type = req.transduction_type
     if req.areduce_batch_size:
         ag.areduce_batch_size = req.areduce_batch_size
-    # Accept str or list[str]
+
     other = req.other if isinstance(req.other, list) else [req.other]
+    llm_tracker.track_usage(sid, other)
+
     result_ag = await (ag << other)
     reg.touch(sid)
     return {"states": [s.model_dump() for s in result_ag.states]}
 
 
-# ----------  amap ----------
 @router.post("/{sid}/amap", summary="Apply async function to each state")
-async def amap_endpoint(sid: str, req: AmapRequest):
+@limiter.limit("30/minute")
+async def amap_endpoint(
+    request: Request, sid: str, req: AmapRequest, api_key: str = Depends(verify_api_key)
+):
     """
     Run an async map operation over all states in the agent.
 
@@ -168,9 +200,14 @@ async def amap_endpoint(sid: str, req: AmapRequest):
     return {"states": [s.model_dump() for s in ag.states]}
 
 
-# ----------  areduce ----------
 @router.post("/{sid}/areduce", summary="Reduce states to one via async function")
-async def areduce_endpoint(sid: str, req: AreduceRequest):
+@limiter.limit("30/minute")
+async def areduce_endpoint(
+    request: Request,
+    sid: str,
+    req: AreduceRequest,
+    api_key: str = Depends(verify_api_key),
+):
     """
     Run an async reduce operation that collapses all states into a single result.
 
