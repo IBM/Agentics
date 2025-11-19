@@ -1,34 +1,44 @@
 # --- Stage 1: Builder ---
 FROM python:3.12-slim-bookworm AS builder
 
-# Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
-# Set environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     VIRTUAL_ENV=/code/.venv
 
 WORKDIR /code
 
-# 1. Install Git (for versioning) and Build Tools (for compiling hnswlib/extensions)
+# 1. Install build tools
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends git build-essential && \
+    apt-get install -y --no-install-recommends build-essential && \
     rm -rf /var/lib/apt/lists/*
 
-# 2. Copy Metadata Files
-# We MUST include README.md because pyproject.toml references it
-COPY .git /code/.git
+# 2. Copy Metadata
 COPY pyproject.toml uv.lock* README.md LICENSE /code/
 COPY src /code/src
 
-# 3. Create venv and install Core Library
-RUN uv venv && uv pip install .
+# Patch pyproject.toml
+RUN sed -i 's/dynamic = \["version"\]/version = "0.1.0"/' pyproject.toml
+
+# 3. Create venv
+RUN uv venv
+
+# The "--mount=type=cache" flag stores downloaded wheels on host computer's disk,
+# not inside the Docker image layer, preventing "No space left on device".
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install .
 
 # 4. Install API Dependencies
 COPY api/pyproject.toml /code/api/
 WORKDIR /code/api
-RUN uv pip compile pyproject.toml -o requirements.txt && \
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip compile pyproject.toml -o requirements.txt && \
     uv pip install -r requirements.txt
 
 # --- Stage 2: Runner ---
@@ -36,15 +46,12 @@ FROM python:3.12-slim-bookworm
 
 WORKDIR /code
 
-# 5. Copy the fully built virtual environment from the builder
 COPY --from=builder /code/.venv /code/.venv
 
-# Set path to use the venv automatically
 ENV PATH="/code/.venv/bin:$PATH"
 ENV PYTHONPATH=/code
 ENV ATYPES_PATH=/code/api/predefined_types
 
-# 6. Copy ONLY the API code
 COPY api /code/api
 
 EXPOSE 8000
