@@ -4,94 +4,149 @@ on:
   workflow_call:
     outputs:
       should-release:
-        description: 'Whether to release'
+        description: "Whether to release"
         value: ${{ jobs.check-release.outputs.should-release }}
       bump-type:
-        description: 'Type of bump (major/minor/patch)'
+        description: "Type of bump (major/minor/patch)"
         value: ${{ jobs.check-release.outputs.bump-type }}
       current-version:
-        description: 'Current version'
+        description: "Current version"
         value: ${{ jobs.check-release.outputs.current-version }}
       next-version:
-        description: 'Next version'
+        description: "Next version"
         value: ${{ jobs.check-release.outputs.next-version }}
+      release-method:
+        description: "How the release was triggered (commit-message or tag-based)"
+        value: ${{ jobs.check-release.outputs.release-method }}
 
 jobs:
   check-release:
     runs-on: ubuntu-latest
     outputs:
-      should-release: ${{ steps.check.outputs.should-release }}
-      bump-type: ${{ steps.check.outputs.bump-type }}
+      should-release: ${{ steps.check-commit.outputs.should-release || steps.check-tag.outputs.should-release }}
+      bump-type: ${{ steps.check-commit.outputs.bump-type || steps.check-tag.outputs.bump-type }}
       current-version: ${{ steps.version.outputs.current-version }}
       next-version: ${{ steps.version.outputs.next-version }}
-    
+      release-method: ${{ steps.check-commit.outputs.release-method || steps.check-tag.outputs.release-method }}
+
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
-      - name: Check for [release/bump] in commit message
-        id: check
+
+      - name: Check for [release/bump] in commit message (Preferred Method)
+        id: check-commit
         env:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           if [[ "$COMMIT_MESSAGE" == *"[release major]"* ]] || [[ "$COMMIT_MESSAGE" == *"[bump major]"* ]]; then
             echo "should-release=true" >> $GITHUB_OUTPUT
             echo "bump-type=major" >> $GITHUB_OUTPUT
+            echo "release-method=commit-message" >> $GITHUB_OUTPUT
           elif [[ "$COMMIT_MESSAGE" == *"[release minor]"* ]] || [[ "$COMMIT_MESSAGE" == *"[bump minor]"* ]]; then
             echo "should-release=true" >> $GITHUB_OUTPUT
             echo "bump-type=minor" >> $GITHUB_OUTPUT
+            echo "release-method=commit-message" >> $GITHUB_OUTPUT
           elif [[ "$COMMIT_MESSAGE" == *"[release patch]"* ]] || [[ "$COMMIT_MESSAGE" == *"[bump patch]"* ]]; then
             echo "should-release=true" >> $GITHUB_OUTPUT
             echo "bump-type=patch" >> $GITHUB_OUTPUT
+            echo "release-method=commit-message" >> $GITHUB_OUTPUT
           else
             echo "should-release=false" >> $GITHUB_OUTPUT
+            echo "release-method=none" >> $GITHUB_OUTPUT
           fi
-      
+
+      - name: Fallback - Check for release type in tag (Discouraged Method)
+        id: check-tag
+        if: steps.check-commit.outputs.should-release == 'false'
+        run: |
+          # Look for tags with format: v1.0.0+patch, v1.1.0+minor, v2.0.0+major
+          # We check tags that were created but not yet in a release
+          PENDING_TAGS=$(git tag --list 'v*+*' --sort=-version:refname 2>/dev/null || echo "")
+
+          if [[ -z "$PENDING_TAGS" ]]; then
+            echo "should-release=false" >> $GITHUB_OUTPUT
+            echo "release-method=none" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Get the first (most recent) matching tag
+          PENDING_TAG=$(echo "$PENDING_TAGS" | head -1)
+
+          # Extract version and bump type from tag like "v1.0.0+patch"
+          if [[ "$PENDING_TAG" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)\+([a-z]+)$ ]]; then
+            VERSION="${BASH_REMATCH[1]}"
+            BUMP_TYPE="${BASH_REMATCH[2]}"
+
+            if [[ "$BUMP_TYPE" =~ ^(major|minor|patch)$ ]]; then
+              echo "should-release=true" >> $GITHUB_OUTPUT
+              echo "bump-type=$BUMP_TYPE" >> $GITHUB_OUTPUT
+              echo "detected-version=$VERSION" >> $GITHUB_OUTPUT
+              echo "release-method=tag-based" >> $GITHUB_OUTPUT
+              echo "::warning::Using tag-based release detection (tag: $PENDING_TAG). This method is discouraged - prefer using [release major/minor/patch] in commit messages."
+            else
+              echo "should-release=false" >> $GITHUB_OUTPUT
+              echo "release-method=none" >> $GITHUB_OUTPUT
+              echo "::error::Invalid bump type in tag '$PENDING_TAG'. Use +major, +minor, or +patch (e.g., v1.0.0+patch)"
+            fi
+          else
+            echo "should-release=false" >> $GITHUB_OUTPUT
+            echo "release-method=none" >> $GITHUB_OUTPUT
+          fi
+
       - name: Get version from latest tag
         id: version
-        if: steps.check.outputs.should-release == 'true'
+        if: steps.check-commit.outputs.should-release == 'true' || steps.check-tag.outputs.should-release == 'true'
         run: |
-          CURRENT=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "0.0.0")
+          # Determine which method was used and get bump type
+          if [[ "${{ steps.check-commit.outputs.should-release }}" == "true" ]]; then
+            BUMP_TYPE="${{ steps.check-commit.outputs.bump-type }}"
+            # Get the latest existing tag (not pending release tag)
+            CURRENT=$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null | sed 's/^v//' | sed 's/+.*//' || echo "0.0.0")
+          else
+            BUMP_TYPE="${{ steps.check-tag.outputs.bump-type }}"
+            CURRENT="${{ steps.check-tag.outputs.detected-version }}"
+          fi
+
           echo "current-version=$CURRENT" >> $GITHUB_OUTPUT
-          
+
           IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
-          
-          if [[ "${{ steps.check.outputs.bump-type }}" == "major" ]]; then
+
+          if [[ "$BUMP_TYPE" == "major" ]]; then
             NEXT="$((MAJOR + 1)).0.0"
-          elif [[ "${{ steps.check.outputs.bump-type }}" == "minor" ]]; then
+          elif [[ "$BUMP_TYPE" == "minor" ]]; then
             NEXT="$MAJOR.$((MINOR + 1)).0"
           else
             NEXT="$MAJOR.$MINOR.$((PATCH + 1))"
           fi
-          
+
           echo "next-version=$NEXT" >> $GITHUB_OUTPUT
 
   create-release:
     needs: check-release
     if: needs.check-release.outputs.should-release == 'true'
     runs-on: ubuntu-latest
-    
+
     permissions:
       contents: write
-    
+
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
+
       - name: Configure Git
         run: |
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
-      
+
       - name: Create Release Tag
         env:
           NEXT_VERSION: ${{ needs.check-release.outputs.next-version }}
         run: |
           git tag -a "v${NEXT_VERSION}" -m "Release v${NEXT_VERSION}"
           git push origin "v${NEXT_VERSION}"
-          
+
       - name: Create GitHub Release
         uses: actions/create-release@v1
         env:
@@ -101,8 +156,10 @@ jobs:
           release_name: Release v${{ needs.check-release.outputs.next-version }}
           body: |
             Automated release: ${{ needs.check-release.outputs.bump-type }} bump
-            
+
             Previous version: ${{ needs.check-release.outputs.current-version }}
             New version: ${{ needs.check-release.outputs.next-version }}
+
+            Triggered via: ${{ needs.check-release.outputs.release-method }}
           draft: false
           prerelease: false

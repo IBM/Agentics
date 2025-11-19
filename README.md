@@ -26,11 +26,11 @@ Learn how to install Agentic, set up your environment, and run your first logica
 
 
 
-Agentics is an implementation of **Logical Transduction Algebra**, described in 
+Agentics is an implementation of **Logical Transduction Algebra**, described in
 - Alfio Gliozzo, Naweed Khan, Christodoulos Constantinides,  Nandana Mihindukulasooriya, Nahuel Defosse, Junkyu Lee. *Transduction is All You Need for Structured Data Workflows. August 2025*, [arXiv:2508.15610](https://arxiv.org/abs/2508.15610)
 
 
-We welcome new AG entusiasts to extend this framework with new applications and extension to the language. 
+We welcome new AG entusiasts to extend this framework with new applications and extension to the language.
 
 
 
@@ -52,12 +52,12 @@ We welcome new AG entusiasts to extend this framework with new applications and 
 **Built-in Support for Tools**: Integrate LangChain tools or custom functions.
 
 
-## Tutorial 
+## Tutorial
 
 | Notebook |   Description |
 |----------| --------------- |
 | [LLMs](https://colab.research.google.com/github/IBM/Agentics/blob/main/tutorials/llms.ipynb) | Basics |
-| [Agentic Basics](https://colab.research.google.com/github/IBM/Agentics/blob/main/tutorials/agentics_basics.ipynb)         | Step by step guide illustrating how to make a new AG, access and print its content, import and export it to files            | 
+| [Agentic Basics](https://colab.research.google.com/github/IBM/Agentics/blob/main/tutorials/agentics_basics.ipynb)         | Step by step guide illustrating how to make a new AG, access and print its content, import and export it to files            |
 |[Transduction](https://colab.research.google.com/github/IBM/Agentics/blob/main/tutorials/transduction.ipynb) | Demonstrate the use of logical transduction  (`<<`) in Agentics |
 | [Amap Reduce](https://colab.research.google.com/github/IBM/Agentics/blob/main/tutorials/amap_reduce.ipynb) | Try out MapReduce in Agentics to scale out |
 | [MCP Tools](./tutorials/mcp_tools.ipynb) | |
@@ -68,11 +68,13 @@ We welcome new AG entusiasts to extend this framework with new applications and 
 
 👉 [Getting Started](docs/getting_started.md): Learn how to install Agentic, set up your environment, and run your first logical transduction.
 
-🧠 [Agentics](docs/agentics.md): Explore how Agentics wraps `pydantic` models into transduction-ready agents. 
+🧠 [Agentics](docs/agentics.md): Explore how Agentics wraps `pydantic` models into transduction-ready agents.
 
 🔁 [Transduction](docs/transduction.md): Discover how the `<<` operator implements logical transduction between types and how to control its behavior.
 
 🛠️ [Tools](docs/tools.md): Learn how to integrate external tools (e.g., LangChain, CrewAI) to provide access to external data necessary for logical transduction.
+
+🤝 [Contributing](CONTRIBUTING.md): Contribution and release guide.
 
 ## 📘 Example Usage
 ```python
@@ -129,7 +131,7 @@ Please respond using the format {answer}, {justification}, {confidence}.
 
 # 📚 Documentation
 
-Full documentation and examples are available at:  
+Full documentation and examples are available at:
 
 # 🧪 Tests
 

@@ -345,3 +345,34 @@ def make_states_list_model(item_type: Type[A]) -> Type[BaseModel]:
     return create_model(
         "ATypeList", states=(List[item_type], Field(default_factory=list))
     )
+
+
+import json
+
+from jsonfinder import jsonfinder
+
+
+def extract_json_objects(text: str, expected_type: Type) -> List[BaseModel]:
+    """
+    Scan `text` and return a list of (start_index, end_index, parsed_obj)
+    for every valid JSON object/array found. Works even if surrounded by prose.
+    """
+    good_answers = []
+    for match in jsonfinder(text):
+        start, end, obj = match
+        try:
+            good_answers.append(expected_type(**obj))
+        except:
+            pass
+    return good_answers[-1] if len(good_answers) > 0 else []
+    # json_object = [expected_type(**json.loads(to_valid_json(x))) for x in results]
+
+
+def to_valid_json(obj: Any, pretty: bool = True) -> str:
+    """
+    Return a canonical valid JSON string. Since object key order is not significant,
+    we serialize with sort_keys=True for stable output.
+    """
+    if pretty:
+        return json.dumps(obj, ensure_ascii=False, sort_keys=True, indent=2)
+    return json.dumps(obj, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
