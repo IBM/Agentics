@@ -39,6 +39,7 @@ dependencies = [
     { name = "ddgs" },
     { name = "google" },
     { name = "hnswlib" },
+    { name = "httpx" },
     { name = "ipywidgets" },
     { name = "json-schema-to-pydantic" },
     { name = "jsonfinder" },
@@ -50,6 +51,7 @@ dependencies = [
     { name = "openai" },
     { name = "openapi-python-client" },
     { name = "pydantic" },
+    { name = "pytest" },
     { name = "pyyaml" },
     { name = "streamlit" },
 ]
@@ -90,6 +92,7 @@ requires-dist = [
     { name = "ddgs" },
     { name = "google", specifier = ">=3.0.0,<4.0.0" },
     { name = "hnswlib", specifier = ">=0.8.0" },
+    { name = "httpx", specifier = ">=0.28.1" },
     { name = "ipywidgets", specifier = ">=8.1.7" },
     { name = "json-schema-to-pydantic", specifier = ">=0.3.0,<0.4.0" },
     { name = "jsonfinder", specifier = ">=0.4.2" },
@@ -101,6 +104,7 @@ requires-dist = [
     { name = "openai", specifier = ">=1.88.0,<2.0.0" },
     { name = "openapi-python-client", specifier = ">=0.24.3,<0.25.0" },
     { name = "pydantic" },
+    { name = "pytest", specifier = ">=8.4.2" },
     { name = "pyyaml", specifier = ">=6.0.2,<7.0.0" },
     { name = "streamlit", specifier = ">=1.45.1,<2.0.0" },
 ]

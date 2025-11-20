@@ -11,6 +11,7 @@ dist/
 .python-version
 
 # Environments
+**/.env*
 .env
 .venv
 .envrc

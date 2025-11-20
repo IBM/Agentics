@@ -1,0 +1,962 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "Agentics Demo API",
+        "version": "0.1.0"
+    },
+    "paths": {
+        "/v1/atypes/": {
+            "get": {
+                "tags": [
+                    "atypes"
+                ],
+                "summary": "List all saved atypes",
+                "description": "Retrieve names of all Pydantic atypes saved in the predefined_types directory.\n\nReturns a simple array of type names (e.g., [\"Answer\", \"Person\"]).",
+                "operationId": "list_atypes_v1_atypes__get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array",
+                                    "title": "Response List Atypes V1 Atypes  Get"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "atypes"
+                ],
+                "summary": "Create a new atype",
+                "description": "Create a new Pydantic type from either:\n- **field_spec** mode: provide a list of fields with types and metadata\n- **natural_language** mode: describe the type in plain English; an LLM generates the code\n\nOptionally saves the generated .py file to disk (default: save=true).\n\nReturns the generated Python code and JSON schema.",
+                "operationId": "create_v1_atypes__post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AtypeCreate"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AtypeInfo"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/atypes/{name}": {
+            "get": {
+                "tags": [
+                    "atypes"
+                ],
+                "summary": "Fetch atype details",
+                "description": "Retrieve the Python code and JSON schema for a saved atype.\n\nUseful for inspecting existing types before creating an agent.",
+                "operationId": "fetch_v1_atypes__name__get",
+                "parameters": [
+                    {
+                        "name": "name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Name"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AtypeInfo"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "atypes"
+                ],
+                "summary": "Delete an atype",
+                "description": "Remove the .py file for the specified atype from predefined_types.\n\nReturns 204 on success; 404 if the type does not exist.",
+                "operationId": "delete_v1_atypes__name__delete",
+                "parameters": [
+                    {
+                        "name": "name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Name"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/atypes/{name}/validate": {
+            "post": {
+                "tags": [
+                    "atypes"
+                ],
+                "summary": "Validate JSON against atype",
+                "description": "Check whether an arbitrary JSON payload conforms to the specified atype schema.\n\nReturns `{\"valid\": true}` on success, or 422 with validation errors.",
+                "operationId": "validate_v1_atypes__name__validate_post",
+                "parameters": [
+                    {
+                        "name": "name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Name"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "additionalProperties": true,
+                                "title": "Payload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/session/": {
+            "post": {
+                "tags": [
+                    "session"
+                ],
+                "summary": "Create a new session",
+                "description": "Generate a unique session ID and reserve a slot in the registry.\n\nEach session can hold one AG instance. Pass the returned `session_id` in the\n`X-Session` header for all subsequent agent operations.\n\nSessions expire after 24 hours of inactivity (configurable TTL).",
+                "operationId": "new_session_v1_session__post",
+                "responses": {
+                    "201": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/session/{sid}": {
+            "delete": {
+                "tags": [
+                    "session"
+                ],
+                "summary": "Delete a session",
+                "description": "Remove the session and any associated agent from the registry.\n\nReturns 204 on success; 404 if the session does not exist.",
+                "operationId": "delete_session_v1_session__sid__delete",
+                "parameters": [
+                    {
+                        "name": "sid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Sid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/agents/": {
+            "post": {
+                "tags": [
+                    "agents"
+                ],
+                "summary": "Create an agent",
+                "description": "Instantiate a new Agentics (AG) object for this session.\n\nProvide either:\n- `atype_name`: reference a saved type from /atypes\n- `atype_code`: supply raw Python code for a Pydantic class\n\nOptionally include initial `states` (list of dicts matching the atype schema).\n\nOnly one agent per session is allowed; subsequent calls return 409.",
+                "operationId": "create_agent_v1_agents__post",
+                "parameters": [
+                    {
+                        "name": "x-session",
+                        "in": "header",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "X-Session"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AgentCreate"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AgentMeta"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/agents/{sid}": {
+            "get": {
+                "tags": [
+                    "agents"
+                ],
+                "summary": "Get agent metadata",
+                "description": "Retrieve high-level info about the agent: atype name and current state count.\n\nDoes not return the full state objects; use /states endpoint or operation results for that.",
+                "operationId": "get_agent_meta_v1_agents__sid__get",
+                "parameters": [
+                    {
+                        "name": "sid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Sid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AgentMeta"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "agents"
+                ],
+                "summary": "Delete agent and session",
+                "description": "Remove the agent and its session from the registry.\n\nReturns 204 on success. Idempotent; calling multiple times is safe.",
+                "operationId": "drop_agent_v1_agents__sid__delete",
+                "parameters": [
+                    {
+                        "name": "sid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Sid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/agents/{sid}/states": {
+            "post": {
+                "tags": [
+                    "agents"
+                ],
+                "summary": "Append or replace agent states",
+                "description": "Modify the agent's internal state list.\n\n- **append** (default): add new states to the end\n- **replace**: overwrite all existing states\n\nEach state must be a dict matching the agent's atype schema.\n\nReturns the updated state count.",
+                "operationId": "update_states_v1_agents__sid__states_post",
+                "parameters": [
+                    {
+                        "name": "sid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Sid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StatesUpdate"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/agents/{sid}/transduce": {
+            "post": {
+                "tags": [
+                    "agents"
+                ],
+                "summary": "Run logical transduction (<<)",
+                "description": "Execute the Agentics transduction operator (`<<`) on the agent.\n\nAccepts:\n- `other`: a string or list of strings (prompts / source data)\n- `transduction_type`: \"amap\" (parallel) or \"areduce\" (batched reduction)\n- `areduce_batch_size`: optional batch size for areduce mode\n\nReturns the resulting states after LLM-based transformation.\n\nExample: transform [\"Who is the US president?\"] into structured Answer objects.",
+                "operationId": "transduce_v1_agents__sid__transduce_post",
+                "parameters": [
+                    {
+                        "name": "sid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Sid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TransduceRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/agents/{sid}/amap": {
+            "post": {
+                "tags": [
+                    "agents"
+                ],
+                "summary": "Apply async function to each state",
+                "description": "Run an async map operation over all states in the agent.\n\nProvide:\n- `function_name`: name of a server-registered callable (e.g., \"identity\")\n- `timeout`: optional per-state timeout in seconds\n\nThe function is applied in parallel; failed states are left unchanged.\n\nReturns the updated state list.",
+                "operationId": "amap_endpoint_v1_agents__sid__amap_post",
+                "parameters": [
+                    {
+                        "name": "sid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Sid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AmapRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/agents/{sid}/areduce": {
+            "post": {
+                "tags": [
+                    "agents"
+                ],
+                "summary": "Reduce states to one via async function",
+                "description": "Run an async reduce operation that collapses all states into a single result.\n\nProvide:\n- `function_name`: name of a server-registered reducer (e.g., \"concat_reduce\")\n\nThe reducer receives the full state list and returns one state (or a new list).\n\nReturns the final state(s).",
+                "operationId": "areduce_endpoint_v1_agents__sid__areduce_post",
+                "parameters": [
+                    {
+                        "name": "sid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Sid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AreduceRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/healthz": {
+            "get": {
+                "summary": "Health",
+                "operationId": "health_healthz_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "AgentCreate": {
+                "properties": {
+                    "atype_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Atype Name"
+                    },
+                    "atype_code": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Atype Code"
+                    },
+                    "states": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "additionalProperties": true,
+                                    "type": "object"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "States"
+                    }
+                },
+                "type": "object",
+                "title": "AgentCreate"
+            },
+            "AgentMeta": {
+                "properties": {
+                    "session_id": {
+                        "type": "string",
+                        "title": "Session Id"
+                    },
+                    "atype_name": {
+                        "type": "string",
+                        "title": "Atype Name"
+                    },
+                    "n_states": {
+                        "type": "integer",
+                        "title": "N States"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "session_id",
+                    "atype_name",
+                    "n_states"
+                ],
+                "title": "AgentMeta"
+            },
+            "AmapRequest": {
+                "properties": {
+                    "function_name": {
+                        "type": "string",
+                        "title": "Function Name"
+                    },
+                    "timeout": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Timeout"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "function_name"
+                ],
+                "title": "AmapRequest"
+            },
+            "AreduceRequest": {
+                "properties": {
+                    "function_name": {
+                        "type": "string",
+                        "title": "Function Name"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "function_name"
+                ],
+                "title": "AreduceRequest"
+            },
+            "AtypeCreate": {
+                "properties": {
+                    "mode": {
+                        "$ref": "#/components/schemas/Mode"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "fields": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/FieldSpec"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Fields"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description"
+                    },
+                    "save": {
+                        "type": "boolean",
+                        "title": "Save",
+                        "default": true
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "mode",
+                    "name"
+                ],
+                "title": "AtypeCreate"
+            },
+            "AtypeInfo": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "code": {
+                        "type": "string",
+                        "title": "Code"
+                    },
+                    "json_schema": {
+                        "additionalProperties": true,
+                        "type": "object",
+                        "title": "Json Schema"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "code",
+                    "json_schema"
+                ],
+                "title": "AtypeInfo"
+            },
+            "FieldSpec": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "type_label": {
+                        "type": "string",
+                        "title": "Type Label"
+                    },
+                    "optional": {
+                        "type": "boolean",
+                        "title": "Optional",
+                        "default": true
+                    },
+                    "use_default": {
+                        "type": "boolean",
+                        "title": "Use Default",
+                        "default": false
+                    },
+                    "default_value": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Default Value"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "type_label"
+                ],
+                "title": "FieldSpec"
+            },
+            "HTTPValidationError": {
+                "properties": {
+                    "detail": {
+                        "items": {
+                            "$ref": "#/components/schemas/ValidationError"
+                        },
+                        "type": "array",
+                        "title": "Detail"
+                    }
+                },
+                "type": "object",
+                "title": "HTTPValidationError"
+            },
+            "Mode": {
+                "type": "string",
+                "enum": [
+                    "field_spec",
+                    "natural_language"
+                ],
+                "title": "Mode"
+            },
+            "StatesUpdate": {
+                "properties": {
+                    "mode": {
+                        "type": "string",
+                        "enum": [
+                            "append",
+                            "replace"
+                        ],
+                        "title": "Mode",
+                        "default": "append"
+                    },
+                    "states": {
+                        "items": {
+                            "additionalProperties": true,
+                            "type": "object"
+                        },
+                        "type": "array",
+                        "title": "States"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "states"
+                ],
+                "title": "StatesUpdate"
+            },
+            "TransduceRequest": {
+                "properties": {
+                    "other": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            }
+                        ],
+                        "title": "Other"
+                    },
+                    "transduction_type": {
+                        "type": "string",
+                        "enum": [
+                            "amap",
+                            "areduce"
+                        ],
+                        "title": "Transduction Type",
+                        "default": "amap"
+                    },
+                    "areduce_batch_size": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Areduce Batch Size"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "other"
+                ],
+                "title": "TransduceRequest"
+            },
+            "ValidationError": {
+                "properties": {
+                    "loc": {
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "integer"
+                                }
+                            ]
+                        },
+                        "type": "array",
+                        "title": "Location"
+                    },
+                    "msg": {
+                        "type": "string",
+                        "title": "Message"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Error Type"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "loc",
+                    "msg",
+                    "type"
+                ],
+                "title": "ValidationError"
+            }
+        }
+    }
+}
