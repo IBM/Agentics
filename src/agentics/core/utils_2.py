@@ -264,3 +264,30 @@ def unwrap_optional(t):
         if args:
             return args[0]
     return t
+
+
+from pydantic import BaseModel
+
+
+def is_non_empty(value):
+    """Return True if a value should count as 'filled'."""
+    if value is None:
+        return False
+    if isinstance(value, str) and value.strip() == "":
+        return False
+    if isinstance(value, (list, dict, set, tuple)) and len(value) == 0:
+        return False
+    return True
+
+
+def percent_non_empty_fields(instance: BaseModel) -> float:
+    """
+    Return the percentage of non-empty fields in a Pydantic model instance.
+    """
+    data = instance.model_dump()
+    total = len(data)
+    if total == 0:
+        return 0.0
+
+    filled = sum(1 for v in data.values() if is_non_empty(v))
+    return filled / total

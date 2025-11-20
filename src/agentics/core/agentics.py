@@ -121,12 +121,16 @@ class AG(BaseModel, Generic[T]):
         None,
         description="""If not null, the specified file will be created and used to save the intermediate results of transduction from each batch. The file will be updated in real time and can be used for monitoring""",
     )
-    transduction_timeout: float | None = None
+    transduction_timeout: float | None = 300
     verbose_transduction: bool = True
     verbose_agent: bool = False
     areduce_batch_size: Optional[int] = Field(
         None,
         description="The size of the bathes to be used when transduction type is areduce",
+    )
+    amap_batch_size: Optional[int] = Field(
+        20,
+        description="The size of the bathes to be used when transduction type is amap",
     )
     areduce_batches: List[BaseModel] = []
 
@@ -365,18 +369,24 @@ class AG(BaseModel, Generic[T]):
             )
         if "return" in hints and issubclass(hints["return"], BaseModel):
             self.atype = Target_type
-        try:
-            results = await mapper.execute(
-                *self.states, description=f"Executing amap on {func.__name__}"
-            )
-            if self.transduction_logs_path:
-                with open(self.transduction_logs_path, "a") as f:
-                    for state in results:
-                        f.write(state.model_dump_json() + "\n")
+        batches = chunk_list(self.states, chunk_size=self.amap_batch_size)
+        results = []
+        for batch in batches:
+            try:
+                batch_results = await mapper.execute(
+                    *batch, description=f"Executing amap on {func.__name__}"
+                )
+                if self.transduction_logs_path:
+                    with open(self.transduction_logs_path, "a") as f:
+                        for state in results:
+                            f.write(state.model_dump_json() + "\n")
 
-        except Exception:
-            results = self.states
-
+            except Exception:
+                batch_results = self.states
+            if isinstance(batch_results, list):
+                results += batch_results
+            else:
+                results.append(batch_results)
         _states = []
         n_errors = 0
         if not isinstance(results, list):

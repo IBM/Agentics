@@ -1,8 +1,25 @@
 # Put this at the top of your script
 import asyncio
 import logging
+import os
 import warnings
 from typing import Optional, Type
+
+os.environ["TQDM_DISABLE"] = "1"
+
+# --- SAFE TQDM PATCH: override only the function, not the class ---
+import tqdm
+
+_original_tqdm = tqdm.tqdm  # keep the class intact!
+
+
+def no_bar(iterable=None, *args, **kwargs):
+    """Return iterable unchanged but keep tqdm.tqdm a valid function."""
+    return iterable if iterable is not None else []
+
+
+# Override only the *function*, not the module, not the class
+tqdm.tqdm = no_bar
 
 import mellea
 from mellea.stdlib.sampling import RejectionSamplingStrategy
@@ -33,10 +50,7 @@ async def structured_decoding_using_mellea(
     Returns an instance of TargetAtype or None if no output.
     """
     # The context manager should take care of opening/closing the HTTP client
-    with mellea.start_session(
-        "litellm",
-        model_id="watsonx/openai/gpt-oss-120b",
-    ) as m:
+    with mellea.start_session("litellm", model_id=llm) as m:
         mellea_output = await m.ainstruct(
             instructions,
             grounding_context={"": input},

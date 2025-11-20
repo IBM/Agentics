@@ -35,9 +35,8 @@ def get_llm_provider(provider_name: str = None) -> LLM:
                 )
             return list(available_llms.values())[0]
         else:
-            raise ValueError(
-                "No LLM is available. Please check your .env configuration."
-            )
+            logger.debug("No LLM is available. Please check your .env configuration.")
+            return None
 
     else:
         if provider_name in available_llms:
@@ -45,9 +44,10 @@ def get_llm_provider(provider_name: str = None) -> LLM:
                 logger.debug(f"Using specified LLM provider: {provider_name}")
             return available_llms[provider_name]
         else:
-            raise ValueError(
-                f"LLM provider '{provider_name}' is not available. Please check your .env configuration."
+            logger.debug(
+                "LLM provider '{provider_name}' is not available. Please check your .env configuration."
             )
+            return None
 
 
 available_llms = {}

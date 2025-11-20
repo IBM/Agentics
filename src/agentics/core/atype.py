@@ -626,3 +626,70 @@ def _instance_and(self, other):
 
 
 BaseModel.__and__ = _instance_and
+
+from pydantic import BaseModel, create_model
+from pydantic._internal._model_construction import ModelMetaclass
+
+
+def project_as_superclass(Model: type[BaseModel], selected_fields):
+    # normalize
+    if isinstance(selected_fields, str):
+        selected_fields = [selected_fields]
+
+    # verify fields exist
+    missing = [f for f in selected_fields if f not in Model.model_fields]
+    if missing:
+        raise ValueError(f"Fields {missing} not found in {Model.__name__}")
+
+    # Build new Mixin class – NOT a Pydantic model
+    attrs = {}
+    for fname in selected_fields:
+        finfo = Model.model_fields[fname]
+        attrs[fname] = finfo.default if finfo.default is not None else None
+
+    ProjectedName = f"{Model.__name__}Projected_{'_'.join(selected_fields)}"
+    Projected = type(ProjectedName, (object,), attrs)
+
+    # Now create a **new Pydantic model** that inherits from (Projected, Model)
+    NewModel = create_model(
+        Model.__name__, __base__=(Projected, Model), **Model.model_fields
+    )
+
+    # Replace the original model class in its module namespace
+    module = Model.__module__
+    globals_dict = vars(__import__(module))
+    globals_dict[Model.__name__] = NewModel
+
+    return Projected
+
+
+from pydantic import BaseModel, create_model
+
+
+def project_as_superclass(Model: type[BaseModel], selected_fields):
+    if isinstance(selected_fields, str):
+        selected_fields = [selected_fields]
+
+    # Ensure fields exist
+    missing = [f for f in selected_fields if f not in Model.model_fields]
+    if missing:
+        raise ValueError(f"Fields {missing} not in {Model.__name__}")
+
+    # Build the projected base model
+    Projected = create_model(
+        f"{Model.__name__}Projected_{'_'.join(selected_fields)}",
+        **{
+            f: (Model.model_fields[f].annotation, Model.model_fields[f].default)
+            for f in selected_fields
+        },
+    )
+
+    # 🔥 Now change the inheritance of Model safely
+    # Make Model inherit from Projected
+    Model.__bases__ = (
+        (Projected,)
+        + tuple(b for b in Model.__bases__ if b is not BaseModel)
+        + (BaseModel,)
+    )
+
+    return Projected

@@ -12,9 +12,7 @@ import functools
 import inspect
 import logging
 
-from agentics.core.utils_2 import (
-    get_function_io_types,
-)
+from agentics.core.utils_2 import get_function_io_types, percent_non_empty_fields
 
 logging.getLogger("huggingface_hub.utils._http").setLevel(logging.ERROR)
 
@@ -39,6 +37,7 @@ def transducible(
     max_iter: int = 3,
     verbose_transduction: bool = True,
     verbose_agent: bool = False,
+    batch_size: int = 10,
 ):
     """
     Usage:
@@ -82,17 +81,28 @@ def transducible(
             max_iter=max_iter,
             verbose_agent=verbose_agent,
             verbose_transduction=verbose_transduction,
+            amap_batch_size=batch_size,
         )
-        source_ag_template = AG(atype=SourceModel)
+        source_ag_template = AG(atype=SourceModel, amap_batch_size=batch_size)
 
-        target_ag_template.instructions = f"""You are transducing the function {fn.__name__}.
-It takes objects of type {SourceModel.__name__} and transduces them into objects of type {TargetModel.__name__}.
-Follow the instruction below to perform the transduction.
-{fn.__doc__ or ""}"""
+        target_ag_template.instructions = f"""
+===============================================
+TASK : 
+You are transducing the function {fn.__name__}.
+Input Type: {SourceModel.__name__} 
+Output Type: {TargetModel.__name__}.
 
-        async def generate_prototypical_sources(n_instances=10):
+INSTRUCTIONS:
+{fn.__doc__ or ""}
+
+===============================================
+"""
+
+        async def generate_prototypical_sources(
+            n_instances=10, llm=AG.get_llm_provider()
+        ):
             return await generate_prototypical_instances(
-                SourceModel, n_instances=n_instances
+                SourceModel, n_instances=n_instances, llm=llm
             )
 
         @functools.wraps(fn)
@@ -361,7 +371,7 @@ from agentics import AG
 
 
 async def generate_prototypical_instances(
-    type: Type[BaseModel], n_instances: int = 10
+    type: Type[BaseModel], n_instances: int = 10, llm: Any = AG.get_llm_provider()
 ) -> list[BaseModel]:
     DynamicModel = create_model(
         "ListOfObjectsOfGivenType", instances=(list[type], ...)  # REQUIRED field
@@ -374,6 +384,7 @@ async def generate_prototypical_instances(
               {type.model_json_schema()}. 
               Try to fill most of the attributed for each generated instance as possible
               """,
+        llm=llm,
     )
     generated = await (target << "")
     return generated.states[0].instances
@@ -391,7 +402,16 @@ class TransducibleFn(Protocol):
     async def __call__(self, state: Any) -> Any: ...
 
 
-async def estimateLogicalProximity(func):
-    sources = await generate_prototypical_instances(func.input_model)
+async def estimateLogicalProximity(func, llm=AG.get_llm_provider()):
+    sources = await generate_prototypical_instances(func.input_model, llm=llm)
     targets = await func(sources)
-    return targets
+    total_lp = 0
+    if len(targets) > 0:
+        for target, source in zip(targets, sources):
+
+            lp = percent_non_empty_fields(target)
+            print(f" {target} <- {source} . LP: {lp}")
+            total_lp += lp
+        return total_lp / len(targets)
+    else:
+        return 0

@@ -384,9 +384,19 @@ class PydanticTransducerMellea(PydanticTransducer):
         )
 
     async def _execute(self, input: str) -> BaseModel:
-        instructions = f"""You are a Logical Transducer. You goal is to transduce the input object into an object 
-of the specified output type {self.atype.model_json_schema()}. You will generate a json object that follows the required schema and nothing else.
-For all the slots in the target type, generate an answer only if that can be logically inferred from the input slots and / or from your background knowledge.
+        instructions = f"""
+You are a Logical Transducer. Your goal is to generate a JSON object that strictly 
+conforms to the Output Pydantic schema below:
+
+{self.atype.model_json_schema()}
+
+IMPORTANT:
+- If you cannot logically infer the value of a field from the input, set that field to null.
+- Never invent content.
+- Never generate placeholder strings such as "null", "$null$", "N/A", "...", or repeated characters.
+- Never generate invisible Unicode characters (zero-width spaces).
+- Produce only clean, natural text for fields you can infer.
+
 Follow the following instructions:
 {self.intentional_definiton}
 """
