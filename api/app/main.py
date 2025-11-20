@@ -3,17 +3,19 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from contextlib import asynccontextmanager
+
 from api.app.api.v1.atypes import router as atypes_router
 from api.app.api.v1.sessions import router as sessions_router
 from api.app.api.v1.agents import router as agents_router
 from api.app.core.rate_limit import limiter
 
-from contextlib import asynccontextmanager
+from api.app.applications import register_applications
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Ensure the atypes directory exists on container start
+    # Ensure the generic atypes directory exists
     atypes_path = os.getenv("ATYPES_PATH", "/code/api/predefined_types")
     os.makedirs(atypes_path, exist_ok=True)
     yield
@@ -22,6 +24,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Agentics Demo API",
     version="0.1.0",
+    description="REST API for Agentics library demos",
     lifespan=lifespan,
 )
 
@@ -41,6 +44,8 @@ app.add_middleware(
 app.include_router(atypes_router, prefix="/v1")
 app.include_router(sessions_router, prefix="/v1")
 app.include_router(agents_router, prefix="/v1")
+
+register_applications(app)
 
 
 @app.get("/healthz")
