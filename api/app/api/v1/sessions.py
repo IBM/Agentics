@@ -3,7 +3,7 @@ from ...core import ag_registry as reg
 from ...core.auth import verify_api_key
 from ...core import llm_tracker
 
-router = APIRouter(prefix="/session", tags=["session"])
+router = APIRouter(prefix="/sessions", tags=["sessions"])
 
 
 @router.post("/", status_code=201, summary="Create a new session")

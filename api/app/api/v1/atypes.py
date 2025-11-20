@@ -1,80 +1,69 @@
-from fastapi import APIRouter, HTTPException, Depends
-from ...core import atype_store as store, llm
-from ...core import models as m
-from ...core.utils import make_class_code
-from ...core.auth import verify_api_key
+from fastapi import APIRouter, HTTPException, Query, Body
+from typing import List, Optional
+from pydantic import BaseModel
 
-router = APIRouter(prefix="/atypes", tags=["atypes"])
+# Import the updated store logic
+from api.app.core.atype_store import (
+    list_available_atypes,
+    load_atype_code,
+    save_atype_code,
+    delete_atype,
+)
 
+# Import core agentics tool to validate code syntax
+from agentics.core.atype import import_pydantic_from_code
 
-@router.get("/", response_model=list[str], summary="List all saved atypes")
-def list_atypes(api_key: str = Depends(verify_api_key)):
-    """
-    Retrieve names of all Pydantic atypes saved in the predefined_types directory.
-
-    Returns a simple array of type names (e.g., ["Answer", "Person"]).
-    """
-    return store.list_names()
-
-
-@router.post("/", response_model=m.AtypeInfo, summary="Create a new atype")
-async def create(req: m.AtypeCreate, api_key: str = Depends(verify_api_key)):
-    """
-    Create a new Pydantic type from either:
-    - **field_spec** mode: provide a list of fields with types and metadata
-    - **natural_language** mode: describe the type in plain English; an LLM generates the code
-
-    Optionally saves the generated .py file to disk (default: save=true).
-
-    Returns the generated Python code and JSON schema.
-    """
-    if req.mode == m.Mode.field_spec:
-        if not req.fields:
-            raise HTTPException(400, "fields list required for field_spec mode")
-        code = make_class_code([f.model_dump() for f in req.fields], req.name)
-    else:
-        if not req.description:
-            raise HTTPException(400, "description required for natural_language mode")
-        code, _ = await llm.nl_to_atype(req.name, req.description)
-    if req.save:
-        store.save_code(req.name, code)
-    atype = store.code_to_type(code)
-    return m.AtypeInfo(name=req.name, code=code, json_schema=atype.model_json_schema())
+router = APIRouter(tags=["Types"])
 
 
-@router.get("/{name}", response_model=m.AtypeInfo, summary="Fetch atype details")
-def fetch(name: str, api_key: str = Depends(verify_api_key)):
-    """
-    Retrieve the Python code and JSON schema for a saved atype.
-
-    Useful for inspecting existing types before creating an agent.
-    """
-    code = store.load_code(name)
-    atype = store.code_to_type(code)
-    return m.AtypeInfo(name=name, code=code, json_schema=atype.model_json_schema())
+class TypeCreateRequest(BaseModel):
+    name: str
+    code: str
 
 
-@router.delete("/{name}", status_code=204, summary="Delete an atype")
-def delete(name: str, api_key: str = Depends(verify_api_key)):
-    """
-    Remove the .py file for the specified atype from predefined_types.
+@router.get("/types", response_model=List[str])
+def get_types(
+    app_id: Optional[str] = Query(
+        None, description="Filter by App ID. Leave empty for global types."
+    )
+):
+    """List all available Pydantic types for the given scope."""
+    return list_available_atypes(app_id)
 
-    Returns 204 on success; 404 if the type does not exist.
-    """
-    store.delete(name)
+
+@router.get("/types/{name}", response_model=dict)
+def get_type_code(name: str, app_id: Optional[str] = Query(None)):
+    """Get the source code for a specific type."""
+    code = load_atype_code(name, app_id)
+    if not code:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Type '{name}' not found in scope '{app_id or 'global'}'",
+        )
+    return {"name": name, "code": code}
 
 
-@router.post("/{name}/validate", summary="Validate JSON against atype")
-def validate(name: str, payload: dict, api_key: str = Depends(verify_api_key)):
-    """
-    Check whether an arbitrary JSON payload conforms to the specified atype schema.
-
-    Returns `{"valid": true}` on success, or 422 with validation errors.
-    """
-    code = store.load_code(name)
-    atype = store.code_to_type(code)
+@router.post("/types", response_model=dict)
+def create_type(payload: TypeCreateRequest, app_id: Optional[str] = Query(None)):
+    """Create or update a Pydantic type."""
+    # Validate that the code actually compiles to a Pydantic model
     try:
-        atype.model_validate(payload)
-        return {"valid": True}
+        model = import_pydantic_from_code(payload.code)
+        if not model:
+            raise ValueError("Code did not return a valid Pydantic class")
     except Exception as e:
-        raise HTTPException(422, str(e))
+        raise HTTPException(
+            status_code=400, detail=f"Invalid Python/Pydantic code: {str(e)}"
+        )
+
+    path = save_atype_code(payload.name, payload.code, app_id)
+    return {"status": "saved", "path": path, "scope": app_id or "global"}
+
+
+@router.delete("/types/{name}")
+def remove_type(name: str, app_id: Optional[str] = Query(None)):
+    """Delete a type."""
+    success = delete_atype(name, app_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Type not found")
+    return {"status": "deleted"}

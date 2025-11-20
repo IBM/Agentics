@@ -3,6 +3,12 @@ from enum import Enum
 from typing import Any, List, Dict, Optional, Literal
 from pydantic import BaseModel, Field
 
+SessionID = str
+
+
+class HealthCheck(BaseModel):
+    status: str = "ok"
+
 
 class Mode(str, Enum):
     field_spec = "field_spec"

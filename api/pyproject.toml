@@ -9,6 +9,8 @@ dependencies = [
   "httpx>=0.27",
   "pydantic>=2.7",
   "slowapi>=0.1.9",
+  "python-multipart",
+  "pandas"
 ]
 [project.optional-dependencies]
 dev = [
