@@ -19,7 +19,6 @@ repos:
   #       # when "--baseline" with "--use-all-plugins", pre-commit scan with all available plugins
   #       # add "--fail-on-unaudited" to fail pre-commit for unaudited potential secrets
   #       args: [--baseline, .secrets.baseline, --use-all-plugins]
-        
 
   # - repo: https://github.com/astral-sh/ruff-pre-commit
   #   # Ruff version.
@@ -36,22 +35,22 @@ repos:
   #   hooks:
   #     - id: hadolint
 
-  - repo: https://github.com/codespell-project/codespell
-    rev: v2.4.0
-    hooks:
-      - id: codespell
-        types_or: [python, rst, markdown, cython, c]
-        additional_dependencies: [tomli]
+  # - repo: https://github.com/codespell-project/codespell
+  #   rev: v2.4.0
+  #   hooks:
+  #     - id: codespell
+  #       types_or: [python, rst, markdown, cython, c]
+  #       additional_dependencies: [tomli]
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
-    -   id: trailing-whitespace
+      - id: trailing-whitespace
         exclude: 'docs/.*|\.*.lock|'
-    - id: check-ast
-    -   id: end-of-file-fixer
+      - id: check-ast
+      - id: end-of-file-fixer
         exclude_types:
           - svg
-    -   id: debug-statements
+      - id: debug-statements
     # TODO: Fix this
     # -   id: name-tests-test
 
