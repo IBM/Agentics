@@ -1,109 +1,73 @@
 import json
-from typing import Annotated, List, Optional
+from typing import Annotated, List, Dict, Any
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import ValidationError
 
+# Import registry and the applications package to trigger registration
 from agentics.api.core.registry import registry
-from agentics.api.models import AppMetadata, AppSchema, ErrorResponse
+import agentics.api.applications
 
-# --- Initialize App ---
+from agentics.api.core.models import AppMetadata, AppSchema
+
 app = FastAPI(
     title="Agentics API",
-    description="Unified API for Agentics Logic Transduction Applications",
     version="0.1.0",
+    description="Unified API for Agentic Applications",
 )
 
-# --- CORS ---
-# Allow all for development ease; restrict in production if needed.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# --- Endpoints ---
-
 
 @app.get("/apps", response_model=List[AppMetadata])
 async def list_applications():
-    """List all available agentic applications."""
-    apps = registry.list_apps()
     return [
-        AppMetadata(slug=a.slug, name=a.name, description=a.description) for a in apps
+        AppMetadata(slug=a.slug, name=a.name, description=a.description)
+        for a in registry.list_apps()
     ]
 
 
-@app.get("/apps/{slug}/schema", response_model=AppSchema)
-async def get_app_schema(slug: str):
-    """
-    Get the input/output schema and dynamic options for an app.
-    Used by the frontend to build the UI dynamically.
-    """
-    agent_app = registry.get(slug)
-    if not agent_app:
-        raise HTTPException(status_code=404, detail="Application not found")
-
-    input_model = agent_app.get_input_model()
-    output_model = agent_app.get_output_model()
-    options = await agent_app.get_options()
+@app.get("/apps/{slug}/config", response_model=AppSchema)
+async def get_app_config(slug: str):
+    agent = registry.get(slug)
+    if not agent:
+        raise HTTPException(404, "App not found")
 
     return AppSchema(
-        input_schema=input_model.model_json_schema(),
-        output_schema=output_model.model_json_schema(),
-        options=options,
+        input_schema=agent.get_input_model().model_json_schema(),
+        output_schema=agent.get_output_model().model_json_schema(),
+        options=await agent.get_options(),
     )
 
 
 @app.post("/apps/{slug}/run")
 async def run_app(
     slug: str,
-    config: Annotated[
-        str, Form(description="JSON string matching the app's Input Schema")
-    ],
+    config: Annotated[str, Form()],
     files: List[UploadFile] = File(default=[]),
 ):
-    """
-    Execute an application.
-    Accepts `multipart/form-data`.
-    - `config`: JSON string defining the typed input.
-    - `files`: Optional list of file uploads.
-    """
-    agent_app = registry.get(slug)
-    if not agent_app:
-        raise HTTPException(status_code=404, detail="Application not found")
+    agent = registry.get(slug)
+    if not agent:
+        raise HTTPException(404, "App not found")
 
-    # 1. Parse Configuration
+    # Parse Config
     try:
-        config_dict = json.loads(config)
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="Invalid JSON in 'config' field")
+        config_data = json.loads(config)
+        validated_input = agent.get_input_model()(**config_data)
+    except (json.JSONDecodeError, ValidationError) as e:
+        raise HTTPException(422, detail=str(e))
 
-    # 2. Validate against App's Input Model
-    InputModel = agent_app.get_input_model()
-    try:
-        validated_input = InputModel(**config_dict)
-    except ValidationError as e:
-        raise HTTPException(status_code=422, detail=e.errors())
-
-    # 3. Organize Files
-    # We pass a simple dict mapping filename -> file object for the adapter to handle
+    # Map Files
     file_map = {f.filename: f.file for f in files}
 
-    # 4. Execution
+    # Execute
     try:
-        result = await agent_app.run(validated_input, file_map)
+        return await agent.run(validated_input, file_map)
     except Exception as e:
-        # Log error here in production
-        raise HTTPException(status_code=500, detail=str(e))
-
-    return result
-
-
-# --- Health Check ---
-@app.get("/health")
-async def health_check():
-    return {"status": "ok"}
+        raise HTTPException(500, detail=str(e))
