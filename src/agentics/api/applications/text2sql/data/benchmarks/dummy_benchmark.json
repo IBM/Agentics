@@ -1,0 +1,1 @@
+[{"question": "Count rows", "sql": "SELECT count(*) FROM items", "db_id": "dummy_db"}]

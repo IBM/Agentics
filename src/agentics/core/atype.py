@@ -245,7 +245,7 @@ def pydantic_model_from_dataframe(
     model_name = "AType#" + ":".join(df_sample.columns)
     fields = {}
     for col in df_sample.columns:
-        pydantic_type = infer_pydantic_type(df_sample[col].dtype)
+        pydantic_type = infer_pydantic_type(df_sample[col].dtype, df_sample[col])
         fields[col] = (pydantic_type, Field(default=None))
 
     return create_model(model_name, **fields)

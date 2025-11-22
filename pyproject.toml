@@ -37,6 +37,7 @@ dependencies = [
     "jsonfinder>=0.4.2",
     "crewai[google-genai]",
     "litellm",
+    "slowapi>=0.1.9",
 ]
 
 

@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 from agentics.api.models import AppMetadata
 
+
 class AgenticsApp(ABC):
     """
     Base class for all Agentics applications.
@@ -28,8 +29,17 @@ class AgenticsApp(ABC):
         """
         return {}
 
+    async def perform_action(self, session_id: str, action: str, payload: dict) -> Any:
+        """
+        Handle auxiliary actions (e.g., drafting schemas, specialized updates).
+        Default implementation raises an error implying action is not supported.
+        """
+        raise NotImplementedError(f"Action '{action}' not supported by this app.")
+
     @abstractmethod
-    async def execute(self, session_id: str, input_data: BaseModel | dict) -> Dict[str, Any]:
+    async def execute(
+        self, session_id: str, input_data: BaseModel | dict
+    ) -> Dict[str, Any]:
         """
         Core logic hook.
         Args:

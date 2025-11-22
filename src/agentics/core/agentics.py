@@ -213,10 +213,10 @@ class AG(BaseModel, Generic[T]):
             generated_atype_ag = await (
                 AG(
                     atype=GeneratedAtype,
-                    instructions="""Generate python code for the input nl type specs. 
-                Make all fields Optional. Use only primitive types for the fields, avoiding nested. 
+                    instructions="""Generate python code for the input nl type specs.
+                Make all fields Optional. Use only primitive types for the fields, avoiding nested.
                 Provide descriptions for the class and all its fields, using Field(None,description= "...")
-                If the input nl type spec is a question, generate a pydantic type that can be used to 
+                If the input nl type spec is a question, generate a pydantic type that can be used to
                 represent the answer to that question.
                 """,
                 )
@@ -363,6 +363,10 @@ class AG(BaseModel, Generic[T]):
             results = await mapper.execute(
                 *self.states, description=f"Executing amap on {func.__name__}"
             )
+
+            if not isinstance(results, (list, tuple)):
+                results = [results]
+
             if self.transduction_logs_path:
                 with open(self.transduction_logs_path, "a") as f:
                     for state in results:
@@ -666,7 +670,12 @@ class AG(BaseModel, Generic[T]):
                 return [x.string for x in input_messages.states]
 
         if self.transduction_type == "areduce":
-            new_other = other(*other.transduce_fields)
+            fields_to_use = (
+                other.transduce_fields
+                if other.transduce_fields
+                else list(other.atype.model_fields.keys())
+            )
+            new_other = other(*fields_to_use)
             if is_str_or_list_of_str(new_other):
 
                 chunks = chunk_list(new_other, chunk_size=self.areduce_batch_size)
@@ -708,6 +717,7 @@ class AG(BaseModel, Generic[T]):
                 prompt_template = None
             i = 0
             for i in range(len(other.states)):
+
                 if prompt_template:
                     input_prompts.append(
                         "SOURCE:\n"
@@ -826,6 +836,11 @@ class AG(BaseModel, Generic[T]):
         if isinstance(other, AG):
             for i in range(len(other.states)):
                 output_state = output_states[i]
+
+                if output_state is None:
+                    # Fallback: If transduction failed completely for this item, use an empty instance of the target type
+                    output_state = self.atype()
+
                 if isinstance(output_state, tuple):
                     output_state_dict = dict([output_state])
                 else:
