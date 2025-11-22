@@ -1,17 +1,33 @@
+import traceback
 import shutil
 import os
 from typing import Dict, Any
-from fastapi import APIRouter, HTTPException, Path, Body, UploadFile, File
-import traceback
+
+from fastapi import (
+    APIRouter,
+    HTTPException,
+    Path,
+    Body,
+    UploadFile,
+    File,
+    Depends,
+    Request,
+)
+
 from agentics.api.services.app_registry import app_registry
 from agentics.api.services.session_manager import session_manager
 from agentics.api.models import SessionResponse
+from agentics.api.dependencies import limiter, get_execution_token
+from agentics.api.config import settings
 
 router = APIRouter()
 
 
 @router.post("/apps/{app_id}/session", response_model=SessionResponse)
-async def create_session(app_id: str = Path(...)):
+@limiter.limit("10/minute")  # Strict limit on creating sessions
+async def create_session(
+    request: Request, app_id: str = Path(...)  # Required for limiter
+):
     app = app_registry.get_app(app_id)
     if not app:
         raise HTTPException(status_code=404, detail="Application not found")
@@ -22,6 +38,13 @@ async def create_session(app_id: str = Path(...)):
     )
 
 
+@router.delete("/apps/{app_id}/session/{session_id}")
+async def delete_session(app_id: str = Path(...), session_id: str = Path(...)):
+    """Explicitly close a session and clean up resources."""
+    session_manager.delete_session(session_id)
+    return {"status": "closed"}
+
+
 @router.get("/apps/{app_id}/options")
 async def get_app_options(app_id: str = Path(...)):
     app = app_registry.get_app(app_id)
@@ -30,11 +53,15 @@ async def get_app_options(app_id: str = Path(...)):
     return app.get_options()
 
 
-# Note: The execute endpoint will be generic here, but validation
-# happens inside the app logic or via dynamic Pydantic model validation
 @router.post("/apps/{app_id}/session/{session_id}/execute")
+@limiter.limit(settings.DEFAULT_RATE_LIMIT)
 async def execute_app(
-    app_id: str = Path(...), session_id: str = Path(...), payload: dict = Body(...)
+    request: Request,
+    app_id: str = Path(...),
+    session_id: str = Path(...),
+    payload: dict = Body(...),
+    # Wait for a token (semaphore) before running logic
+    _token: Any = Depends(get_execution_token),
 ):
     app = app_registry.get_app(app_id)
     session = session_manager.get_session(session_id)
@@ -62,11 +89,12 @@ async def upload_file(
     if not session:
         raise HTTPException(404, "Session not found")
 
-    # Save file locally
-    # TODO
-    # In production, use S3/Blob storage
+    # Ensure temp dir exists
+    temp_dir = "src/agentics/api/temp_files"
+    os.makedirs(temp_dir, exist_ok=True)
+
     safe_filename = os.path.basename(file.filename)
-    file_path = f"src/agentics/api/temp_files/{session_id}_{safe_filename}"
+    file_path = os.path.join(temp_dir, f"{session_id}_{safe_filename}")
 
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
@@ -76,11 +104,13 @@ async def upload_file(
 
 
 @router.post("/apps/{app_id}/session/{session_id}/action/{action_name}")
+@limiter.limit(settings.DEFAULT_RATE_LIMIT)
 async def execute_action(
+    request: Request,
     app_id: str = Path(...),
     session_id: str = Path(...),
     action_name: str = Path(...),
-    payload: Dict[str, Any] = Body({}),
+    payload: Dict[str, Any] = Body(...),
 ):
     app = app_registry.get_app(app_id)
     session = session_manager.get_session(session_id)
@@ -93,4 +123,5 @@ async def execute_action(
     except NotImplementedError:
         raise HTTPException(400, f"Action {action_name} not supported")
     except Exception as e:
-        raise HTTPException(500, str(e))
+        traceback.print_exc()
+        raise HTTPException(500, detail=str(e))
