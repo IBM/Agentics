@@ -1,0 +1,39 @@
+from abc import ABC, abstractmethod
+from typing import Any, Dict, Optional, Type
+from pydantic import BaseModel
+
+from agentics.api.models import AppMetadata
+
+class AgenticsApp(ABC):
+    """
+    Base class for all Agentics applications.
+    Wraps the logic of an Agentics workflow into a stateless execution unit
+    that operates on a stateful Session.
+    """
+
+    @property
+    @abstractmethod
+    def metadata(self) -> AppMetadata:
+        pass
+
+    @abstractmethod
+    def get_input_schema(self) -> Dict[str, Any]:
+        """Return JSON schema for the execution input."""
+        pass
+
+    def get_options(self) -> Dict[str, Any]:
+        """
+        Return dynamic options for UI dropdowns (e.g. available DBs, dates).
+        Override this if the app requires dynamic configuration before execution.
+        """
+        return {}
+
+    @abstractmethod
+    async def execute(self, session_id: str, input_data: BaseModel | dict) -> Dict[str, Any]:
+        """
+        Core logic hook.
+        Args:
+            session_id: The ID of the active session (used to retrieve AG state).
+            input_data: Validated input based on get_input_schema.
+        """
+        pass
