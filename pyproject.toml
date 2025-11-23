@@ -37,7 +37,14 @@ dependencies = [
     "jsonfinder>=0.4.2",
     "crewai[google-genai]",
     "litellm",
+    "boto3>=1.41.2",
+    "botocore>=1.41.2",
+    "fastapi>=0.121.3",
+    "python-multipart>=0.0.20",
+    "pydantic-settings>=2.11.0",
+    "uvicorn>=0.38.0",
     "slowapi>=0.1.9",
+    "torch>=2.9.1",
 ]
 
 
@@ -106,6 +113,6 @@ explicit = true
 
 
 [tool.uv.sources]
-torch = [
-  { index = "pytorch-cpu" },
-]
+torch = [{ index = "pytorch-cpu" }]
+torchvision = [{ index = "pytorch-cpu" }]
+torchaudio = [{ index = "pytorch-cpu" }]

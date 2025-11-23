@@ -82,25 +82,23 @@ async def execute_app(
 
 
 @router.post("/apps/{app_id}/session/{session_id}/files")
-async def upload_file(
+def upload_file(
     app_id: str = Path(...), session_id: str = Path(...), file: UploadFile = File(...)
 ):
     session = session_manager.get_session(session_id)
     if not session:
         raise HTTPException(404, "Session not found")
 
-    # Ensure temp dir exists
-    temp_dir = "src/agentics/api/temp_files"
-    os.makedirs(temp_dir, exist_ok=True)
+    safe_filename = f"{session_id}_{os.path.basename(file.filename)}"
 
-    safe_filename = os.path.basename(file.filename)
-    file_path = os.path.join(temp_dir, f"{session_id}_{safe_filename}")
-
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    session.files[file.filename] = file_path
-    return {"filename": file.filename, "status": "uploaded"}
+    try:
+        # Now safe to run synchronous boto3/shutil calls
+        file_ref = session_manager.storage.upload(file.file, safe_filename)
+        session.files[file.filename] = file_ref
+        return {"filename": file.filename, "status": "uploaded"}
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(500, "File upload failed")
 
 
 @router.post("/apps/{app_id}/session/{session_id}/action/{action_name}")

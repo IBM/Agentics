@@ -39,7 +39,7 @@ class SmartSpreadsheetApp(AgenticsApp):
             if filename not in session.files:
                 raise ValueError("File not found")
 
-            path = session.files[filename]
+            path = session_manager.get_file_path(session_id, filename)
             # Load CSV and store AG in session
             # Defaulting to all optional fields for flexibility
             ag = AG.from_csv(path)
