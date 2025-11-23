@@ -11,10 +11,12 @@ from typing import (
     List,
     Optional,
     Sequence,
+    Tuple,
     Type,
     TypeVar,
     Union,
     get_origin,
+    get_type_hints,
 )
 
 import httpx
@@ -24,6 +26,7 @@ from loguru import logger
 from numerize.numerize import numerize
 from openai import APIStatusError, AsyncOpenAI
 from pydantic import BaseModel, Field, create_model
+from pydantic.fields import FieldInfo
 from rich.progress import (
     BarColumn,
     MofNCompleteColumn,
@@ -422,3 +425,283 @@ def llm_friendly_json(model: type[BaseModel]) -> str:
 
     # Return pretty-formatted JSON string
     return json.dumps(simple, indent=4)
+
+
+import ast
+import textwrap
+import types
+from typing import Callable
+
+
+def import_last_function_from_code(code: str) -> Callable:
+    """
+    Execute the code and return ONLY the last user-defined function,
+    enriched with:
+        fn.__source__         = function's own source block
+        fn.__source_types__   = {"source": <input type>, "target": <output type>}
+    """
+    module = types.ModuleType("dynamic_module")
+    code = textwrap.dedent(code)
+    exec(code, module.__dict__)
+
+    # -------------------------------------------------------------
+    # 1. Find all user-defined functions
+    # -------------------------------------------------------------
+    funcs = [
+        obj
+        for obj in module.__dict__.values()
+        if callable(obj)
+        and hasattr(obj, "__code__")
+        and obj.__module__ == module.__name__
+    ]
+
+    if not funcs:
+        raise ValueError("No functions found.")
+
+    fn = funcs[-1]  # last defined
+
+    # -------------------------------------------------------------
+    # 2. Parse AST to extract class and function blocks
+    # -------------------------------------------------------------
+    tree = ast.parse(code)
+
+    class_blocks: Dict[str, str] = {}
+    function_blocks: Dict[str, str] = {}
+
+    for node in tree.body:
+        if isinstance(node, ast.ClassDef):
+            class_blocks[node.name] = textwrap.dedent(
+                ast.get_source_segment(code, node)
+            )
+
+        if isinstance(node, ast.FunctionDef):
+            function_blocks[node.name] = textwrap.dedent(
+                ast.get_source_segment(code, node)
+            )
+
+    # -------------------------------------------------------------
+    # 3. Attach function source code block
+    # -------------------------------------------------------------
+    if fn.__name__ in function_blocks:
+        fn.__source__ = function_blocks[fn.__name__]
+    else:
+        fn.__source__ = None
+
+    # -------------------------------------------------------------
+    # 4. Identify input/output annotated types
+    # -------------------------------------------------------------
+    hints = inspect.get_annotations(fn, eval_str=True)
+
+    source_model = None
+    target_model = None
+
+    for arg_name, t in hints.items():
+        if arg_name == "return":
+            target_model = t
+        else:
+            source_model = t
+
+    # -------------------------------------------------------------
+    # 5. Attach type code blocks (source & target)
+    # -------------------------------------------------------------
+    source_code = None
+    target_code = None
+
+    if inspect.isclass(source_model) and source_model.__name__ in class_blocks:
+        source_model.__source__ = class_blocks[source_model.__name__]
+        source_code = class_blocks[source_model.__name__]
+
+    if inspect.isclass(target_model) and target_model.__name__ in class_blocks:
+        target_model.__source__ = class_blocks[target_model.__name__]
+        target_code = class_blocks[target_model.__name__]
+
+    fn.__source_types__ = {"source": source_code, "target": target_code}
+
+    return fn
+
+
+import hashlib
+
+
+def compute_function_hash(
+    fn: Callable | str,
+    #   SourceModel:Type[BaseModel] | str = None,
+    #   TargetModel:Type[BaseModel] | str = None
+):
+    """
+    Compute a SHA256 hash from:
+      - function source code
+      - source model definition
+      - target model definition
+    """
+
+    hasher = hashlib.sha256()
+
+    # --- function source
+    if fn:
+        if type(fn) == str:
+            fn_source = fn
+        else:
+            try:
+                fn_source = inspect.getsource(fn)
+            except OSError:
+                fn_source = fn.__source__ if hasattr(fn, "__source__") else ""
+        hasher.update(fn_source.encode("utf-8"))
+
+    # # --- source model
+    # if SourceModel:
+    #     if type(SourceModel) ==str:
+    #         hasher.update(SourceModel)
+    #     else:
+    #         if SourceModel is not None:
+    #             model_source = getattr(SourceModel, "__source__", str(SourceModel))
+    #             hasher.update(model_source.encode("utf-8"))
+
+    #     # --- target model
+    # if TargetModel:
+    #     if TargetModel is not None:
+    #         model_source = getattr(TargetModel, "__source__", str(TargetModel))
+    #         hasher.update(model_source.encode("utf-8"))
+
+    # Final deterministic fingerprint
+    return hasher.hexdigest()
+
+
+def get_function_io_types(
+    fn: Callable,
+    *,
+    skip_self: bool = True,
+) -> Tuple[Dict[str, Any], Any]:
+    """
+    Infer input and output types from a function's annotations.
+
+    Returns:
+        (input_types, output_type)
+
+    Notes:
+        - Works with sync/async functions.
+        - Automatically unwraps decorators.
+        - Skips `self` or `cls` if desired.
+        - If types were dynamically created with attached __source__,
+          that metadata remains on the class object.
+    """
+
+    if not callable(fn):
+        raise TypeError(f"{fn!r} is not callable")
+
+    # Unwrap decorated functions (@aFunction, @wraps, wrapper layers)
+    original = inspect.unwrap(fn)
+
+    # Resolve type hints (handles forward references and Pydantic models)
+    hints = get_type_hints(original)
+    sig = inspect.signature(original)
+
+    input_types: Dict[str, Any] = {}
+
+    # ------------------------ INPUT TYPES ------------------------
+    for name, param in sig.parameters.items():
+        if skip_self and name in {"self", "cls"}:
+            continue
+
+        # Use annotated type, fallback to Any
+        t = hints.get(name, Any)
+        input_types[name] = t
+
+    # ------------------------ OUTPUT TYPE ------------------------
+    output_type = hints.get("return", Any)
+
+    return input_types, output_type
+
+
+def merge_pydantic_models(
+    source: Type[BaseModel],
+    target: Type[BaseModel],
+    *,
+    name: str | None = None,
+) -> Type[BaseModel]:
+    """
+    Create a new Pydantic model with the union of fields from `source` and `target`.
+    If a field appears in both, the `source` model's annotation and FieldInfo take precedence.
+
+    Parameters
+    ----------
+    source : BaseModel subclass
+        Preferred model for conflicting fields (annotation/Field settings win).
+    target : BaseModel subclass
+        Secondary model; its fields are added when not present in `source`.
+    name : str | None
+        Optional name for the merged model (default builds a descriptive one).
+
+    Returns
+    -------
+    BaseModel subclass
+        A dynamically created model with the merged schema.
+    """
+
+    # Resolve annotations (include_extras to preserve Optional/Annotated info)
+    src_ann = get_type_hints(source, include_extras=True)
+    tgt_ann = get_type_hints(target, include_extras=True)
+
+    # Access FieldInfo objects (pydantic v2)
+    src_fields: Dict[str, FieldInfo] = getattr(source, "model_fields", {})
+    tgt_fields: Dict[str, FieldInfo] = getattr(target, "model_fields", {})
+
+    merged_defs: Dict[str, tuple[Any, Any]] = {}
+
+    # 1) Take all fields from source (preferred on conflict)
+    for fname, ann in src_ann.items():
+        finfo = src_fields.get(fname)
+        if finfo is None:
+            # If no FieldInfo (rare), supply a no-default sentinel by passing None
+            merged_defs[fname] = (ann, None)
+        else:
+            # Pass FieldInfo directly so defaults/constraints/metadata are preserved
+            merged_defs[fname] = (ann, finfo)
+
+    # 2) Add fields unique to target (skip those already taken from source)
+    for fname, ann in tgt_ann.items():
+        if fname in merged_defs:
+            continue
+        finfo = tgt_fields.get(fname)
+        if finfo is None:
+            merged_defs[fname] = (ann, None)
+        else:
+            merged_defs[fname] = (ann, finfo)
+
+    # Name the new model if not provided
+    if name is None:
+        name = f"{source.__name__}__UNION__{target.__name__}"
+
+    # Create the merged model. We inherit from BaseModel to avoid pulling configs unexpectedly,
+    # but you can set __base__=source to inherit source config instead if you prefer.
+    Merged = create_model(
+        name,
+        __base__=BaseModel,
+        **merged_defs,  # type: ignore[arg-type]
+    )
+
+    return Merged
+
+
+def percent_non_empty_fields(instance: BaseModel) -> float:
+    """
+    Return the percentage of non-empty fields in a Pydantic model instance.
+    """
+
+    def _is_non_empty(value):
+        """Return True if a value should count as 'filled'."""
+        if value is None:
+            return False
+        if isinstance(value, str) and value.strip() == "":
+            return False
+        if isinstance(value, (list, dict, set, tuple)) and len(value) == 0:
+            return False
+        return True
+
+    data = instance.model_dump()
+    total = len(data)
+    if total == 0:
+        return 0.0
+
+    filled = sum(1 for v in data.values() if _is_non_empty(v))
+    return filled / total

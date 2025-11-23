@@ -23,13 +23,8 @@ class Answer(BaseModel):
 async def main():
 
     # Collect input text
-    input_questions = [
-        "What is the capital of Italy?",
-    ]
-    answers = await (
-        AG(atype=Answer, llm="watsonx/openai/gpt-oss-120b")
-        << "What is the capital of Italy?"
-    )
+    input_questions = ["What is the capital of Italy?", "Why agentics is so cool?"]
+    answers = await (AG(atype=Answer) << input_questions)
 
     answers.pretty_print()
 

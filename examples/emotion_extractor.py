@@ -35,7 +35,7 @@ def split_into_chunks(text, chunk_size=200):
 
 async def main():
 
-    emotion_detector = AG(atype=EmotionDetector, llm="watsonx/openai/gpt-oss-120b")
+    emotion_detector = AG(atype=EmotionDetector)
 
     current_file = Path(__file__).resolve()
     text = None

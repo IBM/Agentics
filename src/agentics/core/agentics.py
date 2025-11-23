@@ -7,7 +7,6 @@ import random
 from collections.abc import Iterable
 from copy import copy, deepcopy
 from functools import partial, reduce
-from itertools import zip_longest
 from typing import (
     Any,
     Callable,
@@ -47,25 +46,30 @@ from agentics.core.atype import (
     pydantic_model_from_dict,
     pydantic_model_from_jsonl,
 )
-from agentics.core.errors import AmapError, InvalidStateError
+from agentics.core.default_types import (
+    AmapError,
+    AttributeMapping,
+    ATypeMapping,
+    Explanation,
+    InvalidStateError,
+    StateOperator,
+    StateReducer,
+)
 from agentics.core.llm_connections import available_llms, get_llm_provider
-from agentics.core.mapping import AttributeMapping, ATypeMapping
 from agentics.core.utils import (
     chunk_list,
     clean_for_json,
+    get_function_io_types,
     is_str_or_list_of_str,
+    merge_pydantic_models,
     sanitize_dict_keys,
 )
-from agentics.core.utils_2 import get_function_io_types
 from agentics.core.vector_store import VectorStore
 
 logging.basicConfig(level=logging.ERROR)
 
 AG = TypeVar("AG", bound="AG")
 T = TypeVar("T", bound="BaseModel")
-StateReducer = Callable[[List[BaseModel]], BaseModel | List[BaseModel]]
-StateOperator = Callable[[BaseModel], BaseModel]
-StateFlag = Callable[[BaseModel], bool]
 
 
 class AG(BaseModel, Generic[T]):
@@ -103,23 +107,22 @@ class AG(BaseModel, Generic[T]):
     )
     llm: Any = Field(default_factory=get_llm_provider, exclude=True)
 
-    prompt_template: Optional[str] = Field(
-        None,
-        description="Langchain style prompt pattern to be used when provided as an input for a transduction.  Refer to https://python.langchain.com/docs/concepts/prompt_templates/ ",
-    )
+    provide_explanations: bool = False
+    explanations: List[Explanation] = None
     reasoning: Optional[bool] = None
     max_iter: int = Field(
         3,
         description="Max number of iterations for the agent to provide a final transduction when using tools.",
     )
-    skip_intentional_definition: bool = Field(
-        False,
-        description="if True, don't compose intentional instruction for Crew Task",
-    )
+
     transient_pbar: bool = False
     transduction_logs_path: Optional[str] = Field(
         None,
         description="""If not null, the specified file will be created and used to save the intermediate results of transduction from each batch. The file will be updated in real time and can be used for monitoring""",
+    )
+    prompt_template: Optional[str] = Field(
+        None,
+        description="Langchain style prompt pattern to be used when provided as an input for a transduction.  Refer to https://python.langchain.com/docs/concepts/prompt_templates/ ",
     )
     transduction_timeout: float | None = 300
     verbose_transduction: bool = True
@@ -133,6 +136,7 @@ class AG(BaseModel, Generic[T]):
         description="The size of the bathes to be used when transduction type is amap",
     )
     areduce_batches: List[BaseModel] = []
+    save_amap_batches_to_path: Optional[str] = None
 
     crew_prompt_params: Optional[Dict[str, str]] = Field(
         {
@@ -143,7 +147,7 @@ class AG(BaseModel, Generic[T]):
         },
         description="prompt parameter for initializing Crew and Task",
     )
-    vector_store: VectorStore = Field(default_factory=VectorStore)
+    vector_store: Optional[VectorStore] = None
 
     class Config:
         model_config = {"arbitrary_types_allowed": True}
@@ -165,38 +169,6 @@ class AG(BaseModel, Generic[T]):
     @timeout.setter
     def timeout(self, value: float):
         self.transduction_timeout = value
-
-    ################################
-    ##### Agentics Utilities   #####
-    ################################
-    def clone(agentics_instance):
-        copy_instance = copy(agentics_instance)
-        copy_instance.states = deepcopy(agentics_instance.states)
-        copy_instance.tools = agentics_instance.tools  # shallow copy, ok if immutable
-        return copy_instance
-
-    def filter_states(self, start: int = None, end: int = None) -> AG:
-        new_self = self.clone()
-        new_self.states = self.states[start:end]
-        return new_self
-
-    def set_default_value(self, field: str, default_value: Any = None) -> AG:
-        new_self = self.clone()
-        for state in self:
-            if getattr(state, field):
-                setattr(state, field, default_value)
-            new_self.append(state)
-        return new_self
-
-    def get_random_sample(self, percent: float) -> AG:
-        """An AG is returned with randomly selected states, given the percentage of samples to return."""
-        if not (0 <= percent <= 1):
-            raise ValueError("Percent must be between 0 and 1")
-
-        sample_size = int(len(self.states) * percent)
-        output = self.clone()
-        output.states = random.sample(self.states, sample_size)
-        return output
 
     #################
     ##### LLMs  #####
@@ -279,6 +251,38 @@ class AG(BaseModel, Generic[T]):
         """Append the state into the list of states"""
         self.states.append(state)
 
+    ################################
+    ##### Agentics Utilities   #####
+    ################################
+    def clone(agentics_instance):
+        copy_instance = copy(agentics_instance)
+        copy_instance.states = deepcopy(agentics_instance.states)
+        copy_instance.tools = agentics_instance.tools  # shallow copy, ok if immutable
+        return copy_instance
+
+    def filter_states(self, start: int = None, end: int = None) -> AG:
+        new_self = self.clone()
+        new_self.states = self.states[start:end]
+        return new_self
+
+    def set_default_value(self, field: str, default_value: Any = None) -> AG:
+        new_self = self.clone()
+        for state in self:
+            if getattr(state, field):
+                setattr(state, field, default_value)
+            new_self.append(state)
+        return new_self
+
+    def get_random_sample(self, percent: float) -> AG:
+        """An AG is returned with randomly selected states, given the percentage of samples to return."""
+        if not (0 <= percent <= 1):
+            raise ValueError("Percent must be between 0 and 1")
+
+        sample_size = int(len(self.states) * percent)
+        output = self.clone()
+        output.states = random.sample(self.states, sample_size)
+        return output
+
     ######################################
     ##### Validation Functionalities #####
     ######################################
@@ -359,7 +363,8 @@ class AG(BaseModel, Generic[T]):
 
     async def amap(self, func: StateOperator, timeout=None) -> AG:
         """Asynchronous map with exception-safe job gathering"""
-
+        if not timeout:
+            timeout = self.timeout
         mapper = aMap(func=func, timeout=timeout)
         hints = get_type_hints(func)
         SourceType, Target_type = get_function_io_types(func)
@@ -371,22 +376,47 @@ class AG(BaseModel, Generic[T]):
             self.atype = Target_type
         batches = chunk_list(self.states, chunk_size=self.amap_batch_size)
         results = []
+        if self.save_amap_batches_to_path:
+            os.makedirs(os.path.dirname(self.save_amap_batches_to_path), exist_ok=True)
         for batch in batches:
             try:
                 batch_results = await mapper.execute(
                     *batch, description=f"Executing amap on {func.__name__}"
                 )
-                if self.transduction_logs_path:
-                    with open(self.transduction_logs_path, "a") as f:
-                        for state in results:
-                            f.write(state.model_dump_json() + "\n")
 
             except Exception:
                 batch_results = self.states
+
             if isinstance(batch_results, list):
                 results += batch_results
             else:
                 results.append(batch_results)
+            if self.save_amap_batches_to_path:
+                with open(self.save_amap_batches_to_path, "a", encoding="utf-8") as f:
+                    if isinstance(batch_results, list):
+                        for batch_result in batch_results:
+                            if isinstance(batch_result, BaseModel):
+                                f.write(batch_result.model_dump_json())
+                                f.write("\n")
+                            elif isinstance(batch_result, dict):
+                                f.write(json.dumps(batch_result))
+                                f.write("\n")
+                            else:
+                                logger.debug(
+                                    f"Error, instance {batch_result} is not a pydantic object"
+                                )
+
+                    elif isinstance(batch_results, BaseModel):
+                        f.write(batch_results.model_dump_json())
+                        f.write("\n")
+                    elif isinstance(batch_results, dict):
+                        f.write(json.dumps(batch_results))
+                        f.write("\n")
+                    else:
+                        logger.debug(
+                            f"Error, instance {batch_results} is not a pydantic object"
+                        )
+
         _states = []
         n_errors = 0
         if not isinstance(results, list):
@@ -394,8 +424,16 @@ class AG(BaseModel, Generic[T]):
         for i, result in enumerate(results):
             if isinstance(result, Exception):
                 if self.verbose_transduction:
-                    logger.debug(f"⚠️ Error processing state {i}: {result}")
-                _states.append(self.atype(**self.states[i].model_dump()))
+                    logger.debug(
+                        f"⚠️ AMAP generated an error processing state # {i}: {result}"
+                    )
+                if i < len(self.states):
+                    _states.append(self.atype(**self.states[i].model_dump()))
+                else:
+                    _states.append(self.atype())
+                    logger.debug(
+                        f"⚠️ AMAP Big Error, this is a framework ISSUE , the generate instance number {i} doesn't have a corresponding source state: {result}"
+                    )
                 n_errors += 1
             else:
                 _states.append(result)
@@ -428,6 +466,265 @@ class AG(BaseModel, Generic[T]):
         output = await func(self.states)
         self.states = [output] if isinstance(output, BaseModel) else output
         return self
+
+    ################################
+    ##### Logical Transduction #####
+    ################################
+
+    async def __lshift__(self, other):
+        """This is a transduction operation projecting a list of pydantic objects of into a target types
+        Results are accumulated in the self instance and returned back as a result.
+        Return None if the right operand is not of type AgenticList
+        """
+        from agentics.core.atype import AGString
+
+        async def llm_call(input: AGString) -> AGString:
+            input.string = self.llm.call(input.string)
+            return input
+
+        if not self.atype and isinstance(other, str):
+            return self.llm.call(other)
+
+        if not self.atype and is_str_or_list_of_str(other):
+            if self.transduction_type == "amap":
+                input_messages = AG(states=[AGString(string=x) for x in other])
+                input_messages = await input_messages.amap(llm_call)
+                return [x.string for x in input_messages.states]
+
+        if self.transduction_type == "areduce":
+
+            if other.transduce_fields is not None:
+                new_other = other.subset_atype(other.transduce_fields)
+            else:
+                new_other = other
+            if is_str_or_list_of_str(new_other):
+
+                chunks = chunk_list(new_other, chunk_size=self.areduce_batch_size)
+            else:
+                chunks = chunk_list(
+                    new_other.states, chunk_size=self.areduce_batch_size
+                )
+            self.transduction_type = "amap"
+            ReducedOtherAtype = create_model(
+                "ReducedOtherAtype",
+                reduced_other_states=(list[new_other.atype] | None, Field([])),
+            )
+
+            reduced_other_ag = AG(
+                atype=ReducedOtherAtype,
+                states=[
+                    ReducedOtherAtype(reduced_other_states=chunk) for chunk in chunks
+                ],
+            )
+
+            self = await (self << reduced_other_ag)
+            return self
+
+        output = self.clone()
+        output.states = []
+
+        input_prompts = (
+            []
+        )  # gather input prompts for transduction by dumping input states
+        target_type = (
+            self.subset_atype(self.transduce_fields)
+            if self.transduce_fields
+            else self.atype
+        )
+        if isinstance(other, AG):
+            if other.prompt_template:
+                prompt_template = PromptTemplate.from_template(other.prompt_template)
+            else:
+                prompt_template = None
+            i = 0
+            for i in range(len(other.states)):
+                if prompt_template:
+                    input_prompts.append(
+                        "SOURCE:\n"
+                        + prompt_template.invoke(
+                            other.states[i].model_dump(include=other.transduce_fields)
+                        ).text
+                    )
+                else:
+                    input_prompts.append(
+                        "SOURCE:\n"
+                        + json.dumps(
+                            other.states[i].model_dump(include=other.transduce_fields)
+                        )
+                    )
+
+        elif is_str_or_list_of_str(other):
+            if isinstance(other, str):
+                other = [other]
+            input_prompts = ["\nSOURCE:\n" + x for x in other]
+        elif isinstance(other, list):
+            try:
+                input_prompts = ["\nSOURCE:\n" + str(x) for x in other]
+            except:
+                return ValueError
+        else:
+            try:
+                input_prompts = ["\nSOURCE:\n" + str(other)]
+            except:
+                return ValueError
+
+        ## collect few shots, only when all target slots are non null TODO need to improve with some non null
+        instructions = ""
+
+        # Add instructions
+
+        instructions += "\nYour task is to transduce a source Pydantic Object into the specified Output type. Generate only slots that are logically deduced from the input information, otherwise live then null.\n"
+        if self.instructions:
+            instructions += (
+                "\nRead carefully the following instructions for executing your task:\n"
+                + self.instructions
+            )
+
+        # Perform Transduction
+        transducer_class = (
+            PydanticTransducerCrewAI
+            if type(self.llm) == LLM
+            else PydanticTransducerMellea if type(self.llm) == str else None
+        )
+        if not transducer_class:
+            raise TypeError(
+                "Provided llm object is neither a crew ai llm nor a string (for mellea's llm)"
+            )
+        try:
+            transduced_type = (
+                self.subset_atype(self.transduce_fields)
+                if self.transduce_fields
+                else self.atype
+            )
+            pt = transducer_class(
+                transduced_type,
+                tools=self.tools,
+                llm=self.llm,
+                intentional_definiton=instructions,
+                verbose=self.verbose_agent,
+                max_iter=self.max_iter,
+                timeout=self.timeout,
+                reasoning=self.reasoning,
+                **self.crew_prompt_params,
+            )
+            transduced_results = await pt.execute(
+                *input_prompts,
+                description=f"Transducing {self.__name__} << {'AG[str]' if not isinstance(other, AG) else other.__name__}",
+                transient_pbar=self.transient_pbar,
+            )
+        except Exception as e:
+            transduced_results = self.states
+
+        n_errors = 0
+        output_states = []
+        for i, result in enumerate(transduced_results):
+            if isinstance(result, Exception):
+                output_states.append(
+                    self.states[i] if i < len(self.states) else target_type()
+                )
+                n_errors += 1
+            else:
+                output_states.append(result)
+        if self.verbose_transduction:
+            if n_errors:
+                logger.debug(f"Error: {n_errors} states have not been transduced")
+
+        if self.transduction_logs_path:
+            with open(self.transduction_logs_path, "a") as f:
+                for state in output_states:
+                    if state:
+                        f.write(state.model_dump_json() + "\n")
+                    else:
+                        f.write(self.atype().model_dump_json() + "\n")
+
+        if isinstance(other, AG):
+            for i in range(len(other.states)):
+                output_state = output_states[i]
+                if isinstance(output_state, tuple):
+                    output_state_dict = dict([output_state])
+                else:
+                    output_state_dict = output_state.model_dump()
+
+                merged = self.atype(
+                    **(
+                        (self[i].model_dump() if len(self) > i else {})
+                        | other[i].model_dump()
+                        | output_state_dict
+                    )
+                )
+                output.states.append(merged)
+        # elif is_str_or_list_of_str(other):
+        elif isinstance(other, list):
+            for i in range(len(other)):
+                if isinstance(output_states[i], self.atype):
+                    output.states.append(self.atype(**output_states[i].model_dump()))
+                else:
+                    output.states.append(self.atype())
+        else:
+            if isinstance(output_states[0], self.atype):
+                output.states.append(self.atype(**output_states[i].model_dump()))
+
+        if self.provide_explanations and isinstance(other, AG):
+            target_explanation = AG(atype=Explanation)
+            target_explanation.instructions = f"""You have been presented with the result of the transduction of this source type {other.atype.__pydantic_fields__}, 
+            into this target type {self.atype.__pydantic_fields__}. Your task is to identify which attributes from the source type contributed to the inference of the target type.
+            In your input, you will find a merged instance of the source and target types.
+            Provide a mapping_explanation that describes how the source attributes were used to infer the target attributes.
+            Also, provide a reasoning_process that outlines the steps taken to arrive at the target type from
+            """
+
+            target_explanation = await (
+                target_explanation << output.merge_states(other)
+            )
+
+            self.explanations = target_explanation.states
+            self.states = output.states
+            return self
+        else:
+            return output
+
+    async def copy_fewshots_from_ground_truth(
+        self, source_target_pairs: List[Tuple[str, str]], first_n: Optional[int] = None
+    ) -> AG:
+        """for each state, copy fields values from ground truth to target attributes
+        to be used as fewshot during transduction
+        """
+        for src, target in source_target_pairs:
+            func = partial(
+                copy_attribute_values,
+                source_attribute=src,
+                target_attribute=target,
+            )
+            await self.apply(func, first_n=first_n)
+        return self
+
+    async def self_transduction(
+        self,
+        source_fields: List[str] | None = None,
+        target_fields: List[str] | None = None,
+        instructions: str = None,
+    ):
+        target = self.clone()
+        # if not source_fields and not target_fields:
+        #     return await self.amap(self._single_self_transduction)
+
+        if not source_fields:
+            self.transduce_fields = get_active_fields(self[0])
+        else:
+            self.transduce_fields = source_fields
+
+        target.instructions = instructions or target.instructions
+        if not target_fields:
+            target.transduce_fields = list(
+                {x["name"] for x in get_pydantic_fields(self.atype)}
+                - get_active_fields(self[0])
+            )
+        else:
+            target.transduce_fields = target_fields
+
+        output_process = target << self
+        output = await output_process
+        return output
 
     ##################################
     ##### Import Functionalities #####
@@ -614,15 +911,20 @@ class AG(BaseModel, Generic[T]):
     ##################################
 
     def pretty_print(self):
-        output = f"aType : {self.atype}\n"
-        for state in self.states:
-            output += (
-                yaml.dump(
-                    state.model_dump() if isinstance(state, BaseModel) else str(state),
-                    sort_keys=False,
-                )
-                + "\n"
+        output = f"AG[{self.atype}]\n\n"
+        for i, state in enumerate(self.states):
+            output += f"state {i}:\n"
+            output += yaml.dump(
+                state.model_dump() if isinstance(state, BaseModel) else str(state),
+                sort_keys=False,
             )
+            if self.explanations and len(self.explanations) > i:
+                output += (
+                    "\nexplanations:\n"
+                    + yaml.dump(self.explanations[i].model_dump())
+                    + "\n"
+                )
+            output += "\n\n"
         print(output)
         return output
 
@@ -660,267 +962,6 @@ class AG(BaseModel, Generic[T]):
         """
         data = [state.model_dump() for state in self.states]
         return pd.DataFrame(data)
-
-    ################################
-    ##### Logical Transduction #####
-    ################################
-
-    async def __lshift__(self, other):
-        """This is a transduction operation projecting a list of pydantic objects of into a target types
-        Results are accumulated in the self instance and returned back as a result.
-        Return None if the right operand is not of type AgenticList
-        """
-        from agentics.core.atype import AGString
-
-        async def llm_call(input: AGString) -> AGString:
-            input.string = self.llm.call(input.string)
-            return input
-
-        if not self.atype and isinstance(other, str):
-            return self.llm.call(other)
-
-        if not self.atype and is_str_or_list_of_str(other):
-            if self.transduction_type == "amap":
-                input_messages = AG(states=[AGString(string=x) for x in other])
-                input_messages = await input_messages.amap(llm_call)
-                return [x.string for x in input_messages.states]
-
-        if self.transduction_type == "areduce":
-
-            if other.transduce_fields is not None:
-                new_other = other.subset_atype(other.transduce_fields)
-            else:
-                new_other = other
-            if is_str_or_list_of_str(new_other):
-
-                chunks = chunk_list(new_other, chunk_size=self.areduce_batch_size)
-            else:
-                chunks = chunk_list(
-                    new_other.states, chunk_size=self.areduce_batch_size
-                )
-            self.transduction_type = "amap"
-            ReducedOtherAtype = create_model(
-                "ReducedOtherAtype",
-                reduced_other_states=(list[new_other.atype] | None, Field([])),
-            )
-
-            reduced_other_ag = AG(
-                atype=ReducedOtherAtype,
-                states=[
-                    ReducedOtherAtype(reduced_other_states=chunk) for chunk in chunks
-                ],
-            )
-
-            self = await (self << reduced_other_ag)
-            return self
-
-        output = self.clone()
-        output.states = []
-
-        input_prompts = (
-            []
-        )  # gather input prompts for transduction by dumping input states
-        target_type = (
-            self.subset_atype(self.transduce_fields)
-            if self.transduce_fields
-            else self.atype
-        )
-        if isinstance(other, AG):
-            if other.prompt_template:
-                prompt_template = PromptTemplate.from_template(other.prompt_template)
-            else:
-                prompt_template = None
-            i = 0
-            for i in range(len(other.states)):
-                if prompt_template:
-                    input_prompts.append(
-                        "SOURCE:\n"
-                        + prompt_template.invoke(
-                            other.states[i].model_dump(include=other.transduce_fields)
-                        ).text
-                    )
-                else:
-                    input_prompts.append(
-                        "SOURCE:\n"
-                        + json.dumps(
-                            other.states[i].model_dump(include=other.transduce_fields)
-                        )
-                    )
-
-        elif is_str_or_list_of_str(other):
-            if isinstance(other, str):
-                other = [other]
-            input_prompts = ["\nSOURCE:\n" + x for x in other]
-        elif isinstance(other, list):
-            try:
-                input_prompts = ["\nSOURCE:\n" + str(x) for x in other]
-            except:
-                return ValueError
-        else:
-            try:
-                input_prompts = ["\nSOURCE:\n" + str(other)]
-            except:
-                return ValueError
-
-        ## collect few shots, only when all target slots are non null TODO need to improve with some non null
-        instructions = ""
-
-        # Add instructions
-        if self.skip_intentional_definition:
-            instructions = f"{self.instructions}" if self.instructions else "\n"
-        else:
-            instructions += "\nYour task is to transduce a source Pydantic Object into the specified Output type. Generate only slots that are logically deduced from the input information, otherwise live then null.\n"
-            if self.instructions:
-                instructions += (
-                    "\nRead carefully the following instructions for executing your task:\n"
-                    + self.instructions
-                )
-
-        # Gather few shots
-        few_shots = ""
-        for i in range(len(self.states)):
-            if self.states[i] and get_active_fields(
-                self.states[i], allowed_fields=set(self.transduce_fields)
-            ) == set(self.transduce_fields):
-                few_shots += (
-                    "Example\nSOURCE:\n"
-                    + other.states[i].model_dump_json(include=other.transduce_fields)
-                    + "\nTARGET:\n"
-                    + self.states[i].model_dump_json(include=self.transduce_fields)
-                    + "\n"
-                )
-        if len(few_shots) > 0:
-            instructions += (
-                "Here is a list of few shots examples for your task:\n" + few_shots
-            )
-
-        # Perform Transduction
-        transducer_class = (
-            PydanticTransducerCrewAI
-            if type(self.llm) == LLM
-            else PydanticTransducerMellea if type(self.llm) == str else None
-        )
-        if not transducer_class:
-            raise TypeError(
-                "Provided llm object is neither a crew ai llm nor a string (for mellea's llm)"
-            )
-        try:
-            transduced_type = (
-                self.subset_atype(self.transduce_fields)
-                if self.transduce_fields
-                else self.atype
-            )
-            pt = transducer_class(
-                transduced_type,
-                tools=self.tools,
-                llm=self.llm,
-                intentional_definiton=instructions,
-                verbose=self.verbose_agent,
-                max_iter=self.max_iter,
-                timeout=self.timeout,
-                reasoning=self.reasoning,
-                **self.crew_prompt_params,
-            )
-            transduced_results = await pt.execute(
-                *input_prompts,
-                description=f"Transducing {self.__name__} << {'AG[str]' if not isinstance(other, AG) else other.__name__}",
-                transient_pbar=self.transient_pbar,
-            )
-        except Exception as e:
-            transduced_results = self.states
-
-        n_errors = 0
-        output_states = []
-        for i, result in enumerate(transduced_results):
-            if isinstance(result, Exception):
-                output_states.append(
-                    self.states[i] if i < len(self.states) else target_type()
-                )
-                n_errors += 1
-            else:
-                output_states.append(result)
-        if self.verbose_transduction:
-            if n_errors:
-                logger.debug(f"Error: {n_errors} states have not been transduced")
-
-        if self.transduction_logs_path:
-            with open(self.transduction_logs_path, "a") as f:
-                for state in output_states:
-                    if state:
-                        f.write(state.model_dump_json() + "\n")
-                    else:
-                        f.write(self.atype().model_dump_json() + "\n")
-
-        if isinstance(other, AG):
-            for i in range(len(other.states)):
-                output_state = output_states[i]
-                if isinstance(output_state, tuple):
-                    output_state_dict = dict([output_state])
-                else:
-                    output_state_dict = output_state.model_dump()
-
-                merged = self.atype(
-                    **(
-                        (self[i].model_dump() if len(self) > i else {})
-                        | other[i].model_dump()
-                        | output_state_dict
-                    )
-                )
-                output.states.append(merged)
-        # elif is_str_or_list_of_str(other):
-        elif isinstance(other, list):
-            for i in range(len(other)):
-                if isinstance(output_states[i], self.atype):
-                    output.states.append(self.atype(**output_states[i].model_dump()))
-                else:
-                    output.states.append(self.atype())
-        else:
-            if isinstance(output_states[0], self.atype):
-                output.states.append(self.atype(**output_states[i].model_dump()))
-        return output
-
-    async def copy_fewshots_from_ground_truth(
-        self, source_target_pairs: List[Tuple[str, str]], first_n: Optional[int] = None
-    ) -> AG:
-        """for each state, copy fields values from ground truth to target attributes
-        to be used as fewshot during transduction
-        """
-        for src, target in source_target_pairs:
-            func = partial(
-                copy_attribute_values,
-                source_attribute=src,
-                target_attribute=target,
-            )
-            await self.apply(func, first_n=first_n)
-        return self
-
-    async def self_transduction(
-        self,
-        source_fields: List[str] | None = None,
-        target_fields: List[str] | None = None,
-        instructions: str = None,
-    ):
-        target = self.clone()
-        # if not source_fields and not target_fields:
-        #     return await self.amap(self._single_self_transduction)
-
-        if not source_fields:
-            self.transduce_fields = get_active_fields(self[0])
-        else:
-            self.transduce_fields = source_fields
-
-        target.instructions = instructions or target.instructions
-        if not target_fields:
-            target.transduce_fields = list(
-                {x["name"] for x in get_pydantic_fields(self.atype)}
-                - get_active_fields(self[0])
-            )
-        else:
-            target.transduce_fields = target_fields
-
-        output_process = target << self
-        output = await output_process
-        return output
 
     ########################################
     ##### aType Manipulation Functions #####
@@ -996,72 +1037,30 @@ class AG(BaseModel, Generic[T]):
 
         return reduce((lambda x, y: AG.add_states(x, y)), extended_ags)
 
-    def merge(self, other: "AG") -> "AG":
+    def merge_states(self, other: AG) -> AG:
         """
-        Merge two AGs positionally:
-        - The result atype = union of fields from self.atype and other.atype.
-        - For field name conflicts, RIGHT (other) wins for both schema and values.
-        - States are merged pairwise (zip); if lengths differ, missing side contributes {}.
+        Merge multiple AgenticTransduction or AG instances into one,
+        assigning equal probability to all resulting states and
+        removing the explicit 'probabilities' field.
 
-        Returns:
-            AG with combined atype and merged states.
+        - Concatenates states, explanations, and noise.
+        - Ensures all inputs share the same .type_.
+        - Returns a new AgenticsTransduction with uniform weights.
         """
-
-        # 1) Build combined atype (prefer RIGHT field definitions on conflicts)
-        new_fields: Dict[str, tuple[Type, Field]] = {}
-
-        # left first...
-        for name, f in self.atype.model_fields.items():
-            new_fields[name] = (
-                f.annotation,
-                Field(default=f.default, description=f.description),
-            )
-
-        # ...then overlay right (right wins)
-        for name, f in other.atype.model_fields.items():
-            new_fields[name] = (
-                f.annotation,
-                Field(default=f.default, description=f.description),
-            )
-
-        merged_atype = create_model(
-            f"{self.__name__}__merge__{other.__name__}", **new_fields
+        merged = self.clone()
+        merged.states = []
+        merged.explanations = []
+        merged.atype = merge_pydantic_models(
+            self.atype,
+            other.atype,
+            name=f"Merged{self.atype.__name__}#{other.atype.__name__}",
         )
-
-        # 2) Pairwise merge states (right wins on value conflicts)
-        merged_states = []
-        for left_state, right_state in zip_longest(
-            self.states, other.states, fillvalue=None
-        ):
-            left = left_state.model_dump() if left_state is not None else {}
-            right = right_state.model_dump() if right_state is not None else {}
-            data = left | right  # right overwrites left for same keys
-            merged_states.append(merged_atype(**data))
-
-        return AG(atype=merged_atype, states=merged_states)
-
-    def quotient(self, other: AG) -> List[AG]:
-        """
-        AG1.quotient(AG') returns the list of quotients [AG1]
-
-        Revsers of the product, segment the states of AG'
-
-        Usage: After evaluating the prompts we want separate the evaluated sets and reduce score from each
-        """
-        quotient_list = []
-        quotient_size, quotient_counts = len(self.states), len(other.states) // len(
-            self.states
-        )
-        for ind in range(quotient_counts):
-            quotient_ag = self.clone()
-            quotient_ag.states = [
-                self.atype(**(other_state.model_dump()))
-                for other_state in other.states[
-                    ind * quotient_size : (ind + 1) * quotient_size
-                ]
-            ]
-            quotient_list.append(quotient_ag)
-        return quotient_list
+        for self_state in self:
+            for other_state in other:
+                merged.states.append(
+                    merged.atype(**other_state.model_dump(), **self_state.model_dump())
+                )
+        return merged
 
     async def map_atypes(self, other: AG) -> ATypeMapping:
         if self.verbose_agent:
@@ -1088,6 +1087,7 @@ class AG(BaseModel, Generic[T]):
         )
 
     async def map_atypes_fast(self, other: AG) -> ATypeMapping:
+
         if self.verbose_agent:
             logger.debug(f"Mapping type {other.atype} into type {self.atype}")
 
@@ -1234,3 +1234,17 @@ class AG(BaseModel, Generic[T]):
                 current_cluster_ag.append(self.states[state["id"]])
             results.append(current_cluster_ag)
         return results
+
+    def filter_by_attribute_value(self, attribute, value):
+        """
+        Return a cloned AG containing only states where state.<attribute> == value.
+        Works for both dict states and Pydantic states.
+        """
+        out = self.clone()
+        out.states = []
+        for state in self.states:
+            if hasattr(state, attribute):
+                if getattr(state, attribute) == value:
+                    out.states.append(state)
+                continue
+        return out
