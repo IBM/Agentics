@@ -29,7 +29,8 @@ class StorageProvider(ABC):
 
 
 class LocalStorageProvider(StorageProvider):
-    def __init__(self):
+    def __init__(self, base_path: str = "src/agentics/api/temp_files"):
+        self.base_path = Path(base_path)
         self.base_path.mkdir(parents=True, exist_ok=True)
 
     def upload(self, file_obj: BinaryIO, destination: str) -> str:

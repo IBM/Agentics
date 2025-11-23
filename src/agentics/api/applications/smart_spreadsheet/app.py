@@ -2,7 +2,7 @@ from typing import Dict, Any, List, Tuple
 from pydantic import BaseModel
 from agentics import AG
 from agentics.api.applications.base import AgenticsApp
-from agentics.api.models import AppMetadata
+from agentics.api.models import AppMetadata, SessionResponse
 from agentics.api.services.session_manager import session_manager
 from agentics.core.atype import create_pydantic_model, make_all_fields_optional
 
@@ -25,6 +25,8 @@ class SmartSpreadsheetApp(AgenticsApp):
         name="Smart Spreadsheet",
         description="Interactive data transformation workbench.",
         icon="📊",
+        # Flag specifically for the generic UI to eject
+        ui_view="custom_spreadsheet"
     )
 
     def get_input_schema(self) -> Dict[str, Any]:

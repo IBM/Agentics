@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 from agentics import AG
 from agentics.api.applications.base import AgenticsApp
-from agentics.api.models import AppMetadata
+from agentics.api.models import AppMetadata, UIOption
 from agentics.api.config import settings
 
 # --- Setup Paths ---
@@ -48,28 +48,44 @@ class Text2SqlApp(AgenticsApp):
     def get_input_schema(self) -> Dict[str, Any]:
         return Text2SqlInput.model_json_schema()
 
-    def get_options(self) -> Dict[str, Any]:
-        """Return available benchmarks and their associated DBs from local data folder."""
-        options = {"benchmarks": [], "dbs": {}}
-        print(BENCHMARKS_DIR)
+    def get_options(self) -> Dict[str, UIOption]:
+        """
+        Returns structured options.
+        'db_id' is dependent on 'benchmark_id'.
+        """
+        options = {}
+
+        benchmarks = []
+        db_mapping = {}
 
         if BENCHMARKS_DIR.exists():
-            # Filter for .json files that aren't schemas
             files = [
                 f.replace(".json", "")
                 for f in os.listdir(BENCHMARKS_DIR)
                 if f.endswith(".json") and not f.endswith("-schema.json")
             ]
-            options["benchmarks"] = files
+            benchmarks = files
 
             for b_id in files:
                 try:
-                    # Pass benchmark_id, relies on the env var we set above
                     schemas = get_schema_from_file(b_id)
                     if schemas:
-                        options["dbs"][b_id] = list(schemas.keys())
+                        db_mapping[b_id] = list(schemas.keys())
                 except Exception:
-                    options["dbs"][b_id] = []
+                    db_mapping[b_id] = []
+
+        # 1. Static list for Benchmark
+        options["benchmark_id"] = UIOption(
+            type="static",
+            values=benchmarks
+        )
+
+        # 2. Dependent list for DB (updates when benchmark_id changes)
+        options["db_id"] = UIOption(
+            type="dependent",
+            depends_on="benchmark_id",
+            mapping=db_mapping
+        )
 
         return options
 

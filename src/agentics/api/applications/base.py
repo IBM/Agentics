@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional, Type
 from pydantic import BaseModel
 
-from agentics.api.models import AppMetadata
+from agentics.api.models import AppMetadata, UIOption
 
 
 class AgenticsApp(ABC):
@@ -22,12 +22,18 @@ class AgenticsApp(ABC):
         """Return JSON schema for the execution input."""
         pass
 
-    def get_options(self) -> Dict[str, Any]:
+    def get_options(self) -> Dict[str, UIOption]:
         """
-        Return dynamic options for UI dropdowns (e.g. available DBs, dates).
-        Override this if the app requires dynamic configuration before execution.
+        Return dynamic options for UI dropdowns.
+        Returns a dict where key = field_name, value = UIOption definition.
         """
         return {}
+
+    async def perform_action(self, session_id: str, action: str, payload: dict) -> Any:
+        """
+        Handle auxiliary actions.
+        """
+        raise NotImplementedError(f"Action '{action}' not supported by this app.")
 
     async def perform_action(self, session_id: str, action: str, payload: dict) -> Any:
         """
