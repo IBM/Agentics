@@ -53,6 +53,18 @@ async def get_app_options(app_id: str = Path(...)):
     return app.get_options()
 
 
+@router.get("/apps/{app_id}/schema")
+async def get_app_schema(app_id: str = Path(...)):
+    """
+    Returns the JSON Schema (Pydantic) for the application's input form.
+    Used by the UI to dynamically generate forms.
+    """
+    app = app_registry.get_app(app_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Application not found")
+    return app.get_input_schema()
+
+
 @router.post("/apps/{app_id}/session/{session_id}/execute")
 @limiter.limit(settings.DEFAULT_RATE_LIMIT)
 async def execute_app(
