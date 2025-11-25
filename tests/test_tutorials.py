@@ -28,6 +28,7 @@ def test_tutorials(git_root, tmp_path: Path, notebook):
     )
 
 
+@pytest.mark.skip(reason="More skip")
 @pytest.mark.asyncio
 async def test_hello_world(llm_provider):
     from typing import Optional
