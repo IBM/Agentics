@@ -65,3 +65,14 @@ def llm_provider():
         return get_llm_provider()
     except ValueError:
         raise pytest.skip(reason="No available LLM")
+
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--timeout", action="store", default=30, type=int, help="timeout in seconds"
+    )
+
+
+@pytest.fixture
+def timeout_value(request):
+    return request.config.getoption("--timeout")

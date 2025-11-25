@@ -52,6 +52,7 @@ dependencies = [
     { name = "json-schema-to-pydantic" },
     { name = "jsonfinder" },
     { name = "langchain-huggingface" },
+    { name = "litellm" },
     { name = "loguru" },
     { name = "mcp" },
     { name = "mellea" },
@@ -74,7 +75,6 @@ dev = [
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "pytest-html" },
-    { name = "pytest-subtests" },
     { name = "pytest-xdist" },
 ]
 docling = [
@@ -104,6 +104,7 @@ requires-dist = [
     { name = "json-schema-to-pydantic", specifier = ">=0.3.0,<0.4.0" },
     { name = "jsonfinder" },
     { name = "langchain-huggingface", specifier = ">=0.2.0,<0.3.0" },
+    { name = "litellm", specifier = ">=1.74.9" },
     { name = "loguru", specifier = ">=0.7.3,<0.8.0" },
     { name = "mcp", specifier = ">=1.13.1,<2.0.0" },
     { name = "mellea" },
@@ -126,7 +127,6 @@ dev = [
     { name = "pytest", specifier = ">=8.4.0,<9" },
     { name = "pytest-asyncio", specifier = ">=1.0.0,<2" },
     { name = "pytest-html", specifier = ">=4.1.1,<5" },
-    { name = "pytest-subtests", specifier = ">=0.15.0" },
     { name = "pytest-xdist", specifier = ">=3.8.0" },
 ]
 docling = [{ name = "langchain-docling", specifier = ">=0.2.0,<0.3.0" }]
@@ -3934,19 +3934,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/a6/85/8c969f8bec4e559f8f2b958a15229a35495f5b4ce499f6b865eac54b878d/pytest_metadata-3.1.1.tar.gz", hash = "sha256:d2a29b0355fbc03f168aa96d41ff88b1a3b44a3b02acbe491801c98a048017c8", size = 9952, upload-time = "2024-02-12T19:38:44.887Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/3e/43/7e7b2ec865caa92f67b8f0e9231a798d102724ca4c0e1f414316be1c1ef2/pytest_metadata-3.1.1-py3-none-any.whl", hash = "sha256:c8e0844db684ee1c798cfa38908d20d67d0463ecb6137c72e91f418558dd5f4b", size = 11428, upload-time = "2024-02-12T19:38:42.531Z" },
-]
-
-[[package]]
-name = "pytest-subtests"
-version = "0.15.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "attrs" },
-    { name = "pytest" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/bb/d9/20097971a8d315e011e055d512fa120fd6be3bdb8f4b3aa3e3c6bf77bebc/pytest_subtests-0.15.0.tar.gz", hash = "sha256:cb495bde05551b784b8f0b8adfaa27edb4131469a27c339b80fd8d6ba33f887c", size = 18525, upload-time = "2025-10-20T16:26:18.358Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/23/64/bba465299b37448b4c1b84c7a04178399ac22d47b3dc5db1874fe55a2bd3/pytest_subtests-0.15.0-py3-none-any.whl", hash = "sha256:da2d0ce348e1f8d831d5a40d81e3aeac439fec50bd5251cbb7791402696a9493", size = 9185, upload-time = "2025-10-20T16:26:17.239Z" },
 ]
 
 [[package]]

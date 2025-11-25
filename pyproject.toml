@@ -36,7 +36,8 @@ dependencies = [
     "numerize>=0.12",
     "hnswlib>=0.8.0",
     "jsonfinder",
-    "mellea"
+    "mellea",
+    "litellm>=1.74.9",
 ]
 
 
@@ -70,7 +71,6 @@ dev = [
   "invoke>=2.2.0",
   "papermill>=2.6.0",
   "pytest-xdist>=3.8.0",
-  "pytest-subtests>=0.15.0",
 ]
 docling = [
   "langchain-docling >=0.2.0,<0.3.0"
