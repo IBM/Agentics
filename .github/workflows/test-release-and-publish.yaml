@@ -43,28 +43,37 @@ jobs:
             echo "version=$VERSION" >> $GITHUB_OUTPUT
             IS_PRERELEASE="${{ github.event.release.prerelease }}"
             echo "is-prerelease=$IS_PRERELEASE" >> $GITHUB_OUTPUT
+            echo "source=github-ui" >> $GITHUB_OUTPUT
           else
             echo "version=${{ needs.release.outputs.next-version }}" >> $GITHUB_OUTPUT
             IS_PRERELEASE="${{ needs.release.outputs.prerelease == 'true' }}"
             echo "is-prerelease=$IS_PRERELEASE" >> $GITHUB_OUTPUT
+            echo "source=commit-message" >> $GITHUB_OUTPUT
           fi
 
       - name: Validate prerelease constraint
         run: |
           IS_PRERELEASE="${{ steps.version.outputs.is-prerelease }}"
           GITHUB_REF="${{ github.ref }}"
+          SOURCE="${{ steps.version.outputs.source }}"
+
+          echo "Release source: $SOURCE"
+          echo "Version: ${{ steps.version.outputs.version }}"
+          echo "Is prerelease: $IS_PRERELEASE"
 
           # Allow prerelease from any branch
           if [[ "$IS_PRERELEASE" == "true" ]]; then
-            echo "Prerelease version detected - allowing from any branch"
+            echo "✓ Prerelease version detected - allowing from any branch"
             exit 0
           fi
 
           # Stable releases only from main
           if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
-            echo "Error: Stable releases can only be created from the main branch"
+            echo "✗ Error: Stable releases can only be created from the main branch"
             exit 1
           fi
+
+          echo "✓ Stable release from main branch - proceeding"
 
       - uses: actions/checkout@v4
         with:
