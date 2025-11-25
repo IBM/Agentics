@@ -31,4 +31,4 @@ jobs:
 
       - name: Run tests
         run: |
-          uv run pytest -n auto
+          uv run pytest
