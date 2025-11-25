@@ -34,7 +34,6 @@ def split_into_chunks(text, chunk_size=200):
 
 
 async def main():
-
     emotion_detector = AG(atype=EmotionDetector)
 
     current_file = Path(__file__).resolve()
@@ -53,4 +52,5 @@ async def main():
     emotions.pretty_print()
 
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())

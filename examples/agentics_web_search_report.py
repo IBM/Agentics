@@ -4,11 +4,11 @@ from typing import Optional
 
 from crewai_tools import MCPServerAdapter
 from dotenv import load_dotenv
+from mcp import StdioServerParameters  # For Stdio Server
 from pydantic import BaseModel, Field
 
 from agentics import AG
 from agentics.core.llm_connections import available_llms
-from mcp import StdioServerParameters  # For Stdio Server
 
 load_dotenv()
 
@@ -42,21 +42,26 @@ class WebSearchReport(BaseModel):
     )
 
 
-with MCPServerAdapter(server_params) as server_tools:
-    print(
-        f"Available tools from Stdio MCP server: {[tool.name for tool in server_tools]}"
-    )
-
-    results = asyncio.run(
-        AG(
-            atype=WebSearchReport,
-            tools=server_tools,
-            max_iter=10,
-            verbose_agent=False,
-            reasoning=False,
-            description="Extract stock market price for the input day ",
-            llm=AG.get_llm_provider("watsonx"),
+def main():
+    with MCPServerAdapter(server_params) as server_tools:
+        print(
+            f"Available tools from Stdio MCP server: {[tool.name for tool in server_tools]}"
         )
-        << [input("USER> ").strip("\r")]
-    )
-    results.pretty_print()
+
+        results = asyncio.run(
+            AG(
+                atype=WebSearchReport,
+                tools=server_tools,
+                max_iter=10,
+                verbose_agent=False,
+                reasoning=False,
+                description="Extract stock market price for the input day ",
+                llm=AG.get_llm_provider("watsonx"),
+            )
+            << [input("USER> ").strip("\r")]
+        )
+        results.pretty_print()
+
+
+if __name__ == "__main__":
+    main()
