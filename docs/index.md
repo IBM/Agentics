@@ -1,7 +1,7 @@
 
 # Agentics
 
-Agentics is a lightweight, Python-native framework for building **structured and massively parallel agentic workflows** using Pydantic models and transducible functions.  Designed for seamless integration with modern LLMs and agentics frameworks, Agentics introduces a principled way to define **typed input/output schemas** and execute **declarative transformations**—called *transducible functions*—that are composable, explainable, and robust at scale, by offering a native **MapReduce** framework.
+Agentics is a lightweight, Python-native framework for building **structured and massively parallel agentic workflows** using Pydantic models and transducible functions.  Designed for seamless integration with modern LLMs and agentics frameworks, Agentics introduces a principled way to define **typed input/output schemas** and execute **declarative transformations**, called *transducible functions* that are composable, explainable, and robust at scale, by offering a native **MapReduce** framework.
 
 At its foundation, agentics builds on **Logical Transduction Algebra**, a logico-mathematical formalism that guarantees composability and explainability of LLM based transducible functions. 
 
