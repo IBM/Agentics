@@ -30,6 +30,12 @@ def git_root():
 
 
 @pytest.fixture()
+def git_root_path(git_root) -> "Path":
+    """Returns the root directory of the repo"""
+    return Path(git_root)
+
+
+@pytest.fixture()
 def ctx() -> Context:
     """Provides a Context for shell interaction
 
