@@ -48,6 +48,16 @@ class DynamicExtractionApp(AgenticsApp):
                 output_target_field="custom_model_schema",  # Fills the schema editor
             )
         ],
+        usage_guide="""
+### Dynamic Extraction
+Extract structured data from unstructured text files (CSV logs, JSONL).
+
+1. **Upload a File**: Use the sidebar to upload a `.csv` or `.jsonl` file.
+2. **Define Schema**:
+   - Option A: Type a question and click the **Wand Icon** to auto-draft a schema.
+   - Option B: Manually edit the JSON schema.
+3. **Execute**: The agent will process the file row-by-row based on your schema.
+        """,
     )
 
     def get_input_schema(self) -> Dict[str, Any]:

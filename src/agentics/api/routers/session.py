@@ -16,7 +16,7 @@ from fastapi import (
 
 from agentics.api.services.app_registry import app_registry
 from agentics.api.services.session_manager import session_manager
-from agentics.api.models import SessionResponse
+from agentics.api.models import SessionResponse, SessionStateResponse
 from agentics.api.dependencies import limiter, get_execution_token
 from agentics.api.config import settings
 
@@ -135,3 +135,18 @@ async def execute_action(
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(500, detail=str(e))
+
+
+@router.get("/apps/{app_id}/session/{session_id}", response_model=SessionStateResponse)
+async def get_session_details(app_id: str = Path(...), session_id: str = Path(...)):
+    """Retrieve current session state, including uploaded files."""
+    session = session_manager.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    # Return keys from the files dict (filenames)
+    return SessionStateResponse(
+        session_id=session.session_id,
+        app_id=session.app_id,
+        files=list(session.files.keys()),
+    )

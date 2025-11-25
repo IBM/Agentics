@@ -43,6 +43,16 @@ class Text2SqlApp(AgenticsApp):
         name="Text to SQL",
         description="Convert natural language to SQL queries.",
         icon="💾",
+        usage_guide="""
+### Text-to-SQL Assistant
+This agent translates natural language questions into SQL queries using the BIRD/Spider benchmarks.
+
+1. **Select a Benchmark**: Choose the dataset context (e.g., `bird`).
+2. **Select a Database**: Choose the specific database file.
+3. **Ask a Question**: Type your question naturally.
+   - Example: *"List all employees who joined after 2020"*
+   - Example: *"What is the average salary by department?"*
+        """,
     )
 
     def get_input_schema(self) -> Dict[str, Any]:
@@ -75,16 +85,11 @@ class Text2SqlApp(AgenticsApp):
                     db_mapping[b_id] = []
 
         # 1. Static list for Benchmark
-        options["benchmark_id"] = UIOption(
-            type="static",
-            values=benchmarks
-        )
+        options["benchmark_id"] = UIOption(type="static", values=benchmarks)
 
         # 2. Dependent list for DB (updates when benchmark_id changes)
         options["db_id"] = UIOption(
-            type="dependent",
-            depends_on="benchmark_id",
-            mapping=db_mapping
+            type="dependent", depends_on="benchmark_id", mapping=db_mapping
         )
 
         return options
