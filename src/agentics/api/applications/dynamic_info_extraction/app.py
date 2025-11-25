@@ -1,10 +1,11 @@
+import sys
+from pathlib import Path
 from typing import Dict, Any, Optional
 from pydantic import BaseModel, create_model, Field
 from agentics import AG
 from agentics.api.applications.base import AgenticsApp
 from agentics.api.models import AppMetadata, ActionMetadata, UIOption
 from agentics.api.services.session_manager import session_manager
-
 from agentics.api.applications.utils import load_predefined_type
 
 
@@ -17,12 +18,15 @@ class DynamicInput(BaseModel):
             "ui:placeholder": "What would you like to extract?",
         },
     )
-    # Hidden fields or advanced settings
+    # UPDATED: Changed to Select widget
     predefined_model_name: Optional[str] = Field(
-        None, json_schema_extra={"ui:hidden": True}
+        None,
+        json_schema_extra={
+            "ui:widget": "select",
+            "ui:label": "Predefined Model (Optional)",
+        },
     )
 
-    # The JSON Editor field that gets populated by the Action
     custom_model_schema: Optional[Dict[str, Any]] = Field(
         None,
         json_schema_extra={"ui:widget": "json_editor", "ui:label": "Extraction Schema"},
@@ -30,7 +34,7 @@ class DynamicInput(BaseModel):
 
     start_index: int = Field(0, json_schema_extra={"ui:widget": "number"})
     end_index: Optional[int] = Field(None, json_schema_extra={"ui:widget": "number"})
-    batch_size: int = 10
+    batch_size: int = Field(10, json_schema_extra={"ui:widget": "number"})
 
 
 class DynamicExtractionApp(AgenticsApp):
@@ -39,15 +43,6 @@ class DynamicExtractionApp(AgenticsApp):
         name="Dynamic Extraction",
         description="Extract insights from files using generated types.",
         icon="🔍",
-        actions=[
-            ActionMetadata(
-                name="draft_schema",
-                label="Auto-Draft Schema",
-                icon="✨",
-                input_source_field="analysis_question",  # Uses the user's question
-                output_target_field="custom_model_schema",  # Fills the schema editor
-            )
-        ],
         usage_guide="""
 ### Dynamic Extraction
 Extract structured data from unstructured text files (CSV logs, JSONL).
@@ -55,25 +50,50 @@ Extract structured data from unstructured text files (CSV logs, JSONL).
 1. **Upload a File**: Use the sidebar to upload a `.csv` or `.jsonl` file.
 2. **Define Schema**:
    - Option A: Type a question and click the **Wand Icon** to auto-draft a schema.
-   - Option B: Manually edit the JSON schema.
+   - Option B: Select a **Predefined Model** (e.g. `sentiment_analysis`).
+   - Option C: Manually edit the JSON schema.
 3. **Execute**: The agent will process the file row-by-row based on your schema.
         """,
+        actions=[
+            ActionMetadata(
+                name="draft_schema",
+                label="Auto-Draft Schema",
+                icon="✨",
+                input_source_field="analysis_question",
+                output_target_field="custom_model_schema",
+            )
+        ],
     )
+
+    def __init__(self):
+        # Scan for predefined types (reusing logic from MacroEcon)
+        # Assuming they live in a shared 'predefined_types' folder or local to this app
+        # Adjust path as necessary for your project structure
+        self.types_path = Path(__file__).parent / "predefined_types"
+        self.available_types = []
+        if self.types_path.exists():
+            self.available_types = [
+                f.stem
+                for f in self.types_path.glob("*.py")
+                if not f.name.startswith("__")
+            ]
 
     def get_input_schema(self) -> Dict[str, Any]:
         return DynamicInput.model_json_schema()
 
+    def get_options(self) -> Dict[str, UIOption]:
+        # UPDATED: Return options for the dropdown
+        return {
+            "predefined_model_name": UIOption(
+                type="static", values=self.available_types
+            )
+        }
+
     def _json_schema_to_pydantic(self, schema: Dict[str, Any]) -> type[BaseModel]:
-        """
-        Reconstruct a Pydantic model from a simplified JSON Schema.
-        Note: This is a basic implementation supporting top-level fields.
-        """
         model_name = schema.get("title", "CustomModel")
         properties = schema.get("properties", {})
-
         field_definitions = {}
         for field_name, props in properties.items():
-            # Determine type
             dtype = str
             if "type" in props:
                 t = props["type"]
@@ -83,16 +103,11 @@ Extract structured data from unstructured text files (CSV logs, JSONL).
                     dtype = float
                 elif t == "boolean":
                     dtype = bool
-
-            # Allow optional by default for flexibility
             field_definitions[field_name] = (Optional[dtype], None)
-
         return create_model(model_name, **field_definitions)
 
     async def perform_action(self, session_id: str, action: str, payload: dict) -> Any:
         if action == "draft_schema":
-            # The payload will contain the whole form state, or at least the input_source_field
-            # Map 'analysis_question' from frontend to 'description' for logic
             description = payload.get("analysis_question") or payload.get("description")
             if not description:
                 raise ValueError("Analysis question is required to draft schema")
@@ -101,7 +116,6 @@ Extract structured data from unstructured text files (CSV logs, JSONL).
             await gen_ag.generate_atype(description)
 
             if gen_ag.atype:
-                # Return JUST the value to populate the target field
                 return gen_ag.atype.model_json_schema()
             return {"error": "Failed to generate type"}
 
@@ -111,8 +125,6 @@ Extract structured data from unstructured text files (CSV logs, JSONL).
         self, session_id: str, input_data: Dict[str, Any]
     ) -> Dict[str, Any]:
         data = DynamicInput(**input_data)
-
-        # 1. Load File
         file_path = session_manager.get_file_path(session_id, data.filename)
 
         if str(file_path).endswith(".csv"):
@@ -120,34 +132,23 @@ Extract structured data from unstructured text files (CSV logs, JSONL).
         else:
             dataset = AG.from_jsonl(file_path)
 
-        # 2. Resolve Type
         atype = None
-
-        # Priority 1: Custom Schema provided by frontend
         if data.custom_model_schema:
             atype = self._json_schema_to_pydantic(data.custom_model_schema)
-
-        # Priority 2: Predefined Type
         elif data.predefined_model_name:
-            # We assume the predefined types are in the macro_economic folder structure
-            # or we need to copy them to a shared location.
-            # For now, let's reuse the loader logic or try dynamic import.
             try:
+                # Assuming utils can load by name
                 atype = load_predefined_type(data.predefined_model_name)
             except Exception:
-                pass  # Fallback to generation
+                pass
 
-        # Priority 3: Generate from Question
         if not atype:
             temp_ag = AG()
             await temp_ag.generate_atype(data.analysis_question)
             atype = temp_ag.atype
 
-        # 3. Filter
         end = data.end_index if data.end_index is not None else len(dataset)
         filtered_ag = dataset.filter_states(start=data.start_index, end=end)
-
-        # 4. Transduce
         processing_ag = AG(
             atype=atype, transduction_type="areduce", areduce_batch_size=data.batch_size
         )
@@ -159,5 +160,5 @@ Extract structured data from unstructured text files (CSV logs, JSONL).
 
         return {
             "results": [s.model_dump() for s in sentiment_ag.states],
-            "atype_schema": atype.model_json_schema(),
+            "atype_schema": atype.model_json_schema() if atype else {},
         }

@@ -14,12 +14,21 @@ from agentics.api.applications.utils import load_predefined_type
 
 
 class MacroInput(BaseModel):
-    # Change widget to date_picker
     start_date: str = Field(
-        ..., json_schema_extra={"ui:widget": "date_picker", "ui:label": "Start Date"}
+        ...,
+        json_schema_extra={
+            "ui:widget": "date_picker",
+            "ui:label": "Start Date",
+            "ui:placeholder": "Select start date",
+        },
     )
     end_date: str = Field(
-        ..., json_schema_extra={"ui:widget": "date_picker", "ui:label": "End Date"}
+        ...,
+        json_schema_extra={
+            "ui:widget": "date_picker",
+            "ui:label": "End Date",
+            "ui:placeholder": "Select end date",
+        },
     )
     target_model_name: str = Field(
         ..., json_schema_extra={"ui:widget": "select", "ui:label": "Analysis Model"}

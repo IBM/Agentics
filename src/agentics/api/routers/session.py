@@ -113,6 +113,28 @@ def upload_file(
         raise HTTPException(500, "File upload failed")
 
 
+@router.delete("/apps/{app_id}/session/{session_id}/files/{filename}")
+def delete_file(
+    app_id: str = Path(...), session_id: str = Path(...), filename: str = Path(...)
+):
+    """
+    Remove a file from the session context.
+    """
+    session = session_manager.get_session(session_id)
+    if not session:
+        raise HTTPException(404, "Session not found")
+
+    # 1. Remove from Session Memory
+    if filename in session.files:
+        del session.files[filename]
+    else:
+        raise HTTPException(404, "File not found in session")
+
+    session_manager.storage.delete(filename)
+
+    return {"status": "deleted", "filename": filename}
+
+
 @router.post("/apps/{app_id}/session/{session_id}/action/{action_name}")
 @limiter.limit(settings.DEFAULT_RATE_LIMIT)
 async def execute_action(
@@ -146,7 +168,5 @@ async def get_session_details(app_id: str = Path(...), session_id: str = Path(..
 
     # Return keys from the files dict (filenames)
     return SessionStateResponse(
-        session_id=session.session_id,
-        app_id=session.app_id,
-        files=list(session.files.keys()),
+        session_id=session_id, app_id=session.app_id, files=list(session.files.keys())
     )
