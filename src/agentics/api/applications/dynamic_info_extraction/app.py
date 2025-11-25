@@ -1,12 +1,12 @@
 import sys
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Type
 from pydantic import BaseModel, create_model, Field
+import importlib.util
 from agentics import AG
 from agentics.api.applications.base import AgenticsApp
 from agentics.api.models import AppMetadata, ActionMetadata, UIOption
 from agentics.api.services.session_manager import session_manager
-from agentics.api.applications.utils import load_predefined_type
 
 
 class DynamicInput(BaseModel):
@@ -121,6 +121,37 @@ Extract structured data from unstructured text files (CSV logs, JSONL).
 
         raise NotImplementedError
 
+    def _load_local_type(self, type_name: str) -> Type[BaseModel]:
+        """
+        Dynamically load a Pydantic model from the local 'predefined_types' folder.
+        """
+        file_path = self.types_path / f"{type_name}.py"
+
+        if not file_path.exists():
+            raise ValueError(f"Type definition file not found: {file_path}")
+
+        # Dynamic import from file path
+        spec = importlib.util.spec_from_file_location(type_name, file_path)
+        if not spec or not spec.loader:
+            raise ImportError(f"Could not load spec for {type_name}")
+
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        # Inspect module to find the Pydantic model
+        # We assume the model class name matches the filename OR is the only Pydantic model
+        for attr_name in dir(module):
+            attr = getattr(module, attr_name)
+            if (
+                isinstance(attr, type)
+                and issubclass(attr, BaseModel)
+                and attr is not BaseModel
+            ):
+                # Found it!
+                return attr
+
+        raise ValueError(f"No Pydantic model found in {file_path}")
+
     async def execute(
         self, session_id: str, input_data: Dict[str, Any]
     ) -> Dict[str, Any]:
@@ -137,10 +168,13 @@ Extract structured data from unstructured text files (CSV logs, JSONL).
             atype = self._json_schema_to_pydantic(data.custom_model_schema)
         elif data.predefined_model_name:
             try:
-                # Assuming utils can load by name
-                atype = load_predefined_type(data.predefined_model_name)
-            except Exception:
-                pass
+                atype = self._load_local_type(data.predefined_model_name)
+            except Exception as e:
+                # Fallback for debugging
+                print(f"Local load failed: {e}")
+                raise ValueError(
+                    f"Could not load target type: {data.predefined_model_name}"
+                )
 
         if not atype:
             temp_ag = AG()

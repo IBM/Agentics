@@ -1,7 +1,8 @@
 import sys
 import pandas as pd
-from typing import Dict, Any
+from typing import Dict, Any, Type
 from pydantic import BaseModel, Field
+import importlib.util
 from pathlib import Path
 
 # Add current dir to sys path
@@ -10,7 +11,6 @@ sys.path.append(str(Path(__file__).parent))
 from agentics import AG
 from agentics.api.applications.base import AgenticsApp
 from agentics.api.models import AppMetadata, UIOption
-from agentics.api.applications.utils import load_predefined_type
 
 
 class MacroInput(BaseModel):
@@ -84,6 +84,37 @@ class MacroEconApp(AgenticsApp):
             "target_model_name": UIOption(type="static", values=self.available_types),
         }
 
+    def _load_local_type(self, type_name: str) -> Type[BaseModel]:
+        """
+        Dynamically load a Pydantic model from the local 'predefined_types' folder.
+        """
+        file_path = self.types_path / f"{type_name}.py"
+
+        if not file_path.exists():
+            raise ValueError(f"Type definition file not found: {file_path}")
+
+        # Dynamic import from file path
+        spec = importlib.util.spec_from_file_location(type_name, file_path)
+        if not spec or not spec.loader:
+            raise ImportError(f"Could not load spec for {type_name}")
+
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        # Inspect module to find the Pydantic model
+        # We assume the model class name matches the filename OR is the only Pydantic model
+        for attr_name in dir(module):
+            attr = getattr(module, attr_name)
+            if (
+                isinstance(attr, type)
+                and issubclass(attr, BaseModel)
+                and attr is not BaseModel
+            ):
+                # Found it!
+                return attr
+
+        raise ValueError(f"No Pydantic model found in {file_path}")
+
     async def execute(
         self, session_id: str, input_data: Dict[str, Any]
     ) -> Dict[str, Any]:
@@ -97,8 +128,11 @@ class MacroEconApp(AgenticsApp):
         ag_dataset = AG.from_dataframe(self.df)
 
         # 2. Resolve Type
-        atype = load_predefined_type(data.target_model_name)
-        if not atype:
+        try:
+            atype = self._load_local_type(data.target_model_name)
+        except Exception as e:
+            # Fallback for debugging
+            print(f"Local load failed: {e}")
             raise ValueError(f"Could not load target type: {data.target_model_name}")
 
         # 3. Filter Logic (Find nearest dates if exact match missing)
