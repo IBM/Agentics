@@ -1,7 +1,36 @@
 
-# 👋 Welcome to Agentics
+# Agentics
 
-**Agentics** is a lightweight, Python-native framework for building structured, agentic workflows over tabular or JSON-based data using Pydantic types and transduction logic. Designed to work seamlessly with large language models (LLMs), Agentics enables users to define input and output schemas as structured types and apply declarative, composable transformations—called transductions—across data collections. It supports asynchronous execution, built-in memory for structured retrieval-augmented generation (RAG), and self-transduction for tasks like data imputation and few-shot learning. With no-code and low-code interfaces, Agentics is ideal for rapidly prototyping intelligent systems that require structured reasoning, flexible memory access, and interpretable outputs.
+Agentics is a lightweight, Python-native framework for building **structured and massively parallel agentic workflows** using Pydantic models and transducible functions.  Designed for seamless integration with modern LLMs and agentics frameworks, Agentics introduces a principled way to define **typed input/output schemas** and execute **declarative transformations**—called *transducible functions*—that are composable, explainable, and robust at scale, by offering a native **MapReduce** framework.
+
+At its foundation, agentics builds on **Logical Transduction Algebra**, a logico-mathematical formalism that guarantees composability and explainability of LLM based transducible functions. 
+
+This approach enables developers to construct reliable, interpretable, and modular reasoning pipelines without the overhead of heavyweight orchestrators. As a result, Agentics coding is **simple, streamlined, predictable,  robust and scalable**. 
+
+---
+
+## 🔑 Key Features
+
+### ⚙️ **Transducible Functions**
+Define LLM-powered functions as structured transformations between Pydantic types, with automatic schema validation and type-constrained generation.
+
+### 🚀 **Async Map–Reduce Scale-Out**
+Run large workloads efficiently using fully asynchronous `amap` and `areduce`, enabling high-throughput parallelism and distributed-ready pipelines.
+
+### 🧩 **Dynamic Function & Type Composition**
+Compose functions declaratively, merge or synthesize types on the fly, and build adaptive workflows that evolve with your data.
+
+### 🔍 **Explainable & Traceable Inferences**
+Every output carries evidence links that map generated attributes back to their originating input fields—transparent, auditable LLM reasoning.
+
+### 🛡️ **Type-Safe & Robust**
+Powered by Pydantic models end-to-end, enforcing structural correctness, validation, and predictable runtime behavior across all transductions.
+
+### ✨ **Minimalistic Design Patterns**
+A clean, Pythonic API based on simple primitives—types, functions, and transductions—without heavy frameworks or orchestration layers.
+
+
+
 
 ## 📚 Documentation Overview
 
