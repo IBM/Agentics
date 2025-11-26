@@ -10,6 +10,12 @@ resolution-markers = [
     "(python_full_version < '3.12' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.12' and sys_platform != 'darwin' and sys_platform != 'linux')",
 ]
 
+[manifest]
+members = [
+    "agentics-py",
+    "polymarkets",
+]
+
 [[package]]
 name = "absl-py"
 version = "2.3.1"
@@ -3292,6 +3298,11 @@ sdist = { url = "https://files.pythonhosted.org/packages/64/5a/c9105c974e03d78dc
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c4/f7/244a5b1dd298650e4092c501197dad45036b1c31309ad4d01af430071a0f/polyfactory-2.22.3-py3-none-any.whl", hash = "sha256:0bfd5fe2fb2e5db39ded6aee8e923d1961095d4ebb44185cceee4654cb85e0b1", size = 63715, upload-time = "2025-10-18T14:04:52.657Z" },
 ]
+
+[[package]]
+name = "polymarkets"
+version = "0.1.0"
+source = { virtual = "sandbox/polymarkets" }
 
 [[package]]
 name = "portalocker"

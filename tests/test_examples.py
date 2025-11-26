@@ -8,13 +8,15 @@ from pytest_subtests.plugin import SubTests
 
 
 # TODO: @gliozzo provide small and fast to run examples
-@pytest.mark.skip(reason="Failing in actions with mellea warning")
+# @pytest.mark.skip(reason="Failing in actions with mellea warning")
 @pytest.mark.parametrize(
     "file_to_test",
     [
-        "examples/hello_world.py",
+        "tests/official_tests/hello_world.py",
+        "tests/official_tests/transducible_functions.py",
+        # "examples/hello_world.py",
         "examples/emotion_extractor.py",
-        # "examples/generate_tweets.py",
+        "examples/generate_tweets.py",
         # "examples/mcp_server_example.py",
         # "examples/agentics_web_search_report.py",
     ],
@@ -30,7 +32,10 @@ def test_parametrized_examples(
     with ctx.cd(git_root_path):
         try:
             run_result = ctx.run(
-                f"uv run {py_to_test}", warn=True, timeout=timeout_value
+                f"uv run {py_to_test}",
+                warn=True,
+                timeout=timeout_value,
+                in_stream=False,
             )
             assert run_result is not None
             assert (
