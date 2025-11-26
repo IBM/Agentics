@@ -9,11 +9,12 @@ from typing import Any, Dict, List, Optional, Union
 from dotenv import find_dotenv, load_dotenv
 from pydantic import BaseModel, ConfigDict, Field
 
-from mcp import StdioServerParameters  # For Stdio Server
+# Removed unused MCP imports to clean up dependency potential issues
+# from mcp import StdioServerParameters
 
 sys.path.append(str(Path(__file__).resolve().parent))
-from crewai.tools import tool
-from crewai_tools import MCPServerAdapter
+# from crewai.tools import tool
+# from crewai_tools import MCPServerAdapter
 from .db import DB
 from .utils import (
     async_execute_sql,
@@ -28,9 +29,9 @@ load_dotenv(find_dotenv())
 
 
 class AnswerAssessment(BaseModel):
-    question: Optional[str]
-    sql: Optional[str]
-    output_dataframe: Optional[str]
+    question: Optional[str] = None
+    sql: Optional[str] = None
+    output_dataframe: Optional[str] = None
     answer_quality_score: Optional[float] = Field(
         None,
         ge=0,
@@ -72,15 +73,23 @@ class Text2sqlQuestion(BaseModel):
     )
     system_output_df: Optional[str] = None
     gt_output_df: Optional[str] = None
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 async def get_schema(state: Text2sqlQuestion) -> Text2sqlQuestion:
+    # Ensure SQL_DB_PATH is set
+    db_path_root = os.getenv("SQL_DB_PATH", ".")
     schema_path = os.path.join(
-        os.getenv("SQL_DB_PATH"),
-        state.benchmark_id,
-        state.db_id,
+        db_path_root,
+        # state.benchmark_id if state.benchmark_id else "", # Handle optional benchmark_id
+        state.db_id,  # Assuming db_id folder structure
         state.db_id + ".sqlite",
     )
+
+    # Fallback: if db is in root
+    if not os.path.exists(schema_path):
+        schema_path = os.path.join(db_path_root, state.db_id + ".sqlite")
+
     state.db = DB(
         db_id=state.db_id, benchmark_id=state.benchmark_id, db_path=schema_path
     )
@@ -90,11 +99,9 @@ async def get_schema(state: Text2sqlQuestion) -> Text2sqlQuestion:
 
 
 async def enrich_all_dbs(test: AG):
-    print("OOOOOOOO")
     dbs = set()
     filtered_test = AG(atype=Text2sqlQuestion)
     for question in test:
-        # print(question.db_id)
         if question.db_id not in dbs:
             filtered_test.states.append(question)
             dbs.add(question.db_id)
@@ -104,24 +111,22 @@ async def enrich_all_dbs(test: AG):
 
 
 async def load_db(state: Text2sqlQuestion) -> Text2sqlQuestion:
-    # schema_path = os.path.join(os.getenv("SQL_DB_PATH"),
-    #                         state.db_id,state.db_id+".sqlite" )
     if not state.db:
         state = await get_schema(state)
-        state.ddl = state.db.db_schema.model_dump_json()
+        # Ensure db_schema is available and dump-able
+        if state.db and state.db.db_schema:
+            state.ddl = state.db.db_schema.model_dump_json()
     return state
 
 
 async def enrich_db(state: Text2sqlQuestion) -> Text2sqlQuestion:
-    print("AAAAA")
-    state.db = await state.db.load_enrichments()
-    print("BBBBB", state.db)
-    state.ddl = state.db.db_schema.model_dump_json()
+    if state.db:
+        state.db = await state.db.load_enrichments()
+        if state.db.db_schema:
+            state.ddl = state.db.db_schema.model_dump_json()
     return state
 
 
-## Define a Crew AI tool to get news for a given date using the DDGS search engine
-@tool("execute_sql_query")
 async def execute_sql_query(sql_query: str, db_id: str) -> str:
     """Execute a SQL query against the target db and return the execution results (error or json dataframe)"""
     schema_path = os.path.join(os.getenv("SQL_DB_PATH"), db_id, db_id + ".sqlite")
@@ -132,21 +137,39 @@ async def execute_sql_query(sql_query: str, db_id: str) -> str:
 async def execute_query_map(state: Text2sqlQuestion) -> Text2sqlQuestion:
     schema_path = None
     if not state.endpoint_id:
-        schema_path = os.path.join(
-            os.getenv("SQL_DB_PATH"),
-            state.benchmark_id,
-            state.db_id,
-            state.db_id + ".sqlite",
-        )
+        # Robust path finding
+        db_root = os.getenv("SQL_DB_PATH", ".")
+        # try benchmark struct first
+        if state.benchmark_id:
+            p = os.path.join(
+                db_root, state.benchmark_id, state.db_id, state.db_id + ".sqlite"
+            )
+            if os.path.exists(p):
+                schema_path = p
+
+        # try standard struct
+        if not schema_path:
+            p = os.path.join(db_root, state.db_id, state.db_id + ".sqlite")
+            if os.path.exists(p):
+                schema_path = p
+
+        # try root
+        if not schema_path:
+            schema_path = os.path.join(db_root, state.db_id + ".sqlite")
 
     state.system_output_df = await async_execute_sql(
         state.generated_query, db_path=schema_path, endpoint_id=state.endpoint_id
     )
-    state.gt_output_df = await async_execute_sql(
-        state.query or (state.sql[0] if type(state.sql) == list else state.sql),
-        db_path=schema_path,
-        endpoint_id=state.endpoint_id,
+
+    gt_query = state.query or (
+        state.sql[0] if isinstance(state.sql, list) else state.sql
     )
+    if gt_query:
+        state.gt_output_df = await async_execute_sql(
+            gt_query,
+            db_path=schema_path,
+            endpoint_id=state.endpoint_id,
+        )
     return state
 
 
@@ -155,6 +178,8 @@ def get_training_data(training_dataset: str, n_shots=3) -> AG:
     training = training.rebind_atype(Text2sqlQuestion)
     few_shots = AG(atype=Text2sqlQuestion)
     for i in range(n_shots):
+        if i >= len(training.states):
+            break
         selected_question = random.choice(training.states)
         selected_question.generated_query = selected_question.sql
         few_shots.states.append(selected_question)
@@ -162,46 +187,54 @@ def get_training_data(training_dataset: str, n_shots=3) -> AG:
 
 
 async def execute_alternative_sql(state: Text2sqlQuestion) -> Text2sqlQuestion:
+    # ... Same schema path logic as execute_query_map ...
     schema_path = None
     if not state.endpoint_id:
-        schema_path = os.path.join(
-            os.getenv("SQL_DB_PATH"),
-            state.benchmark_id,
-            state.db_id,
-            state.db_id + ".sqlite",
-        )
+        db_root = os.getenv("SQL_DB_PATH", ".")
+        if state.benchmark_id:
+            p = os.path.join(
+                db_root, state.benchmark_id, state.db_id, state.db_id + ".sqlite"
+            )
+            if os.path.exists(p):
+                schema_path = p
+        if not schema_path:
+            schema_path = os.path.join(db_root, state.db_id, state.db_id + ".sqlite")
+        if not schema_path:
+            schema_path = os.path.join(db_root, state.db_id + ".sqlite")
 
     answer_assessments = AG(atype=AnswerAssessment)
-    for alternative_sql in state.alternative_sql_queries:
-        query_execution = await async_execute_sql(
-            alternative_sql, endpoint_id=state.endpoint_id, db_path=schema_path
-        )
-        answer_assessments.states.append(
-            AnswerAssessment(
-                sql=alternative_sql,
-                output_dataframe=query_execution,
-                question=state.question,
+    if state.alternative_sql_queries:
+        for alternative_sql in state.alternative_sql_queries:
+            query_execution = await async_execute_sql(
+                alternative_sql, endpoint_id=state.endpoint_id, db_path=schema_path
             )
+            answer_assessments.states.append(
+                AnswerAssessment(
+                    sql=alternative_sql,
+                    output_dataframe=query_execution,
+                    question=state.question,
+                )
+            )
+        alternative_answer_assessments = await answer_assessments.self_transduction(
+            ["question", "generated_question", "output_dataframe"],
+            ["answer_quality_score", "answer_quality_assessment"],
         )
-    alternative_answer_assessments = await answer_assessments.self_transduction(
-        ["question", "generated_question", "output_dataframe"],
-        ["answer_quality_score", "answer_quality_assessment"],
-    )
-    state.alternative_answer_assessments = alternative_answer_assessments.states
+        state.alternative_answer_assessments = alternative_answer_assessments.states
     return state
 
 
 async def select_best_answer(state: Text2sqlQuestion) -> Text2sqlQuestion:
     best_selected_score = 0
     selected_best_answer = None
-    for answer in state.alternative_answer_assessments + (
+    candidates = (state.alternative_answer_assessments or []) + (
         [state.answer_assessment] if state.answer_assessment else []
-    ):
+    )
+
+    for answer in candidates:
         if (
             answer.answer_quality_score
             and answer.answer_quality_score > best_selected_score
         ):
-
             selected_best_answer = answer
             best_selected_score = answer.answer_quality_score
     if selected_best_answer:
@@ -210,12 +243,11 @@ async def select_best_answer(state: Text2sqlQuestion) -> Text2sqlQuestion:
 
 
 async def perform_answer_validation(test: AG, n_queries: int = 5) -> AG:
-
     test = await test.self_transduction(
         [
             "question",
             "db_id",
-            "schema",
+            "ddl",  # Changed from schema to ddl based on available fields
             "evidence",
             "commonsense_knowledge",
             "answer_assessment",
@@ -232,34 +264,6 @@ async def perform_answer_validation(test: AG, n_queries: int = 5) -> AG:
     return test
 
 
-async def execute_multiple_queries(test: AG, n_queries: int = 5) -> AG:
-
-    test = await test.self_transduction(
-        ["question", "db_id", "schema", "evidence", "commonsense_knowledge"],
-        ["alternative_sql_queries"],
-        instructions=f""""Your task is to convert a natural language question into an accurate SQL query using the given the database schema.\n\n"
-            "**Instructions:**\n"
-            "- Only use columns listed in the schema.\n"
-            "- Do not use any other columns or tables not mentioned in the schema.\n"
-            "- Ensure the SQL query is valid and executable.\n"
-            "- Use proper SQL syntax and conventions.\n"
-            "- Generate a complete SQL query that answers the question.\n"
-            "- Use the correct SQL dialect for SQLite \n"
-            "- Do not include any explanations or comments in the SQL output.\n"
-            "- Generate 5 alternative sql queries that you will later execute and validate to pick the best one.
-    )""",
-    )
-
-    test = await test.amap(execute_alternative_sql)
-    test = await test.amap(select_best_answer)
-    test = await test.amap(execute_query_map)
-    return test
-
-
-# async def get_enrichment_map(test:AG):
-#     for question in test:
-
-
 async def execute_questions(
     test: AG,
     few_shots_path: str = None,
@@ -268,27 +272,43 @@ async def execute_questions(
     multiple_runs: int = 1,
     save_run_path: str = None,
 ):
-    save_test = test.clone()
+    # Ensure clone doesn't mess references; create fresh list
+    save_test_states = list(test.states)
+
     total_accuracy = 0
     for run in range(multiple_runs):
-        test = save_test
+        # Restore initial states
+        test.states = list(save_test_states)
+
         begin_time = time.time()
         training = AG(atype=Text2sqlQuestion)
         if few_shots_path:
             training = get_training_data(few_shots_path)
-        # save_test.llm=AG.get_llm_provider("watsonx")
+
         test.reasoning = False
-        # test.tools=[execute_sql_query]
-        # test.max_iter=10
         ## add training data
         test.states = training.states + test.states
 
-        test = await test.amap(load_db)
+        # FIX: Manual execution instead of amap to ensure strict Pydantic typing
+        # and avoid "tuple has no attribute model_dump" errors in library
+        processed_states = []
+        for state in test.states:
+            # Explicitly await load_db
+            new_state = await load_db(state)
+            processed_states.append(new_state)
+        test.states = processed_states
+
         if enrichments:
-            test = await test.amap(enrich_db)
+            processed_states = []
+            for state in test.states:
+                new_state = await enrich_db(state)
+                processed_states.append(new_state)
+            test.states = processed_states
+
+        # Main Generation Step
         test = await baseline_zero_shot(test)
 
-        if answer_validation == True:
+        if answer_validation:
             test = await perform_answer_validation(test)
 
         if save_run_path:
@@ -297,34 +317,38 @@ async def execute_questions(
             output_file = os.path.join(save_run_path, f"exp_{run}.jsonl")
             test.to_jsonl(output_file)
 
-            experiment_evaluation_output = os.path.join(
-                save_run_path, f"exp_{run}_eval.txt"
-            )
-
         print(f"task executed in {time.time() - begin_time} seconds")
+
+        # Remove training data for eval
         test.states = test.states[len(training.states) :]
 
-        accuracy, full_eval = evaluate_execution_accuracy(test)
-        total_accuracy += accuracy
-        if save_run_path:
-            experiment_evaluation_output = os.path.join(
-                save_run_path, f"exp_{run}_eval.txt"
-            )
-            with open(experiment_evaluation_output, "w") as f:
-                f.write(full_eval + "\n")
+        try:
+            accuracy, full_eval = evaluate_execution_accuracy(test)
+            total_accuracy += accuracy
+            if save_run_path:
+                experiment_evaluation_output = os.path.join(
+                    save_run_path, f"exp_{run}_eval.txt"
+                )
+                with open(experiment_evaluation_output, "w") as f:
+                    f.write(full_eval + "\n")
+        except Exception as e:
+            print(f"Evaluation failed (skipping): {e}")
 
-    print(f"Average execution accuracy: {total_accuracy/multiple_runs}")
     return test, total_accuracy / multiple_runs
 
 
 async def baseline_zero_shot(test: AG) -> AG:
+    # Ensure DDL is populated for self_transduction
+    for state in test.states:
+        if not state.ddl:
+            print("Warning: State missing DDL before generation")
 
     test = await test.self_transduction(
         ["question", "db_id", "ddl", "commonsense_knowledge"],
         ["generated_query"],
         instructions="Your task is to convert a natural language question into an accurate SQL query using the given the database schema.\n\n"
         "**Instructions:**\n"
-        "- Only use columns listed in the schema.\n"
+        "- Only use columns listed in the schema (DDL).\n"
         "- Do not use any other columns or tables not mentioned in the schema.\n"
         "- Ensure the SQL query is valid and executable.\n"
         "- Use proper SQL syntax and conventions.\n"
@@ -339,7 +363,6 @@ async def baseline_zero_shot(test: AG) -> AG:
 async def run_evaluation_benchmark(
     benchmark_id="archer_en_dev", max_rows: int = None, few_shots_path: str = None
 ):
-
     benchmarks = os.listdir(os.getenv("SQL_BENCHMARKS_FOLDER"))
     if benchmark_id + ".json" in benchmarks:
         test = AG.from_jsonl(

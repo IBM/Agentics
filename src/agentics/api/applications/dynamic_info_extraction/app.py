@@ -18,7 +18,6 @@ class DynamicInput(BaseModel):
             "ui:placeholder": "What would you like to extract?",
         },
     )
-    # UPDATED: Changed to Select widget
     predefined_model_name: Optional[str] = Field(
         None,
         json_schema_extra={
