@@ -19,7 +19,6 @@ async def main():
         "data/categorization_example/movies.csv",
         max_rows=2,
     )
-    movies.llm = AG.get_llm_provider()
     ## Step 2. add attribute tweet to be used as a target for transduction
     extended_movies = movies.add_attribute(
         "tweet", slot_type="str", description="Tweet used to advertise the movie"
