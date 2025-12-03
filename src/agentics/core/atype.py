@@ -537,98 +537,169 @@ def _check_compatibility(A, B):
     return True
 
 
-# Global cache to avoid duplicate model generation
 _merge_model_cache = {}
 
 
+# =========================================
+#  MERGE TWO MODEL CLASSES  A & B
+# =========================================
 def merge_models_inherit(A: type[BaseModel], B: type[BaseModel]):
     """
-    Multiple inheritance merge:
-    A & B → class AAndB(A, B)
-    with symmetric subclass behavior.
+    A & B → class AandB(A,B)
+    with ALL FIELDS optional and default=None.
     """
+
+    # Ensure deterministic key for cache
     key = tuple(sorted([A, B], key=lambda m: m.__name__))
 
     if key in _merge_model_cache:
         return _merge_model_cache[key]
 
-    _check_compatibility(A, B)
+    # same class → nothing to merge
+    if A is B:
+        return A
 
+    # -------------------------
+    #  BUILD CLASS NAME
+    # -------------------------
     name = f"{A.__name__}And{B.__name__}"
 
-    # Collect merged fields
-    fields = {}
+    # ----------------------------------
+    #  Wrap annotation as Optional[T]
+    # ----------------------------------
+    def make_optional(ann):
+        if get_origin(ann) is Union and type(None) in get_args(ann):
+            return ann
+        return Optional[ann]
+
+    # ----------------------------------
+    #  MERGE FIELDS (B overrides A)
+    # ----------------------------------
+    merged_fields = {}
 
     for fname, f in A.model_fields.items():
-        fields[fname] = (f.annotation, f.default if f.default is not None else ...)
+        merged_fields[fname] = (make_optional(f.annotation), None)
+
     for fname, f in B.model_fields.items():
-        fields[fname] = (f.annotation, f.default if f.default is not None else ...)
+        merged_fields[fname] = (make_optional(f.annotation), None)
 
-    # Create merged class
-    if A == B:
-        MergedType = A
-    else:
-        MergedType = create_model(name, __base__=(A, B), **fields)
+    # ----------------------------------
+    #  CREATE MULTI-INHERITANCE CLASS
+    # ----------------------------------
+    # Must use type() for multiple inheritance in Pydantic v2
+    MergedType = type(name, (A, B), {})
 
-    parents = (A, B)  # preserve for hook
-
-    # -----------------------------
-    # ⭐ Custom subclass behavior
-    # -----------------------------
-    @classmethod
-    def __subclasscheck__(cls, subclass):
-        # Normal Python behavior
-        if super(MergedType, cls).__subclasscheck__(subclass):
-            return True
-
-        # Symmetric algebra behavior:
-        # Treat A and B as if they were subtypes of A&B.
-        if subclass in parents:
-            return True
-
-        return False
-
-    MergedType.__subclasscheck__ = __subclasscheck__
-    # -----------------------------
+    # Now inject fields via create_model
+    MergedType = create_model(name, __base__=MergedType, **merged_fields)
 
     _merge_model_cache[key] = MergedType
     return MergedType
 
 
+# =========================================
+#  MERGE INSTANCES
+# =========================================
 def merge_instances(a: BaseModel, b: BaseModel):
-    """
-    Merge instance A & B → instance of merged model type.
-    """
     MergedType = merge_models_inherit(type(a), type(b))
     data = {**a.model_dump(), **b.model_dump()}
     return MergedType(**data)
 
 
-# ----------------------------------------------------
-# TYPE-LEVEL merge operator: A & B → merged model class
-# ----------------------------------------------------
+# =========================================
+#  TYPE-LEVEL OPERATOR:  A & B
+# =========================================
 def _model_and(A, B):
-    if isinstance(B, ModelMetaclass):
+    if isinstance(A, ModelMetaclass) and isinstance(B, ModelMetaclass):
         return merge_models_inherit(A, B)
-    raise TypeError("Right operand must be a Pydantic model class")
+    raise TypeError("A & B requires both operands to be Pydantic models")
 
 
 ModelMetaclass.__and__ = _model_and
 
 
-# ----------------------------------------------------
-# INSTANCE-LEVEL merge operator: a & b → merged instance
-# ----------------------------------------------------
+# =========================================
+#  INSTANCE-LEVEL OPERATOR:  a & b
+# =========================================
 def _instance_and(self, other):
     if isinstance(other, BaseModel):
         return merge_instances(self, other)
-    raise TypeError("Right operand must be a Pydantic model instance")
+    raise TypeError("a & b requires both operands to be Pydantic model instances")
 
 
 BaseModel.__and__ = _instance_and
 
-from pydantic import BaseModel, create_model
-from pydantic._internal._model_construction import ModelMetaclass
+
+# ============================================================
+#  TYPE COMPOSITION  (ModelA @ ModelB)
+# ============================================================
+
+
+_COMPOSE_CACHE = {}
+
+
+def compose_types(A, B, *, name=None):
+    global _COMPOSE_CACHE
+    key = (A, B)
+
+    # Return cached type if it exists
+    if key in _COMPOSE_CACHE:
+        return _COMPOSE_CACHE[key]
+
+    # Build the name once
+    if name is None:
+        name = f"{A.__name__}__COMPOSE__{B.__name__}"
+
+    Composite = create_model(
+        name,
+        left=(Optional[A], None),
+        right=(Optional[B], None),
+        __base__=BaseModel,
+    )
+
+    _COMPOSE_CACHE[key] = Composite
+    return Composite
+
+
+def _istype_matmul(A, B):
+    """
+    TYPE composition:
+        A @ B → composed model type
+    """
+    if (
+        isinstance(A, ModelMetaclass)
+        and isinstance(B, ModelMetaclass)
+        and issubclass(A, BaseModel)
+        and issubclass(B, BaseModel)
+    ):
+        return compose_types(A, B)
+
+    raise TypeError(f"Cannot compose model types {A} and {B}")
+
+
+ModelMetaclass.__matmul__ = _istype_matmul
+
+
+# ============================================================
+#  INSTANCE COMPOSITION (a @ b)
+# ============================================================
+def _instance_matmul(a: BaseModel, b: BaseModel):
+    """
+    INSTANCE composition:
+        a @ b → Composite(left=a, right=b)
+    """
+    if not isinstance(b, BaseModel):
+        raise TypeError(f"Cannot compose instance {a} with {b}")
+
+    A = type(a)
+    B = type(b)
+
+    CompositeModel = A @ B
+
+    # Build structural composite
+    return CompositeModel(left=a, right=b)
+
+
+BaseModel.__matmul__ = _instance_matmul
 
 
 def project_as_superclass(Model: type[BaseModel], selected_fields):

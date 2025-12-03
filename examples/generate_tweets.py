@@ -17,7 +17,7 @@ async def main():
     ## Step 1. Load the Dataset
     movies = AG.from_csv(
         "data/categorization_example/movies.csv",
-        max_rows=10,
+        max_rows=2,
     )
     movies.llm = AG.get_llm_provider()
     ## Step 2. add attribute tweet to be used as a target for transduction

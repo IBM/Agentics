@@ -3,24 +3,26 @@
 
 ## What is a Transducible Function?
 
-A **transducible function** T: X → Y satisfies:
+A **transducible function** `T: X → Y` satisfies:
 - **Totality:** every valid input produces a valid output.
 - **Local Evidence:** each output field is generated only from its evidence subset.
 - **Slot-Level Provenance:** explicit mapping between input and output fields.
 #### Transducible Functions
 
-A **transducible function** T : X → Y is an explainable function that also satisfies:
+A **transducible function** \(T : X \to Y\) is an explainable function that also satisfies:
 
 1. **Totality**  
-   Every valid input x ∈ ⟦X⟧ produces a valid output of type Y.
+   Every valid input \(x \in \llbracket X \rrbracket\) produces a valid output of type \(Y\).
 
 2. **Local Evidence**  
-   Each output slot yᵢ is computed only from its evidence subset ℰᵢ(x).  
+   Each output slot \(y_i\) is computed only from its evidence subset \(\mathcal{E}_i(x)\).  
    No slot is generated “from nothing.”
 
 3. **Slot-Level Provenance**  
-   The mapping between input and output slots is explicit: 
-   𝒯(yᵢ) = ℰᵢ
+   The mapping between input and output slots is explicit:  
+   \[
+   \mathcal{T}(y_i) = \mathcal{E}_i.
+   \]  
    This induces a bipartite graph that serves as the explainability trace.
 
 Transducible functions extend ordinary functions with **structural transparency at the slot level**.
@@ -58,8 +60,8 @@ Trasducible functions are async python functions that accept exactly one instanc
 #### The @transducible() decorator
 
 Agentics allows you to wrap any Python function and turn it into a transducible function, giving it native LLM-powered transformation capabilities. When decorated by @transducible(), they can also return either of the two outputs:
+- an instance of the target type, following regular python behaviour
 - an instance of type **Transduce** that wraps an instances of the source type, which will be ultimately send to the LLM to generate the required output.
-- an instance of the target type, following regular python behaviour.
 
 Below is an example of a transducible function invoking an LLM 
 

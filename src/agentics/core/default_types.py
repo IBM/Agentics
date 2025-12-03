@@ -1,36 +1,36 @@
-from typing import Callable, Generic, List, Optional, Type, TypeVar, Union
+from dataclasses import asdict, is_dataclass
+from typing import Any, Callable, Generic, List, Optional, Type, TypeVar, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, create_model
 
 
-class Provenance(BaseModel):
-    relevant_source_attributes: Optional[list[str]] = Field(
-        [],
-        description="List of attribute names from the source type that influenced the inference of the target.",
-    )
-    mapping_explanation: Optional[str] = Field(
+class Astr(BaseModel):
+    value: str
+
+    def __init__(self, value):
+        if not isinstance(value, str):
+            raise TypeError("Astr must be constructed with a string")
+        super().__init__(value=value)
+
+
+class Explanation(BaseModel):
+    explanation: Optional[str] = Field(
         None,
-        description="a json object describing the mapping from source attributes to target attributes.",
+        description="Provide a logical explanation for the reasoning process"
+        "needed to generate the Left object from the Right object"
+        "Explain in a human understandable way the steps taken",
+    )
+    relevant_source_attributes: Optional[dict[str, list[str]]] = Field(
+        [],
+        description="A mapping, for each slot of the Left (source) type to a lists of slots in the Right (target) type that were relevant for the inference",
+    )
+    confidence: Optional[float] = Field(
+        None,
+        description="A confidence score (0.0 to 1.0) indicating the certainty of the inference done",
     )
 
 
 T = TypeVar("T", bound=BaseModel)
-
-
-class Explanation(BaseModel, Generic[T]):
-    provenance: Optional[Provenance] = []
-    reasoning_process: Optional[str] = Field(
-        None,
-        description="A brief description of the reasoning process that led to the inference of the target attributes.",
-    )
-    detailed_mappings: Optional[dict[str, list[str]]] = Field(
-        None,
-        description="A for each attribute in the target type, list the source attributes that contributed to its inference.",
-    )
-    confidence: Optional[float] = Field(
-        None,
-        description="A confidence score (0.0 to 1.0) indicating the certainty of the inference.",
-    )
 
 
 StateReducer = Callable[[List[BaseModel]], BaseModel | List[BaseModel]]

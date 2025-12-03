@@ -18,6 +18,8 @@ from typing import (
     Type,
     TypeVar,
     Union,
+    get_args,
+    get_origin,
     get_type_hints,
 )
 
@@ -108,7 +110,7 @@ class AG(BaseModel, Generic[T]):
     llm: Any = Field(default_factory=get_llm_provider, exclude=True)
 
     provide_explanations: bool = False
-    explanations: List[Explanation] = None
+    explanations: Optional[list[Explanation]] = None
     reasoning: Optional[bool] = None
     max_iter: int = Field(
         3,
@@ -367,13 +369,31 @@ class AG(BaseModel, Generic[T]):
             timeout = self.timeout
         mapper = aMap(func=func, timeout=timeout)
         hints = get_type_hints(func)
-        SourceType, Target_type = get_function_io_types(func)
-        if "state" in hints and not issubclass(hints["state"], self.atype):
-            raise AmapError(
-                f"The input type {hints['state']} of the provided function is not a subclass of the required atype {self.atype}"
-            )
+        SourceType, TargetType = get_function_io_types(func)
+
+        if "state" in hints:
+            state_t = hints["state"]
+            origin = get_origin(state_t)
+
+            # --- CASE 1: list[...] (reduce mode) ---
+            if origin is list:
+                (inner_type,) = get_args(state_t)
+                if not issubclass(inner_type, self.atype):
+                    raise AmapError(
+                        f"The input type list[{inner_type}] of the provided function "
+                        f"is not compatible with required atype {self.atype}"
+                    )
+
+            # --- CASE 2: single model ---
+            else:
+                if not issubclass(state_t, self.atype):
+                    raise AmapError(
+                        f"The input type {state_t} of the provided function "
+                        f"is not a subclass of required atype {self.atype}"
+                    )
+        # --- RETURN TYPE CHECK ---
         if "return" in hints and issubclass(hints["return"], BaseModel):
-            self.atype = Target_type
+            self.atype = TargetType
         batches = chunk_list(self.states, chunk_size=self.amap_batch_size)
         results = []
         if self.save_amap_batches_to_path:
@@ -666,15 +686,12 @@ class AG(BaseModel, Generic[T]):
 
         if self.provide_explanations and isinstance(other, AG):
             target_explanation = AG(atype=Explanation)
-            target_explanation.instructions = f"""You have been presented with the result of the transduction of this source type {other.atype.__pydantic_fields__}, 
-            into this target type {self.atype.__pydantic_fields__}. Your task is to identify which attributes from the source type contributed to the inference of the target type.
-            In your input, you will find a merged instance of the source and target types.
-            Provide a mapping_explanation that describes how the source attributes were used to infer the target attributes.
-            Also, provide a reasoning_process that outlines the steps taken to arrive at the target type from
-            """
-
+            target_explanation.instructions = f"""
+            You have been presented with two Pydantic Objects:
+            a left object that was logically derived from a right object.
+            Your task is to provide a detailed explanation of how the left object was derived from the right object."""
             target_explanation = await (
-                target_explanation << output.merge_states(other)
+                target_explanation << output.compose_states(other)
             )
 
             self.explanations = target_explanation.states
@@ -1039,13 +1056,8 @@ class AG(BaseModel, Generic[T]):
 
     def merge_states(self, other: AG) -> AG:
         """
-        Merge multiple AgenticTransduction or AG instances into one,
-        assigning equal probability to all resulting states and
-        removing the explicit 'probabilities' field.
+        Merge states of two AGs pairwise
 
-        - Concatenates states, explanations, and noise.
-        - Ensures all inputs share the same .type_.
-        - Returns a new AgenticsTransduction with uniform weights.
         """
         merged = self.clone()
         merged.states = []
@@ -1060,6 +1072,21 @@ class AG(BaseModel, Generic[T]):
                 merged.states.append(
                     merged.atype(**other_state.model_dump(), **self_state.model_dump())
                 )
+        return merged
+
+    def compose_states(self, other: AG) -> AG:
+        """
+        compose states of two AGs pairwise,
+
+        """
+        merged = self.clone()
+        merged.states = []
+        merged.explanations = []
+        merged.atype = self.atype @ other.atype
+
+        for self_state in self:
+            for other_state in other:
+                merged.states.append(merged.atype(right=other_state, left=self_state))
         return merged
 
     async def map_atypes(self, other: AG) -> ATypeMapping:
@@ -1215,6 +1242,9 @@ class AG(BaseModel, Generic[T]):
         return filtered_ag
 
     def cluster(self, n_partitions: int = None) -> list[AG]:
+        if not self.vector_store:
+            self.vector_store = VectorStore()
+
         if self.vector_store.store.next_id != len(self):
             self.build_index()
         if not n_partitions:

@@ -613,6 +613,54 @@ def get_function_io_types(
     return input_types, output_type
 
 
+from typing import Optional, Type
+
+from pydantic import BaseModel, create_model
+
+
+def make_transduction_type(
+    source: Type[BaseModel],
+    target: Type[BaseModel],
+    *,
+    name: Optional[str] = None,
+) -> Type[BaseModel]:
+    """
+    Create a Pydantic model representing a transduction between `source` and `target`.
+
+    The resulting model has the structure:
+        {
+            "source": <source model>,
+            "target": <target model>
+        }
+
+    Parameters
+    ----------
+    source : BaseModel subclass
+        Input type of the transduction.
+    target : BaseModel subclass
+        Output type of the transduction.
+    name : str | None
+        Optional name for the resulting transduction type.
+
+    Returns
+    -------
+    BaseModel subclass
+        A dynamically created model with slots `source` and `target`.
+    """
+
+    if name is None:
+        name = f"Transduction__{source.__name__}__TO__{target.__name__}"
+
+    TransductionModel = create_model(
+        name,
+        source=(source, ...),
+        target=(target, ...),
+        __base__=BaseModel,
+    )
+
+    return TransductionModel
+
+
 def merge_pydantic_models(
     source: Type[BaseModel],
     target: Type[BaseModel],
