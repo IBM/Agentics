@@ -5,14 +5,18 @@ from dotenv import load_dotenv
 from pydantic import BaseModel
 
 from agentics.core.agentics import AG
-from agentics.core.utils import import_last_function_from_code
+from agentics.core.utils import (
+    import_last_function_from_code,
+    import_pydantic_from_code,
+)
 
 load_dotenv()
 import functools
 import inspect
 import logging
-from typing import Any, Callable, get_args
+from typing import Any, Callable, Tuple, get_args
 
+from agentics.core.default_types import GeneratedAtype
 from agentics.core.utils import get_function_io_types, percent_non_empty_fields
 
 logging.getLogger("huggingface_hub.utils._http").setLevel(logging.ERROR)
@@ -222,12 +226,18 @@ INSTRUCTIONS:
                     f"Function accepts only {SourceModel.__name__} or list[...]"
                 )
 
-            arg0 = args[0]
+            input = args[0]
 
             # REDUCE
-            if areduce and isinstance(arg0, list):
+            if areduce:
+                if isinstance(input, AG):
+                    input = input.states
+                if not isinstance(input, list):
+                    raise ValueError(
+                        f"Function with areduce=True accepts only list[...]"
+                    )
                 source_ag = source_ag_template.clone()
-                source_ag.states = [arg0]
+                source_ag.states = [input]
 
                 intermediate = await source_ag.amap(wrap_single)
 
@@ -246,12 +256,13 @@ INSTRUCTIONS:
                 return intermediate.states
 
             # AMAP
-            if isinstance(arg0, (SourceModel, Transduce)):
-                return await wrap_single(arg0)
-
-            if isinstance(arg0, list):
+            if isinstance(input, (SourceModel, Transduce)):
+                return await wrap_single(input)
+            if isinstance(input, AG):
+                input = input.states
+            if isinstance(input, list):
                 source_ag = source_ag_template.clone()
-                source_ag.states = arg0
+                source_ag.states = input
                 intermediate = await source_ag.amap(wrap_single)
 
                 # ★ PATCH: list can contain TransductionResult OR raw values
@@ -518,7 +529,7 @@ async def generate_prototypical_instances(
               """,
         llm=llm,
     )
-    generated = await (target << "")
+    generated = await (target << "   ")
     return generated.states[0].instances
 
 
@@ -547,3 +558,47 @@ async def estimateLogicalProximity(func, llm=AG.get_llm_provider()):
         return total_lp / len(targets)
     else:
         return 0
+
+
+async def generate_atype_from_description(
+    description: str,
+    retry: int = 3,
+) -> GeneratedAtype | None:
+    """
+    Use Agentics to generate a Pydantic type from a natural language description.
+
+    Returns:
+        (generated_type, python_code) on success, or None if all retries fail.
+    """
+
+    i = 0
+    while i < retry:
+        generated_atype_ag = await (
+            AG(
+                atype=GeneratedAtype,
+                instructions="""
+Generate python code for the input natural-language type specification.
+
+Requirements:
+- Define exactly ONE Pydantic BaseModel.
+- Make all fields Optional.
+- Use only primitive types for the fields (str, int, float, bool, list[str], etc.).
+- Avoid nested Pydantic models.
+- Provide descriptions for the class and all its fields using:
+    Field(None, description="...")
+- If the input is a question, generate a Pydantic type that can represent
+  the answer to that question.
+Return ONLY valid Python V2 code in `python_code`.
+""",
+            )
+            << description
+        )
+
+        if generated_atype_ag.states and generated_atype_ag[0]:
+            generated_atype_ag[0].atype = import_pydantic_from_code(
+                generated_atype_ag[0].python_code
+            )
+            return generated_atype_ag[0]
+        i += 1
+
+    return None

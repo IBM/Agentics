@@ -34,7 +34,7 @@ def split_into_chunks(text, chunk_size=200):
 
 
 async def main():
-    emotion_detector = AG(atype=EmotionDetector)
+    emotion_detector = AG(atype=EmotionDetector, llm="watsonx/openai/gpt-oss-120b")
 
     current_file = Path(__file__).resolve()
     text = None
@@ -47,7 +47,9 @@ async def main():
         text = f.read()
 
     emotion_detector.verbose_transduction = True
-    emotions = await (emotion_detector << split_into_chunks(text, chunk_size=1000)[:2])
+    emotions = await (
+        emotion_detector << split_into_chunks(text, chunk_size=1000)[:100]
+    )
 
     emotions.pretty_print()
 

@@ -19,7 +19,7 @@ async def main():
         "data/categorization_example/movies.csv",
         max_rows=2,
     )
-    movies.llm = AG.get_llm_provider()
+    movies.llm = "watsonx/openai/gpt-oss-120b"
     ## Step 2. add attribute tweet to be used as a target for transduction
     extended_movies = movies.add_attribute(
         "tweet", slot_type="str", description="Tweet used to advertise the movie"
@@ -32,8 +32,10 @@ async def main():
         instructions="Generate a tweet to advertise the release of the input movie",
     )
 
-    categorized_movies.pretty_print()
+    # categorized_movies.pretty_print()
+    print("ok")
+    return categorized_movies
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    print(asyncio.run(main()))

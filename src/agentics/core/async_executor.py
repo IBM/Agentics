@@ -401,7 +401,7 @@ Follow the following instructions:
 {self.intentional_definiton}
 """
         answer = await structured_decoding_using_mellea(
-            input, self.atype, instructions=instructions, llm=self.llm
+            input, self.atype, instructions=self.intentional_definiton, llm=self.llm
         )
         # self.crew.kickoff_async(
         #     {"task_description": input[: self.MAX_CHAR_PROMPT]}

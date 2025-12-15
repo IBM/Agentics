@@ -41,7 +41,6 @@ from agentics.core.atype import (
     copy_attribute_values,
     get_active_fields,
     get_pydantic_fields,
-    import_pydantic_from_code,
     make_all_fields_optional,
     pydantic_model_from_csv,
     pydantic_model_from_dataframe,
@@ -60,8 +59,8 @@ from agentics.core.default_types import (
 from agentics.core.llm_connections import available_llms, get_llm_provider
 from agentics.core.utils import (
     chunk_list,
-    clean_for_json,
     get_function_io_types,
+    import_pydantic_from_code,
     is_str_or_list_of_str,
     merge_pydantic_models,
     sanitize_dict_keys,
@@ -869,6 +868,9 @@ class AG(BaseModel, Generic[T]):
         states: List[BaseModel] = []
         new_type = atype or pydantic_model_from_dataframe(dataframe)
         logger.debug(f"Importing Agentics of type {new_type.__name__} from DataFrame")
+        # FIX HERE: Normalize incoming DataFrame
+        if hasattr(dataframe, "to_pandas"):
+            dataframe = dataframe.to_pandas()
 
         for i, row in dataframe.iterrows():
             if max_rows and i >= max_rows:
@@ -1224,6 +1226,7 @@ class AG(BaseModel, Generic[T]):
     ##### Vector Store Capabilities #####
     #####################################
     def build_index(self):
+        self.vector_store = VectorStore()
         logger.debug(
             f"Indexing AG. {len(self)} states will be indexed, this might take a while"
         )
@@ -1231,9 +1234,11 @@ class AG(BaseModel, Generic[T]):
         self.vector_store.import_data(texts)
 
     def search(self, query: str, k: int = 5) -> AG:
-        if self.vector_store.store.next_id != len(self):
-            self.build_index()
         filtered_ag = self.clone()
+        if not self.vector_store or (
+            self.vector_store and self.vector_store.store.next_id != len(self)
+        ):
+            self.build_index()
         filtered_ag.states = []
         results = self.vector_store.search(query, k=k)
 

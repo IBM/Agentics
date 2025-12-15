@@ -42,7 +42,7 @@ warnings.filterwarnings(
 async def structured_decoding_using_mellea(
     input: str,
     targetAtype: Type[BaseModel],
-    instructions: str = None,
+    instructions: str = "",
     llm: str = "watsonx/openai/gpt-oss-120b",
 ) -> BaseModel | None:
     """
@@ -51,21 +51,23 @@ async def structured_decoding_using_mellea(
     """
     # The context manager should take care of opening/closing the HTTP client
     with mellea.start_session("litellm", model_id=llm) as m:
-        mellea_output = await m.ainstruct(
-            instructions,
-            grounding_context={"": input},
+        mellea_output = await m.achat(
+            instructions
+            + f"your task is to transduce an Source object into an output json of the following type {targetAtype.model_json_schema()}\n"
+            + input,
+            # grounding_context={"": input},
             # requirements="Generate an object of the requested Pydantic type",
-            strategy=RejectionSamplingStrategy(loop_budget=5),
-            format=targetAtype,
-            return_sampling_results=True,
+            # strategy=RejectionSamplingStrategy(loop_budget=5),
+            # format=targetAtype,
+            # return_sampling_results=True,
         )
 
     # At this point we're outside the `with`: session should be closed
 
-    if mellea_output is None or mellea_output.result is None:
+    if mellea_output is None or mellea_output.content is None:
         return targetAtype()
 
-    raw = mellea_output.value
+    raw = mellea_output.content
     # If Mellea gave us a dict-like object:
     if isinstance(raw, dict):
         return targetAtype.model_validate(raw)

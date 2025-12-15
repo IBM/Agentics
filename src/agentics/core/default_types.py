@@ -99,3 +99,23 @@ class ATypeMapping(BaseModel):
     source_file: Optional[str] = None
     target_file: Optional[str] = None
     mapping: Optional[dict] = Field(None, description="Ground Truth mappings")
+
+
+class GeneratedAtype(BaseModel):
+    name: Optional[str] = Field(None, description="Name of the generated Pydantic type")
+    description: Optional[str] = Field(
+        None, description="Description of the generated Pydantic type"
+    )
+    python_code: Optional[str] = Field(
+        None,
+        description="Python Code for the described Pydantic type. Contains only the attribute definitions. Use Pydantic V2 syntax. Include class imports  as needed.",
+    )
+    methods: list[str] = Field(
+        None,
+        description="Methods (python code) for the class above that provide additional functionality for data import and export, conversion, and other as needed. refer to self.attribute_definitions for the attributes of the class. Make all methods asynchronous",
+    )
+    atype: Optional[Type[BaseModel]] = Field(
+        None,
+        description="The Pydantic type generated from the description",
+        exclude=True,
+    )

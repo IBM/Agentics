@@ -1,16 +1,21 @@
 import asyncio
+import datetime
 import inspect
 import os
 import re
 from collections.abc import Iterable
 from typing import (
+    Annotated,
     Any,
     Awaitable,
     Callable,
     Dict,
     List,
+    Literal,
+    Mapping,
     Optional,
     Sequence,
+    Set,
     Tuple,
     Type,
     TypeVar,
@@ -62,6 +67,64 @@ def scan_directory_recursively(path: str) -> List[str]:
 
     _scan(path)
     return files
+
+
+def import_pydantic_from_code(code: str):
+    """
+    Dynamically execute Pydantic class code and return the first
+    Pydantic BaseModel subclass defined in it.
+
+    Automatically injects basic typing symbols and pydantic imports
+    so the code can safely reference them even if not explicitly imported.
+    """
+    # Create isolated module namespace
+    module = types.ModuleType("dynamic_module")
+
+    # Preload common symbols that generated code may need
+    safe_globals = {
+        "__builtins__": __builtins__,
+        # Core Pydantic symbols
+        "BaseModel": BaseModel,
+        "Field": Field,
+        # Common typing imports
+        "Any": Any,
+        "Optional": Optional,
+        "List": List,
+        "Dict": Dict,
+        "Tuple": Tuple,
+        "Set": Set,
+        "Union": Union,
+        "Literal": Literal,
+        "Type": Type,
+        "Sequence": Sequence,
+        "Mapping": Mapping,
+        "Annotated": Annotated,
+        "datetime": datetime,
+    }
+
+    module.__dict__.update(safe_globals)
+    try:
+        # Execute the generated code
+        exec(code, module.__dict__)
+
+        # Automatically find the first Pydantic model class
+        classes = [
+            obj
+            for obj in module.__dict__.values()
+            if isinstance(obj, type)
+            and issubclass(obj, BaseModel)
+            and obj is not BaseModel
+        ]
+
+        if not classes:
+            raise ValueError(
+                "No Pydantic BaseModel subclass found in the provided code."
+            )
+
+        # Return the first detected model class
+        return classes[-1]
+    except:
+        return None
 
 
 def infer_pydantic_type(dtype: Any, sample_values: pd.Series = None) -> Any:
