@@ -117,7 +117,6 @@ explicit = true
 torch = [
   { index = "pytorch-cpu" },
 ]
-mellea = { path = "../../mellea", editable = true }
 
 [tool.uv.workspace]
 members = [
