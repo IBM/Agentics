@@ -16,13 +16,17 @@ from pytest_subtests.plugin import SubTests
         "tests/official_tests/transducible_functions.py",
         # "examples/hello_world.py",
         "examples/emotion_extractor.py",
-        # "examples/generate_tweets.py",
+        "examples/generate_tweets.py",
         # "examples/mcp_server_example.py",
         # "examples/agentics_web_search_report.py",
     ],
 )  # script: find ./examples/ -type f | yq 'split(" ")' -oj | sed -e 's|\.\/||g' | pbcopy
 def test_parametrized_examples(
-    git_root_path: "Path", file_to_test: str, ctx: Context, timeout_value: int
+    git_root_path: "Path",
+    file_to_test: str,
+    ctx: Context,
+    timeout_value: int,
+    llm_provider: None,
 ):
     """
     Allows to select which tests to run the parametrized list of tests
