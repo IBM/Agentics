@@ -34,6 +34,12 @@ def git_root() -> str:
 
 
 @pytest.fixture()
+def git_root_path(git_root) -> "Path":
+    """Returns the root directory of the repo"""
+    return Path(git_root)
+
+
+@pytest.fixture()
 def ctx() -> Context:
     """Provides a Context for shell interaction
 
@@ -63,11 +69,25 @@ def wheel(
 
 
 @pytest.fixture()
-def llm_provider() -> "LLM":
-    """LLLm provider function"""
+def llm_provider(request) -> "LLM":
+    """Fixture that verifies that LLMs are setup for tests"""
+    error = f"No LLM available to supply to {request.node.name}"
     try:
         from agentics.core.llm_connections import get_llm_provider
 
-        return get_llm_provider()
+        llm = get_llm_provider()
+        if not llm:
+            raise pytest.skip(reason=error)
     except ValueError:
-        raise pytest.skip(reason="No available LLM")
+        raise pytest.skip(reason=error)
+
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--timeout", action="store", default=30, type=int, help="timeout in seconds"
+    )
+
+
+@pytest.fixture
+def timeout_value(request):
+    return request.config.getoption("--timeout")

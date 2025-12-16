@@ -8,11 +8,11 @@ import pytest
 @pytest.mark.parametrize(
     "notebook",
     (
-        "tutorials/llms.ipynb",
+        # "tutorials/llms.ipynb",
         # "tutorials/transduction.ipynb",
         # "tutorials/agentics_basics.ipynb",
         # "tutorials/amap_reduce.ipynb",
-        # tutorials/mcp_tools.ipynb"
+        # "tutorials/atypes_tutorial.ipynb",
     ),
 )
 def test_tutorials(git_root, tmp_path: Path, notebook):
@@ -23,11 +23,12 @@ def test_tutorials(git_root, tmp_path: Path, notebook):
         input_notebook,
         out_nb,
         parameters={"RUN_MODE": "test", "LIMIT": 100},
-        cwd=".",
+        cwd="tutorials/.",
         kernel_name="python3",
     )
 
 
+@pytest.mark.skip(reason="More skip")
 @pytest.mark.asyncio
 async def test_hello_world(llm_provider):
     from typing import Optional

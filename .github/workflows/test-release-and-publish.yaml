@@ -3,41 +3,92 @@ name: Test, Release (if [release/bump]) and Publish
 on:
   push:
     branches: [main]
+  release:
+    types: [published]
 
 permissions:
   contents: write
-  
+
 jobs:
   test:
+    # Only run tests on push to main, or if it's a stable release from main
+    if: |
+      github.event_name == 'push' ||
+      (github.event_name == 'release' && !contains(github.event.release.tag_name, 'a') && !contains(github.event.release.tag_name, 'b') && !contains(github.event.release.tag_name, 'rc'))
     uses: ./.github/workflows/tests.yaml
 
   release:
+    # Only run release check on push events (not on release events)
+    if: github.event_name == 'push'
     uses: ./.github/workflows/releases.yaml
 
   publish:
+    if: |
+      (github.event_name == 'push' && needs.release.outputs.should-release == 'true') ||
+      github.event_name == 'release'
     needs: [test, release]
-    if: needs.release.outputs.should-release == 'true'
     runs-on: ubuntu-latest
     environment: release
 
     permissions:
       id-token: write
-    
+
     steps:
+      - name: Determine version
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            VERSION="${{ github.event.release.tag_name }}"
+            VERSION="${VERSION#v}"  # Remove leading 'v'
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            IS_PRERELEASE="${{ github.event.release.prerelease }}"
+            echo "is-prerelease=$IS_PRERELEASE" >> $GITHUB_OUTPUT
+            echo "source=github-ui" >> $GITHUB_OUTPUT
+          else
+            echo "version=${{ needs.release.outputs.next-version }}" >> $GITHUB_OUTPUT
+            IS_PRERELEASE="${{ needs.release.outputs.prerelease == 'true' }}"
+            echo "is-prerelease=$IS_PRERELEASE" >> $GITHUB_OUTPUT
+            echo "source=commit-message" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Validate prerelease constraint
+        run: |
+          IS_PRERELEASE="${{ steps.version.outputs.is-prerelease }}"
+          GITHUB_REF="${{ github.ref }}"
+          SOURCE="${{ steps.version.outputs.source }}"
+
+          echo "Release source: $SOURCE"
+          echo "Version: ${{ steps.version.outputs.version }}"
+          echo "Is prerelease: $IS_PRERELEASE"
+
+          # Allow prerelease from any branch
+          if [[ "$IS_PRERELEASE" == "true" ]]; then
+            echo "✓ Prerelease version detected - allowing from any branch"
+            exit 0
+          fi
+
+          # Stable releases only from main
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "✗ Error: Stable releases can only be created from the main branch"
+            exit 1
+          fi
+
+          echo "✓ Stable release from main branch - proceeding"
+
       - uses: actions/checkout@v4
         with:
-          ref: v${{ needs.release.outputs.next-version }}
+          ref: v${{ steps.version.outputs.version }}
           fetch-depth: 0
-      
+
       - name: Install uv
         uses: astral-sh/setup-uv@v3
         with:
-          python-version: '3.12'
+          python-version: "3.12"
           enable-cache: true
-      
+
       - name: Build package
-        run: uvx --with uv-dynamic-versioning hatchling build -d ./dist/ 
-      
+        run: uvx --with uv-dynamic-versioning hatchling build -d ./dist/
+
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:

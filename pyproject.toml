@@ -18,6 +18,7 @@ dependencies = [
     "pydantic",
     "crewai[tools]",
     "crewai-tools[mcp]",
+    "crewai[google-genai]",
     "langchain-huggingface (>=0.2.0,<0.3.0)",
     "openapi-python-client (>=0.24.3,<0.25.0)",
     "streamlit (>=1.45.1,<2.0.0)",
@@ -34,15 +35,22 @@ dependencies = [
     "aiosqlite>=0.21.0",
     "numerize>=0.12",
     "hnswlib>=0.8.0",
-    "jsonfinder>=0.4.2",
+    "jsonfinder",
     "crewai[google-genai]",
     "litellm",
+    "jsonfinder",
+    "mellea",
+    "plotly>=6.5.0",
 ]
 
 
 
 [tool.uv]
 package = true
+required-environments = [
+    "sys_platform == 'darwin' and platform_machine == 'x86_64'",
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
+]
 
 [build-system]
 requires = ["hatchling", "uv-dynamic-versioning"]
@@ -70,6 +78,7 @@ dev = [
   "invoke>=2.2.0",
   "papermill>=2.6.0",
   "pytest-xdist>=3.8.0",
+  "pytest-subtests>=0.15.0",
 ]
 docling = [
   "langchain-docling >=0.2.0,<0.3.0"
@@ -81,7 +90,7 @@ docs = [
 ]
 rhel = [
     "chromadb>=1.1.0",
-    "pysqlite3-binary>=0.5.4",
+    "pysqlite3-binary>=0.5.4; sys_platform == 'linux'",
 ]
 
 
@@ -107,4 +116,10 @@ explicit = true
 [tool.uv.sources]
 torch = [
   { index = "pytorch-cpu" },
+]
+
+[tool.uv.workspace]
+members = [
+    "sandbox/polymarkets",
+    "polymarket",
 ]

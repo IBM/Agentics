@@ -2,7 +2,7 @@
 
 ## What is agentics?
 
-Agentics is a lightweight, Python-native framework for building structured, agentic workflows over tabular or JSON-based data using Pydantic types and transduction logic. Designed to work seamlessly with large language models (LLMs), Agentics enables users to define input and output schemas as structured types and apply declarative, composable transformations—called transductions—across data collections. It supports asynchronous execution, built-in memory for structured retrieval-augmented generation (RAG), and self-transduction for tasks like data imputation and few-shot learning. With no-code and low-code interfaces, Agentics is ideal for rapidly prototyping intelligent systems that require structured reasoning, flexible memory access, and interpretable outputs.
+Agentics is a lightweight, Python-native framework for building structured, agentic workflows over tabular or JSON-based data using Pydantic types and transduction logic. Designed to work seamlessly with large language models (LLMs), Agentics enables users to define input and output schemas as structured types and apply declarative, composable transformations, called transductions across data collections. It supports asynchronous execution, built-in memory for structured retrieval-augmented generation (RAG), and self-transduction for tasks like data imputation and few-shot learning. With no-code and low-code interfaces, Agentics is ideal for rapidly prototyping intelligent systems that require structured reasoning, flexible memory access, and interpretable outputs.
 
 ## Installation
 
@@ -116,12 +116,12 @@ The file [src/agentics/tools/DDG_search_tool_mcp.py](src/agentics/tools/DDG_sear
 
 To try it out, first start the MCP server
 ```bash
-poetry run python src/agentics/tools/DDG_search_tool_mcp.py  ## point to your local file system path if doens't work
-export MCP_SERVER_PATH=src/agentics/tools/DDG_search_tool_mcp.py ## point to your local file system path if doens't work
+poetry run python src/agentics/tools/DDG_search_tool_mcp.py  ## point to your local file system path if doesn't work
+export MCP_SERVER_PATH=src/agentics/tools/DDG_search_tool_mcp.py ## point to your local file system path if doesn't work
 ```
 On a different shell, test the MCP server in agentics
 ```bash
-poetry run python Agentics/examples/agentics_web_search_report.py ## point to your local file system path if doens't work
+poetry run python Agentics/examples/agentics_web_search_report.py ## point to your local file system path if doesn't work
 ```
 
 Ask your question and it will be answered by looking up in the web. 
@@ -148,7 +148,7 @@ async def main():
         "What is the best F1 team in history?",
     ]
 
-    answers = await (AG(atype=Answer, llm= watsonx_crewai_llm) \
+    answers = await (AG(atype=Answer) \
                      << input_questions)
 
     answers.pretty_print()

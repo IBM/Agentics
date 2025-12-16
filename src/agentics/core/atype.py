@@ -22,7 +22,7 @@ from typing import (
 import pandas as pd
 from pydantic import BaseModel, Field, create_model
 
-from agentics.core.utils import sanitize_field_name
+from agentics.core.utils import sanitize_dict_keys, sanitize_field_name
 
 
 class AGString(BaseModel):
@@ -222,6 +222,13 @@ def pydantic_model_from_jsonl(
     file_path: str, sample_size: int = 100
 ) -> type[BaseModel]:
     df = pd.read_json(file_path, lines=True, nrows=sample_size, encoding="utf-8")
+    return pydantic_model_from_dataframe(df, sample_size=sample_size)
+
+
+def pydantic_model_from_dataframe(
+    df: pd.DataFrame, sample_size: int = 100
+) -> type[BaseModel]:
+    # df = pd.read_json(file_path, lines=True, nrows=sample_size, encoding="utf-8")
 
     model_name = "AType#" + ":".join(df.columns)
     fields = {}
@@ -230,25 +237,16 @@ def pydantic_model_from_jsonl(
         sample_values = df[col].head(5)
         pydantic_type = infer_pydantic_type(df[col].dtype, sample_values=sample_values)
         fields[col] = (pydantic_type, Field(default=None))
-    new_fields = {}
-    for field, value in fields.items():
-        new_fields[sanitize_field_name(field)] = value
+    # sanitize_dict_keys
+    # new_fields = {}
+    # for field, value in fields.items():
+    #     new_fields[sanitize_field_name(field)] = value
+    new_fields = sanitize_dict_keys(fields)
 
-    return create_model(model_name, **new_fields)
+    new_type = create_model(model_name, __module__=__name__, **new_fields)
+    new_type.model_rebuild(_types_namespace=globals())
 
-
-def pydantic_model_from_dataframe(
-    dataframe: pd.DataFrame, sample_size: int = 100
-) -> Type[BaseModel]:
-    df_sample = dataframe.head(sample_size)
-
-    model_name = "AType#" + ":".join(df_sample.columns)
-    fields = {}
-    for col in df_sample.columns:
-        pydantic_type = infer_pydantic_type(df_sample[col].dtype)
-        fields[col] = (pydantic_type, Field(default=None))
-
-    return create_model(model_name, **fields)
+    return new_type
 
 
 def create_pydantic_model(
@@ -343,65 +341,6 @@ def pretty_print_atype(atype, indent: int = 2):
         for arg in args:
             pretty_print_atype(arg, indent + 2)
         print(f"{prefix}]")
-
-
-def import_pydantic_from_code(code: str):
-    """
-    Dynamically execute Pydantic class code and return the first
-    Pydantic BaseModel subclass defined in it.
-
-    Automatically injects basic typing symbols and pydantic imports
-    so the code can safely reference them even if not explicitly imported.
-    """
-    # Create isolated module namespace
-    module = types.ModuleType("dynamic_module")
-
-    # Preload common symbols that generated code may need
-    safe_globals = {
-        "__builtins__": __builtins__,
-        # Core Pydantic symbols
-        "BaseModel": BaseModel,
-        "Field": Field,
-        # Common typing imports
-        "Any": Any,
-        "Optional": Optional,
-        "List": List,
-        "Dict": Dict,
-        "Tuple": Tuple,
-        "Set": Set,
-        "Union": Union,
-        "Literal": Literal,
-        "Type": Type,
-        "Sequence": Sequence,
-        "Mapping": Mapping,
-        "Annotated": Annotated,
-        # Datetime utilities
-        "datetime": datetime,
-    }
-
-    module.__dict__.update(safe_globals)
-    try:
-        # Execute the generated code
-        exec(code, module.__dict__)
-
-        # Automatically find the first Pydantic model class
-        classes = [
-            obj
-            for obj in module.__dict__.values()
-            if isinstance(obj, type)
-            and issubclass(obj, BaseModel)
-            and obj is not BaseModel
-        ]
-
-        if not classes:
-            raise ValueError(
-                "No Pydantic BaseModel subclass found in the provided code."
-            )
-
-        # Return the first detected model class
-        return classes[-1]
-    except:
-        return None
 
 
 def normalize_type_label(label: str | None) -> tuple[str, bool]:
@@ -516,3 +455,253 @@ def pydantic_to_markdown(obj: BaseModel, title: str | None = None) -> str:
         lines.append(f"| `{key}` | {formatted} |")
 
     return "\n".join(lines)
+
+
+from pydantic import BaseModel, create_model
+from pydantic._internal._model_construction import ModelMetaclass
+
+
+def _check_compatibility(A, B):
+    """
+    Returns True if A and B have no conflicting field annotations.
+    Else raises TypeError.
+    """
+    for fname, fA in A.model_fields.items():
+        if fname in B.model_fields:
+            fB = B.model_fields[fname]
+            if fA.annotation != fB.annotation:
+                raise TypeError(
+                    f"Cannot merge {A.__name__} and {B.__name__}: "
+                    f"field '{fname}' has incompatible types "
+                    f"{fA.annotation} vs {fB.annotation}"
+                )
+    return True
+
+
+_merge_model_cache = {}
+
+
+# =========================================
+#  MERGE TWO MODEL CLASSES  A & B
+# =========================================
+def merge_models_inherit(A: type[BaseModel], B: type[BaseModel]):
+    """
+    A & B → class AandB(A,B)
+    with ALL FIELDS optional and default=None.
+    """
+
+    # Ensure deterministic key for cache
+    key = tuple(sorted([A, B], key=lambda m: m.__name__))
+
+    if key in _merge_model_cache:
+        return _merge_model_cache[key]
+
+    # same class → nothing to merge
+    if A is B:
+        return A
+
+    # -------------------------
+    #  BUILD CLASS NAME
+    # -------------------------
+    name = f"{A.__name__}And{B.__name__}"
+
+    # ----------------------------------
+    #  Wrap annotation as Optional[T]
+    # ----------------------------------
+    def make_optional(ann):
+        if get_origin(ann) is Union and type(None) in get_args(ann):
+            return ann
+        return Optional[ann]
+
+    # ----------------------------------
+    #  MERGE FIELDS (B overrides A)
+    # ----------------------------------
+    merged_fields = {}
+
+    for fname, f in A.model_fields.items():
+        merged_fields[fname] = (make_optional(f.annotation), None)
+
+    for fname, f in B.model_fields.items():
+        merged_fields[fname] = (make_optional(f.annotation), None)
+
+    # ----------------------------------
+    #  CREATE MULTI-INHERITANCE CLASS
+    # ----------------------------------
+    # Must use type() for multiple inheritance in Pydantic v2
+    MergedType = type(name, (A, B), {})
+
+    # Now inject fields via create_model
+    MergedType = create_model(name, __base__=MergedType, **merged_fields)
+
+    _merge_model_cache[key] = MergedType
+    return MergedType
+
+
+# =========================================
+#  MERGE INSTANCES
+# =========================================
+def merge_instances(a: BaseModel, b: BaseModel):
+    MergedType = merge_models_inherit(type(a), type(b))
+    data = {**a.model_dump(), **b.model_dump()}
+    return MergedType(**data)
+
+
+# =========================================
+#  TYPE-LEVEL OPERATOR:  A & B
+# =========================================
+def _model_and(A, B):
+    if isinstance(A, ModelMetaclass) and isinstance(B, ModelMetaclass):
+        return merge_models_inherit(A, B)
+    raise TypeError("A & B requires both operands to be Pydantic models")
+
+
+ModelMetaclass.__and__ = _model_and
+
+
+# =========================================
+#  INSTANCE-LEVEL OPERATOR:  a & b
+# =========================================
+def _instance_and(self, other):
+    if isinstance(other, BaseModel):
+        return merge_instances(self, other)
+    raise TypeError("a & b requires both operands to be Pydantic model instances")
+
+
+BaseModel.__and__ = _instance_and
+
+
+# ============================================================
+#  TYPE COMPOSITION  (ModelA @ ModelB)
+# ============================================================
+
+
+_COMPOSE_CACHE = {}
+
+
+def compose_types(A, B, *, name=None):
+    global _COMPOSE_CACHE
+    key = (A, B)
+
+    # Return cached type if it exists
+    if key in _COMPOSE_CACHE:
+        return _COMPOSE_CACHE[key]
+
+    # Build the name once
+    if name is None:
+        name = f"{A.__name__}__COMPOSE__{B.__name__}"
+
+    Composite = create_model(
+        name,
+        left=(Optional[A], None),
+        right=(Optional[B], None),
+        __base__=BaseModel,
+    )
+
+    _COMPOSE_CACHE[key] = Composite
+    return Composite
+
+
+def _istype_matmul(A, B):
+    """
+    TYPE composition:
+        A @ B → composed model type
+    """
+    if (
+        isinstance(A, ModelMetaclass)
+        and isinstance(B, ModelMetaclass)
+        and issubclass(A, BaseModel)
+        and issubclass(B, BaseModel)
+    ):
+        return compose_types(A, B)
+
+    raise TypeError(f"Cannot compose model types {A} and {B}")
+
+
+ModelMetaclass.__matmul__ = _istype_matmul
+
+
+# ============================================================
+#  INSTANCE COMPOSITION (a @ b)
+# ============================================================
+def _instance_matmul(a: BaseModel, b: BaseModel):
+    """
+    INSTANCE composition:
+        a @ b → Composite(left=a, right=b)
+    """
+    if not isinstance(b, BaseModel):
+        raise TypeError(f"Cannot compose instance {a} with {b}")
+
+    A = type(a)
+    B = type(b)
+
+    CompositeModel = A @ B
+
+    # Build structural composite
+    return CompositeModel(left=a, right=b)
+
+
+BaseModel.__matmul__ = _instance_matmul
+
+
+def project_as_superclass(Model: type[BaseModel], selected_fields):
+    # normalize
+    if isinstance(selected_fields, str):
+        selected_fields = [selected_fields]
+
+    # verify fields exist
+    missing = [f for f in selected_fields if f not in Model.model_fields]
+    if missing:
+        raise ValueError(f"Fields {missing} not found in {Model.__name__}")
+
+    # Build new Mixin class – NOT a Pydantic model
+    attrs = {}
+    for fname in selected_fields:
+        finfo = Model.model_fields[fname]
+        attrs[fname] = finfo.default if finfo.default is not None else None
+
+    ProjectedName = f"{Model.__name__}Projected_{'_'.join(selected_fields)}"
+    Projected = type(ProjectedName, (object,), attrs)
+
+    # Now create a **new Pydantic model** that inherits from (Projected, Model)
+    NewModel = create_model(
+        Model.__name__, __base__=(Projected, Model), **Model.model_fields
+    )
+
+    # Replace the original model class in its module namespace
+    module = Model.__module__
+    globals_dict = vars(__import__(module))
+    globals_dict[Model.__name__] = NewModel
+
+    return Projected
+
+
+from pydantic import BaseModel, create_model
+
+
+def project_as_superclass(Model: type[BaseModel], selected_fields):
+    if isinstance(selected_fields, str):
+        selected_fields = [selected_fields]
+
+    # Ensure fields exist
+    missing = [f for f in selected_fields if f not in Model.model_fields]
+    if missing:
+        raise ValueError(f"Fields {missing} not in {Model.__name__}")
+
+    # Build the projected base model
+    Projected = create_model(
+        f"{Model.__name__}Projected_{'_'.join(selected_fields)}",
+        **{
+            f: (Model.model_fields[f].annotation, Model.model_fields[f].default)
+            for f in selected_fields
+        },
+    )
+
+    # 🔥 Now change the inheritance of Model safely
+    # Make Model inherit from Projected
+    Model.__bases__ = (
+        (Projected,)
+        + tuple(b for b in Model.__bases__ if b is not BaseModel)
+        + (BaseModel,)
+    )
+
+    return Projected

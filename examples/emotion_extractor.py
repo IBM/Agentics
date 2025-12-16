@@ -17,16 +17,16 @@ class Emotion(BaseModel):
         None,
         description="This is the text passage where the above emotion has been mentioned. Return None if the above category is None",
     )
-    confidence: Optional[float] = Field(
-        0, description="This is confidence of your assessment on the above information"
-    )
+    # confidence: Optional[float] = Field(
+    #     0, description="This is confidence of your assessment on the above information"
+    # )
 
 
 class EmotionDetector(BaseModel):
-    emotions_in_text: Optional[list[Emotion]] = []
-    full_text: Optional[str] = Field(
-        None, description="The original passage of text copied verbatim from the SOURCE"
-    )
+    emotions: Optional[list[Emotion]] = None
+    # full_text: Optional[str] = Field(
+    #     None, description="The original passage of text copied verbatim from the SOURCE"
+    # )
 
 
 def split_into_chunks(text, chunk_size=200):
@@ -34,8 +34,7 @@ def split_into_chunks(text, chunk_size=200):
 
 
 async def main():
-
-    emotion_detector = AG(atype=EmotionDetector, llm=AG.get_llm_provider())
+    emotion_detector = AG(atype=EmotionDetector, llm="watsonx/openai/gpt-oss-120b")
 
     current_file = Path(__file__).resolve()
     text = None
@@ -48,9 +47,12 @@ async def main():
         text = f.read()
 
     emotion_detector.verbose_transduction = True
-    emotions = await (emotion_detector << split_into_chunks(text)[:100])
+    emotions = await (
+        emotion_detector << split_into_chunks(text, chunk_size=1000)[:100]
+    )
 
     emotions.pretty_print()
 
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())
