@@ -86,6 +86,3 @@ jobs:
       - name: Run tests
         run: |
           uv run pytest
-```
-
-Now I need to delete the old `pre-commit.yaml` file to prevent duplication:
