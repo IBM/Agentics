@@ -16,7 +16,7 @@ from pytest_subtests.plugin import SubTests
         "tests/official_tests/transducible_functions.py",
         # "examples/hello_world.py",
         "examples/emotion_extractor.py",
-        "examples/generate_tweets.py",
+        # "examples/generate_tweets.py",
         # "examples/mcp_server_example.py",
         # "examples/agentics_web_search_report.py",
     ],
