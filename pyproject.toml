@@ -79,6 +79,7 @@ dev = [
   "papermill>=2.6.0",
   "pytest-xdist>=3.8.0",
   "pytest-subtests>=0.15.0",
+  "hunter>=3.9.0",
 ]
 docling = [
   "langchain-docling >=0.2.0,<0.3.0"
