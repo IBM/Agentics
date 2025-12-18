@@ -3,7 +3,8 @@ from typing import List
 import hnswlib
 import numpy as np
 from pydantic import BaseModel, ConfigDict
-from sentence_transformers import SentenceTransformer
+
+# from sentence_transformers import SentenceTransformer
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import normalize
 
@@ -11,6 +12,8 @@ from sklearn.preprocessing import normalize
 # ---- 1) Embedder (local) ----
 class LocalEmbedder:
     def __init__(self, model_name: str = "sentence-transformers/all-MiniLM-L6-v2"):
+        from sentence_transformers import SentenceTransformer
+
         self.model = SentenceTransformer(model_name)  # 384-dim
 
     @property
