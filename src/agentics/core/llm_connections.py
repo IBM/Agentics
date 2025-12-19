@@ -112,6 +112,7 @@ def get_available_llms() -> dict[str, LLM | AsyncOpenAI]:
     if _check_env("OPENAI_API_KEY"):
         openai_llm = LLM(
             model=os.getenv("OPENAI_MODEL_ID", "openai/gpt-4"),
+            server_url=os.getenv("OPENAI_BASE_URL"),
             temperature=0.8,
             top_p=0.9,
             stop=["END"],
