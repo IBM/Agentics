@@ -11,11 +11,13 @@
 </p>
 
 ---
-
 ## ✨ Why Agentics
 
 Most “agent frameworks” let untyped text flow through a pipeline. Agentics flips that: **types are the interface**.  
 Workflows are expressed as transformations between structured states, with predictable schemas and composable operators.
+
+Because every step is a typed transformation, you can **compose** workflows safely (merge and compose types/instances, chain transductions, and reuse `@transducible` functions) without losing semantic structure.  
+The same design also makes it natural to **scale out**: apply transformations over collections with async `amap`, and aggregate results with `areduce`—a MapReduce-style execution model for structured data workflows.
 
 ---
 
@@ -34,13 +36,6 @@ Workflows are expressed as transformations between structured states, with predi
 Install Agentics, set up your environment, and run your first logical transduction:
 
 👉 **Getting Started**: [docs/getting_started.md](docs/getting_started.md)
-
----
-
-## 📘 Documentation
-
-- 🧠 **Agentics**: [docs/agentics.md](docs/agentics.md) — wrapping Pydantic models into transduction-ready agents  
-- 🔁 **Transduction**: [docs/transduction.md](docs/transduction.md) — how `<<` works and how to control it  
 
 
 ---
@@ -88,11 +83,6 @@ genre, explanation = await classify_genre(
 
 Agentics models workflows as transformations between **typed states**.
 
-An `Agentics` instance typically includes:
-
-- `atype`: a Pydantic model representing the schema
-- `states`: a list of objects of that type
-
 Core operations:
 
 - `amap(func)`: apply an async function over each state
@@ -100,6 +90,13 @@ Core operations:
 - `<<`: logical transduction from source to target Agentics
 - `&`: merge Pydantic types / instances
 - `@`: compose Pydantic types / instances
+
+
+---
+
+## 📘 Documentation
+
+Complete documentation available [here](./docs/index.md) 
 
 | Notebook | Description |
 |---|---|
@@ -157,6 +154,7 @@ Agentics implements **Logical Transduction Algebra**, described in:
 - Alfio Gliozzo, Naweed Khan, Christodoulos Constantinides, Nandana Mihindukulasooriya, Nahuel Defosse, Junkyu Lee.  
   *Transduction is All You Need for Structured Data Workflows* (August 2025).  
   arXiv:2508.15610 — https://arxiv.org/abs/2508.15610
+
 
 ---
 
