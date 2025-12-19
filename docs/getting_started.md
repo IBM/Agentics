@@ -83,45 +83,31 @@ python examples/self_transduction.py
 python examples/agentics_web_search_report.py
 
 ```
-## 🎯 Coding in Agentics
 
-The hello_world.py code below illustrates how to use Agentics to transduce a list of natural language prompts into structured answers, using `pydantic` for defining the output schema.
+
+## Hello World
 
 ```python
-import asyncio
-from pydantic import BaseModel
-from agentics import AG
 from typing import Optional
+from pydantic import BaseModel, Field
 
-class Answer(BaseModel):
-    answer: Optional[str] = None
-    justification: Optional[str] = None
-    confidence: Optional[float] = None
+from agentics.core.transducible_functions import Transduce, transducible
 
-async def main():
-    input_questions = [
-        "What is the capital of Italy?",
-        "What is the best F1 team in history?",
-    ]
 
-    answers = await (AG(atype=Answer) \
-                     << input_questions)
+class Movie(BaseModel):
+    movie_name: Optional[str] = None
+    description: Optional[str] = None
+    year: Optional[int] = None
 
-    answers.pretty_print()
 
-asyncio.run(main())
+class Genre(BaseModel):
+    genre: Optional[str] = Field(None, description="e.g., comedy, drama, action")
+
+movie = Movie(movie_name="The Godfather")
+
+genre = await (Genre << Movie)(movie)
+
 ```
-
-
-
-## Documentation
-
-This documentation page is written using Mkdocs. 
-You can start the server to visualize this interactively.
-```bash
-mkdocs serve
-```
-After started, documentation will be available here [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
 
 ### Installation details
 
@@ -218,3 +204,12 @@ After started, documentation will be available here [http://127.0.0.1:8000/](htt
         ```bash
         pip install ./agentics
         ```
+
+## Documentation
+
+This documentation page is written using Mkdocs. 
+You can start the server to visualize this interactively.
+```bash
+mkdocs serve
+```
+After started, documentation will be available here [http://127.0.0.1:8000/](http://127.0.0.1:8000/)

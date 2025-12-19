@@ -117,6 +117,36 @@ print(movies[0]) ## note that movies[0] is equivalent to
 ```
 
 
+## 🎯 Transduction between Agentics
+
+In addition to Transducible Functions syntax, AGs enables built in transduction. This was the preferred syntax for AG 1.0 and it is still supported by Agentics 2.0.
+
+```python
+import asyncio
+from pydantic import BaseModel
+from agentics import AG
+from typing import Optional
+
+class Answer(BaseModel):
+    answer: Optional[str] = None
+    justification: Optional[str] = None
+    confidence: Optional[float] = None
+
+async def main():
+    input_questions = [
+        "What is the capital of Italy?",
+        "What is the best F1 team in history?",
+    ]
+
+    answers = await (AG(atype=Answer) \
+                     << input_questions)
+
+    answers.pretty_print()
+
+asyncio.run(main())
+```
+
+
 ## Reference code
 
 [explore this example](src/agentics/examples/agentics_basics.py)
