@@ -1,0 +1,81 @@
+{
+    "id": 0,
+    "domain": "sociology",
+    "workflow_tags": "regression, quantile regression",
+    "domain_knowledge": "Incarceration status can be gauged indirectly by studying the place of residence. If it is 'Jail', or other facilities of detention, incarceration can be assumed. ",
+    "datasets": [
+        {
+            "name": "nls_incarceration_processed.csv",
+            "description": "This dataset was created from the National Longitudinal Study of Youth's 1979 cohort to about the race, wealth, and incarceration status of the participants.",
+            "columns": {
+                "raw": [
+                    {
+                        "name": "race",
+                        "description": "Race of the respondent (hispanic, black or white)"
+                    },
+                    {
+                        "name": "sex",
+                        "description": "Sex of the respondent (male or female)"
+                    },
+                    {
+                        "name": "ever_jailed",
+                        "description": "A boolean variable that equals 1 if the respondent was jailed between 1985 to 1994"
+                    },
+                    {
+                        "name": "composite_wealth_1985",
+                        "description": "A composite variable creating by summing five wealth variables from the NLS data for the year 1985"
+                    },
+                    {
+                        "name": "composite_wealth_1990",
+                        "description": "A composite variable creating by summing five wealth variables from the NLS data for the year 1990"
+                    },
+                    {
+                        "name": "composite_wealth_1996",
+                        "description": "A composite variable creating by summing five wealth variables from the NLS data for the year 1996"
+                    }
+                ]
+            }
+        }
+    ],
+    "intermediate": [],
+    "hypotheses": {
+        "main": [
+            {}
+        ],
+        "intermediate": []
+    },
+    "queries": [
+        [
+            {
+                "qid": 0,
+                "question_type": "relationship",
+                "question": "Is the wealth of extremely poor people (10th percentile) not affected by factors like demographics, criminal history etc. compared to the people at higher spectrum of wealth?"
+            },
+            {
+                "qid": 1,
+                "question_type": "context",
+                "question": "How does the impact of race, gender, and incarceration status on wealth compare at different percentiles of the wealth distribution?"
+            },
+            {
+                "qid": 2,
+                "question_type": "context",
+                "question": "At what percentile (of the order of 10), the impact of race, gender, and incarceration status is insignificant on wealth?"
+            },
+            {
+                "qid": 3,
+                "question_type": "variables",
+                "question": "What factors at the lowest end of the wealth distribution (10th percentile) do not significantly impact wealth when compared to higher ends of the wealth distribution (60th & 90th percentile)?"
+            },
+            {
+                "qid": 4,
+                "question_type": "relationship",
+                "question": "What is the effect between the race, gender, and incarceration status on wealth at the lowest end of the wealth distribution (10th percentile)?"
+            },
+            {
+                "qid": 5,
+                "question_type": "relationship",
+                "question": "What is the effect between the race, gender, and incarceration status on wealth at the highest end of the wealth distribution (90th percentile)?"
+            }
+        ]
+    ]
+}
