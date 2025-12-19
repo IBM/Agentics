@@ -3,7 +3,8 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from agentics.core.transducible_functions import Transduce, transducible
+from agentics import AG
+from agentics.core.transducible_functions import Transduce, With, transducible
 
 
 class Movie(BaseModel):
@@ -16,21 +17,20 @@ class Genre(BaseModel):
     genre: Optional[str] = Field(None, description="Provide one category only")
 
 
+movie = Movie(
+    movie_name="The Godfather",
+    description="The aging patriarch of an organized crime dynasty transfers control of his clandestine empire to his reluctant son.",
+    year=1972,
+)
+
+
+## Using Transducible Decorator
 @transducible(provide_explanation=True)
 async def classify_genre(state: Movie) -> Genre:
     """Classify the genre of the source Movie"""
     return Transduce(state)
 
 
-genre, explanation = asyncio.run(
-    classify_genre(
-        Movie(
-            movie_name="The Godfather",
-            description="The aging patriarch of an organized crime dynasty transfers control of his clandestine empire to his reluctant son.",
-            year=1972,
-        )
-    )
-)
-
+genre, explanation = asyncio.run(classify_genre(movie))
 print(genre.model_dump_json(indent=2))
 print(explanation.model_dump_json(indent=2))

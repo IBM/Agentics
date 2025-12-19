@@ -24,6 +24,36 @@ The result is a way to build agentic systems that are:
 
 Agentics code is **simple, predictable, and robust**, and is easy to embed into modern ecosystems (LangFlow, LangChain, CrewAI, MCP, etc.) 🤝.
 
+
+---
+
+## 📚 Documentation Overview
+
+- **[Getting Started](getting_started.md)** 🚀  
+  Install Agentics, set up your environment, and run your first transducible function over a small dataset.
+
+- **[Core Concepts](core_concepts.md)** 🧠  
+  The mental model: Pydantic types, transducible functions, typed state containers, Logical Transduction Algebra (LTA), and Map–Reduce.
+
+
+- **[Transducible Functions](transducible_functions.md)** ⚙️  
+  How to define, configure, and invoke transducible functions; specifying instructions; controlling temperature, retries, and structured decoding.
+
+- **[Agentics](agentics.md)** 🧬  
+  Defining Pydantic models for inputs/outputs, working with `AG` containers, loading data from JSON/CSV/DataFrames, and preserving type information across the pipeline.
+
+- **[Logical Transduction Algebra](tutorials/logical_transduction_algebra.ipynb)** 🔁  
+  Chaining transducible functions, branching, fan-in/fan-out patterns, and building reusable pipeline components.
+
+- **[Async Map–Reduce Execution](tutorials/map_reduce.ipynb)** 🚀  
+  Using `amap` and `areduce` for large-scale runs, batching strategies, handling failures, and performance considerations.
+
+
+- **[Examples & Use Cases](./examples)** 📘  
+  End-to-end examples: text-to-SQL, data extraction and enrichment, classification, document workflows, evaluation pipelines, and more.
+
+
+
 ---
 
 ## 🔑 Key Features
@@ -109,34 +139,3 @@ The framework is intentionally small:
 - 🚫 No custom DSL to learn  
 - 🐍 Just Python functions, Pydantic models, and a few core primitives  
 - 🌉 Easy to embed into existing stacks (LangFlow nodes, CrewAI agents, MCPs, etc.)  
-
----
-
-## 📚 Documentation Overview
-
-- **[Getting Started](getting_started.md)** 🚀  
-  Install Agentics, set up your environment, and run your first transducible function over a small dataset.
-
-- **[Core Concepts](core_concepts.md)** 🧠  
-  The mental model: Pydantic types, transducible functions, typed state containers, Logical Transduction Algebra (LTA), and Map–Reduce.
-
-
-- **[Transducible Functions](transducible_functions.md)** ⚙️  
-  How to define, configure, and invoke transducible functions; specifying instructions; controlling temperature, retries, and structured decoding.
-
-- **[Agentics](agentics.md)** 🧬  
-  Defining Pydantic models for inputs/outputs, working with `AG` containers, loading data from JSON/CSV/DataFrames, and preserving type information across the pipeline.
-
-- **[Logical Transduction Algebra](tutorials/logical_transduction_algebra.ipynb)** 🔁  
-  Chaining transducible functions, branching, fan-in/fan-out patterns, and building reusable pipeline components.
-
-- **[Async Map–Reduce Execution](tutorials/map_reduce.ipynb)** 🚀  
-  Using `amap` and `areduce` for large-scale runs, batching strategies, handling failures, and performance considerations.
-
-
-- **[Memory & Knowledge Integration](memory.md)** 🧠📚  
-  Attaching external knowledge sources (documents, vector stores, APIs) to transducible functions and enriching states with retrieved context.
-
-
-- **[Patterns & Use Cases](/Users/gliozzo/Code/agentics911/agentics/examples)** 📘  
-  End-to-end examples: text-to-SQL, data extraction and enrichment, classification, document workflows, evaluation pipelines, and more.
