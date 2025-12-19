@@ -59,18 +59,12 @@ gemini_llm = (
 )
 
 
-# ollama_llm = (
-#     LLM(model=os.getenv("OLLAMA_MODEL_ID"), base_url="http://localhost:11434")
-#     if os.getenv("OLLAMA_MODEL_ID")
-#     else None
-# )
-
-
 openai_llm = (
     LLM(
         model=os.getenv(
             "OPENAI_MODEL_ID", "openai/gpt-4"
         ),  # call model by provider/model_name
+        server_url=os.getenv("OPENAI_BASE_URL"),
         temperature=0.8,
         top_p=0.9,
         stop=["END"],
@@ -80,6 +74,7 @@ openai_llm = (
     if os.getenv("OPENAI_API_KEY") and os.getenv("OPENAI_MODEL_ID")
     else None
 )
+
 
 watsonx_llm = (
     LLM(

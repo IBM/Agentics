@@ -1,36 +1,36 @@
-## This script exemplify the most basic use of Agentics as a pydantic transducer from
-## list of strings.
-
 import asyncio
-import os
 from typing import Optional
 
-from dotenv import load_dotenv
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from agentics import AG
-
-load_dotenv()
-
-# Define output type
+from agentics.core.transducible_functions import Transduce, transducible
 
 
-class Answer(BaseModel):
-    answer: Optional[str] = None
-    confidence: Optional[float] = None
+class Movie(BaseModel):
+    movie_name: Optional[str] = None
+    description: Optional[str] = None
+    year: Optional[int] = None
 
 
-async def main():
-
-    # Collect input text
-    input_questions = ["What is the capital of Italy?", "Why agentics is so cool?"]
-    answers = await (AG(atype=Answer) << input_questions)
-
-    answers.pretty_print()
+class Genre(BaseModel):
+    genre: Optional[str] = Field(None, description="Provide one category only")
 
 
-if __name__ == "__main__":
-    if AG.get_llm_provider():
-        asyncio.run(main())
-    else:
-        print("Please set API key in your .env file.")
+@transducible(provide_explanation=True)
+async def classify_genre(state: Movie) -> Genre:
+    """Classify the genre of the source Movie"""
+    return Transduce(state)
+
+
+genre, explanation = asyncio.run(
+    classify_genre(
+        Movie(
+            movie_name="The Godfather",
+            description="The aging patriarch of an organized crime dynasty transfers control of his clandestine empire to his reluctant son.",
+            year=1972,
+        )
+    )
+)
+
+print(genre.model_dump_json(indent=2))
+print(explanation.model_dump_json(indent=2))

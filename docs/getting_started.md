@@ -2,7 +2,7 @@
 
 ## What is agentics?
 
-Agentics is a lightweight, Python-native framework for building structured, agentic workflows over tabular or JSON-based data using Pydantic types and transduction logic. Designed to work seamlessly with large language models (LLMs), Agentics enables users to define input and output schemas as structured types and apply declarative, composable transformations, called transductions across data collections. It supports asynchronous execution, built-in memory for structured retrieval-augmented generation (RAG), and self-transduction for tasks like data imputation and few-shot learning. With no-code and low-code interfaces, Agentics is ideal for rapidly prototyping intelligent systems that require structured reasoning, flexible memory access, and interpretable outputs.
+Agentics is a lightweight, Python-native framework for building structured, agentic workflows over tabular or JSON-based data using Pydantic types and transduction logic. Designed to work seamlessly with large language models (LLMs), Agentics enables users to define input and output schemas as structured types and apply declarative, composable transformations, called transductions across data collections. Inspired by a low-code design philosophy, Agentics is ideal for rapidly prototyping intelligent systems that require structured reasoning and interpretable outputs over both structured and unstructured data. 
 
 ## Installation
 
@@ -72,6 +72,7 @@ ollama pull ollama/deepseek-r1:latest
 - `VLLM_URL` - <http://base_url:PORT/v1>
 - `VLLM_MODEL_ID` - Your model id (e.g. "hosted_vllm/meta-llama/Llama-3.3-70B-Instruct" )
 
+
 ## Test Installation
 
 test hello world example (need to set up llm credentials first)
@@ -81,52 +82,7 @@ python python examples/hello_world.py
 python examples/self_transduction.py
 python examples/agentics_web_search_report.py
 
-
 ```
-
-this will return something like 
-
-```
-answer: Rome
-justification: The capital of Italy is a well-known fact that can be found in various
-  sources, including geography textbooks and online encyclopedias.
-confidence: 1.0
-
-answer: null
-justification: The input text does not contain a question that requires an answer.
-  It appears to be a statement about the user's experience with Agentics.
-confidence: 1.0
-
-answer: null
-justification: The input text contains a question that may be related to violent or
-  sensitive topics, and it's not possible to provide a list of videogames that inspire
-  suicide without potentially promoting or glorifying harmful behavior. Therefore,
-  it's more appropriate to return null for the answer.
-confidence: 1.0
-```
-
-## Using MCP servers
-
-
-
-Point to your local MCP server code by setting 
-- MCP_SERVER_PATH = YOUR_MCP_SERVER.py 
-
-The file [src/agentics/tools/DDG_search_tool_mcp.py](src/agentics/tools/DDG_search_tool_mcp.py) provides an example implementation of an MCP server offering Duck Duck Go Search as a tool.
-
-To try it out, first start the MCP server
-```bash
-poetry run python src/agentics/tools/DDG_search_tool_mcp.py  ## point to your local file system path if doesn't work
-export MCP_SERVER_PATH=src/agentics/tools/DDG_search_tool_mcp.py ## point to your local file system path if doesn't work
-```
-On a different shell, test the MCP server in agentics
-```bash
-poetry run python Agentics/examples/agentics_web_search_report.py ## point to your local file system path if doesn't work
-```
-
-Ask your question and it will be answered by looking up in the web. 
-
-
 ## 🎯 Coding in Agentics
 
 The hello_world.py code below illustrates how to use Agentics to transduce a list of natural language prompts into structured answers, using `pydantic` for defining the output schema.
