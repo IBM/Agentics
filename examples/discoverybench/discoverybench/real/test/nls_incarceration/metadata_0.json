@@ -1,0 +1,66 @@
+{
+    "id": 0,
+    "domain": "sociology",
+    "workflow_tags": "statistical tests, data selection",
+    "domain_knowledge": "Incarceration status can be gauged indirectly by studying the place of residence. If it is 'Jail', or other facilities of detention, incarceration can be assumed. ",
+    "datasets": [
+        {
+            "name": "nls_incarceration_processed.csv",
+            "description": "This dataset was created from the National Longitudinal Study of Youth's 1979 cohort to about the race, wealth, and incarceration status of the participants.",
+            "columns": {
+                "raw": [
+                    {
+                        "name": "race",
+                        "description": "Race of the respondent (hispanic, black or white)"
+                    },
+                    {
+                        "name": "sex",
+                        "description": "Sex of the respondent (male or female)"
+                    },
+                    {
+                        "name": "ever_jailed",
+                        "description": "A boolean variable that equals 1 if the respondent was jailed between 1985 to 1994"
+                    },
+                    {
+                        "name": "composite_wealth_1985",
+                        "description": "A composite variable creating by summing five wealth variables from the NLS data for the year 1985"
+                    },
+                    {
+                        "name": "composite_wealth_1990",
+                        "description": "A composite variable creating by summing five wealth variables from the NLS data for the year 1990"
+                    },
+                    {
+                        "name": "composite_wealth_1996",
+                        "description": "A composite variable creating by summing five wealth variables from the NLS data for the year 1996"
+                    }
+                ]
+            }
+        }
+    ],
+    "intermediate": [],
+    "hypotheses": {
+        "main": [
+            {}
+        ],
+        "intermediate": []
+    },
+    "queries": [
+        [
+            {
+                "qid": 0,
+                "question_type": "context",
+                "question": "In what year were gender disparities highest in median wealth among individuals who were ever incarcerated?"
+            },
+            {
+                "qid": 1,
+                "question_type": "variables",
+                "question": "What measure of socioeconomic status was highest in terms of gender disparities among individuals who were ever incarcerated in 1985?"
+            },
+            {
+                "qid": 2,
+                "question_type": "relationship",
+                "question": "Does gender disparities in median wealth exist among individuals who were ever incarcerated in 1985?"
+            }
+        ]
+    ]
+}

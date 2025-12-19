@@ -1,0 +1,86 @@
+{
+    "id": 0,
+    "domain": "sociology",
+    "workflow_tags": "regression, data selection",
+    "domain_knowledge": "Spending and saving behavior can be used as proxies for Time preference of an individual.",
+    "datasets": [
+        {
+            "name": "nls_bmi_processed.csv",
+            "description": "This dataset is from the National Longitudinal Survey of Youth (NLSY79) includes variables such as gender, age, income, savings behavior, BMI, and racial background.",
+            "max_depth": 0,
+            "columns": {
+                "raw": [
+                    {
+                        "name": "GENDER",
+                        "description": "Gender of the Respondent (MALE or FEMALE)",
+                        "depth": 0
+                    },
+                    {
+                        "name": "AGE",
+                        "description": "The age of the respondent in the year 1989",
+                        "depth": 0
+                    },
+                    {
+                        "name": "AGE_2",
+                        "description": "Square of the age of the Respondent",
+                        "depth": 0
+                    },
+                    {
+                        "name": "INCOME",
+                        "description": "The income of the respondent in the year 1989",
+                        "depth": 0
+                    },
+                    {
+                        "name": "DISSAVED",
+                        "description": "A boolean variable that equals 1 if the respondent took more money out of than put into savings and equals 0 otherwise",
+                        "depth": 0
+                    },
+                    {
+                        "name": "SAMESAVE",
+                        "description": "A boolean variable that equals 1 if the respondent's savings level did not change or the respondent had no savings, and is 0 otherwise",
+                        "depth": 0
+                    },
+                    {
+                        "name": "BMI",
+                        "description": "Body mass index of the respondent calculated using the standard formula using the height and weight of the respondent using the height of 1985 and weight of 1989",
+                        "depth": 0
+                    },
+                    {
+                        "name": "BLACK",
+                        "description": "A boolean variable that indicated if the respondent belongs to the black race or not",
+                        "depth": 0
+                    },
+                    {
+                        "name": "HISPANIC",
+                        "description": "A boolean variable that indicated if the respondent belongs to the hispanic race or not",
+                        "depth": 0
+                    }
+                ]
+            }
+        }
+    ],
+    "intermediate": [],
+    "hypotheses": {
+        "main": [
+            {
+                "depth": 0,
+                "target": "",
+                "expr": "",
+                "expr_ind": "",
+                "text": "Time preference is positively associated with Body Mass Index in Black women with coefficients for no change in savings level being 1.1840 (p-value: 0.003) and coefficient for having withdrawn more money from savings than they had put in being 0.5446 (p-value: 0.225)"
+            }
+        ],
+        "intermediate": []
+    },
+    "workflow": "OLS Regression on data with GENDER=\"FEMALE\" and BLACK=1\nWith DISSAVED and SAMESAVE as independent variables\nand BMI as dependent variable",
+    "queries": [
+        [
+            {
+                "qid": 0,
+                "true_hypothesis": "Time preference is positively associated with Body Mass Index in Black women with coefficients for no change in savings level being 1.1840 (p-value: 0.003) and coefficient for having withdrawn more money from savings than they had put in being 0.5446 (p-value: 0.225)",
+                "question_type": "relationship",
+                "question": "How is time preference associated with Body Mass Index in Black women, given the coefficients for savings behavior?"
+            }
+        ]
+    ]
+}

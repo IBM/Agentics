@@ -1,0 +1,70 @@
+{
+    "id": 0,
+    "domain": "sociology",
+    "workflow_tags": "mediation analysis",
+    "domain_knowledge": "Test scores and class standings are some of the ways to gauge the academic performance of an individual.",
+    "datasets": [
+        {
+            "name": "nls_ses_processed.csv",
+            "description": "This dataset contains social background factors (race, gender, and socioeconomic status) and academic resources at the time of secondary school graduation (standardized test scores, class rank, and curriculum) for the participants of the NLS.",
+            "domain_knowledge": "Armed Services Vocational Aptitude Battery (ASVAB) measures the respondent's knowledge and skills in the topical areas such as mathematical reasoning, science, and reading comprehension.",
+            "columns": {
+                "raw": [
+                    {
+                        "name": "CASE ID",
+                        "description": "Unique ID of each respondent"
+                    },
+                    {
+                        "name": "SAMPLE_RACE",
+                        "description": "Race of the respondent (Hispanic, Black or White)"
+                    },
+                    {
+                        "name": "SAMPLE_SEX",
+                        "description": "Sex of the respondent (Male or Female)"
+                    },
+                    {
+                        "name": "FAMILY SIZE OF SAMPLE",
+                        "description": "Family size of the respondent"
+                    },
+                    {
+                        "name": "ABILITY: COMPOSITE OF ASVAB SCORE",
+                        "description": "Composite variable created by summing following variables:\n\nASVAB - Arithmetic Reasoning Z Score (rounded), 1981\nASVAB - Word Knowledge Z Score (rounded), 1981\nASVAB - Paragraph Comprehension Z Score (rounded), 1981\nASVAB - Mathematics Knowledge Z Score (rounded), 1981"
+                    },
+                    {
+                        "name": "BA DEGREE COMPLETED",
+                        "description": "Boolean variable that equals 1 if the BA Degree was completed by the respondent else 0"
+                    },
+                    {
+                        "name": "PERCENTILE IN CLASS",
+                        "description": "Respondent's percentile in the class that he attended in school last year"
+                    },
+                    {
+                        "name": "SES",
+                        "description": "Socioeconomic Status of the respondent"
+                    }
+                ]
+            }
+        }
+    ],
+    "intermediate": [],
+    "hypotheses": {
+        "main": [
+            {}
+        ],
+        "intermediate": []
+    },
+    "queries": [
+        [
+            {
+                "qid": 0,
+                "question_type": "relationship",
+                "question": "How does academic ability mediate the relationship between socioeconomic status and degree completion?"
+            },
+            {
+                "qid": 1,
+                "question_type": "variables",
+                "question": "What factors mediate the relationship between socioeconomic status and degree completion?"
+            }
+        ]
+    ]
+}
