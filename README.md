@@ -5,19 +5,12 @@
   <img src="https://raw.githubusercontent.com/IBM/Agentics/refs/heads/main/image.png" height="140" alt="Agentics logo">
 </p>
 
+
 <p align="center">
   Agentics is a Python framework for structured, scalable, and semantically grounded <i>agentic computation</i>.<br/>
   Build AI-powered pipelines as <b>typed data transformations</b>—combining Pydantic schemas, LLM-powered transduction, and async execution.
 </p>
 
----
-## ✨ Why Agentics
-
-Most “agent frameworks” let untyped text flow through a pipeline. Agentics flips that: **types are the interface**.  
-Workflows are expressed as transformations between structured states, with predictable schemas and composable operators.
-
-Because every step is a typed transformation, you can **compose** workflows safely (merge and compose types/instances, chain transductions, and reuse `@transducible` functions) without losing semantic structure.  
-The same design also makes it natural to **scale out**: apply transformations over collections with async `amap`, and aggregate results with `areduce`—a MapReduce-style execution model for structured data workflows.
 
 ---
 
@@ -36,6 +29,14 @@ The same design also makes it natural to **scale out**: apply transformations ov
 Install Agentics, set up your environment, and run your first logical transduction:
 
 👉 **Getting Started**: [docs/getting_started.md](docs/getting_started.md)
+
+**Examples**
+
+Run scripts in the `examples/` folder (via `uv`):
+
+```bash
+uv run python examples/hello_world.py
+```
 
 
 ---
@@ -79,22 +80,7 @@ genre, explanation = await classify_genre(
 
 ---
 
-## 🧠 Conceptual Overview
-
-Agentics models workflows as transformations between **typed states**.
-
-Core operations:
-
-- `amap(func)`: apply an async function over each state
-- `areduce(func)`: reduce a list of states into a single value
-- `<<`: logical transduction from source to target Agentics
-- `&`: merge Pydantic types / instances
-- `@`: compose Pydantic types / instances
-
-
----
-
-## 📘 Documentation
+## 📘 Documentation and Notebooks
 
 Complete documentation available [here](./docs/index.md) 
 
@@ -115,15 +101,6 @@ Run all tests:
 uv run pytest
 ```
 
----
-
-## 🗂️ Examples
-
-Run scripts in the `examples/` folder (via `uv`):
-
-```bash
-uv run python examples/hello_world.py
-```
 
 ---
 
@@ -135,7 +112,7 @@ Apache 2.0
 
 ## 👥 Authors
 
-**Principal Investigator**  
+**Project Lead**  
 - Alfio Massimiliano Gliozzo (IBM Research) — gliozzo@us.ibm.com
 
 **Core Contributors**  
@@ -146,6 +123,28 @@ Apache 2.0
 - Mustafa Eyceoz (Red Hat) — Mustafa.Eyceoz@partner.ibm.com  
 
 ---
+
+
+## 🧠 Conceptual Overview
+
+Most “agent frameworks” let untyped text flow through a pipeline. Agentics flips that: **types are the interface**.  
+Workflows are expressed as transformations between structured states, with predictable schemas and composable operators.
+
+Because every step is a typed transformation, you can **compose** workflows safely (merge and compose types/instances, chain transductions, and reuse `@transducible` functions) without losing semantic structure.  
+
+Agentics makes it natural to **scale out**: apply transformations over collections with async `amap`, and aggregate results with `areduce`.
+
+Agentics models workflows as transformations between **typed states**.
+
+Core operations:
+
+- `amap(func)`: apply an async function over each state
+- `areduce(func)`: reduce a list of states into a single value
+- `<<`: logical transduction from source to target Agentics
+- `&`: merge Pydantic types / instances
+- `@`: compose Pydantic types / instances
+
+
 
 ## 📜 Reference
 
