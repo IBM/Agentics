@@ -2,7 +2,7 @@
 
 ## What is agentics?
 
-Agentics is a lightweight, Python-native framework for building structured, agentic workflows over tabular or JSON-based data using Pydantic types and transduction logic. Designed to work seamlessly with large language models (LLMs), Agentics enables users to define input and output schemas as structured types and apply declarative, composable transformations, called transductions across data collections. It supports asynchronous execution, built-in memory for structured retrieval-augmented generation (RAG), and self-transduction for tasks like data imputation and few-shot learning. With no-code and low-code interfaces, Agentics is ideal for rapidly prototyping intelligent systems that require structured reasoning, flexible memory access, and interpretable outputs.
+Agentics is a lightweight, Python-native framework for building structured, agentic workflows over tabular or JSON-based data using Pydantic types and transduction logic. Designed to work seamlessly with large language models (LLMs), Agentics enables users to define input and output schemas as structured types and apply declarative, composable transformations, called transductions across data collections. Inspired by a low-code design philosophy, Agentics is ideal for rapidly prototyping intelligent systems that require structured reasoning and interpretable outputs over both structured and unstructured data. 
 
 ## Installation
 
@@ -72,6 +72,7 @@ ollama pull ollama/deepseek-r1:latest
 - `VLLM_URL` - <http://base_url:PORT/v1>
 - `VLLM_MODEL_ID` - Your model id (e.g. "hosted_vllm/meta-llama/Llama-3.3-70B-Instruct" )
 
+
 ## Test Installation
 
 test hello world example (need to set up llm credentials first)
@@ -81,91 +82,32 @@ python python examples/hello_world.py
 python examples/self_transduction.py
 python examples/agentics_web_search_report.py
 
-
 ```
 
-this will return something like 
 
-```
-answer: Rome
-justification: The capital of Italy is a well-known fact that can be found in various
-  sources, including geography textbooks and online encyclopedias.
-confidence: 1.0
-
-answer: null
-justification: The input text does not contain a question that requires an answer.
-  It appears to be a statement about the user's experience with Agentics.
-confidence: 1.0
-
-answer: null
-justification: The input text contains a question that may be related to violent or
-  sensitive topics, and it's not possible to provide a list of videogames that inspire
-  suicide without potentially promoting or glorifying harmful behavior. Therefore,
-  it's more appropriate to return null for the answer.
-confidence: 1.0
-```
-
-## Using MCP servers
-
-
-
-Point to your local MCP server code by setting 
-- MCP_SERVER_PATH = YOUR_MCP_SERVER.py 
-
-The file [src/agentics/tools/DDG_search_tool_mcp.py](src/agentics/tools/DDG_search_tool_mcp.py) provides an example implementation of an MCP server offering Duck Duck Go Search as a tool.
-
-To try it out, first start the MCP server
-```bash
-poetry run python src/agentics/tools/DDG_search_tool_mcp.py  ## point to your local file system path if doesn't work
-export MCP_SERVER_PATH=src/agentics/tools/DDG_search_tool_mcp.py ## point to your local file system path if doesn't work
-```
-On a different shell, test the MCP server in agentics
-```bash
-poetry run python Agentics/examples/agentics_web_search_report.py ## point to your local file system path if doesn't work
-```
-
-Ask your question and it will be answered by looking up in the web. 
-
-
-## 🎯 Coding in Agentics
-
-The hello_world.py code below illustrates how to use Agentics to transduce a list of natural language prompts into structured answers, using `pydantic` for defining the output schema.
+## Hello World
 
 ```python
-import asyncio
-from pydantic import BaseModel
-from agentics import AG
 from typing import Optional
+from pydantic import BaseModel, Field
 
-class Answer(BaseModel):
-    answer: Optional[str] = None
-    justification: Optional[str] = None
-    confidence: Optional[float] = None
+from agentics.core.transducible_functions import Transduce, transducible
 
-async def main():
-    input_questions = [
-        "What is the capital of Italy?",
-        "What is the best F1 team in history?",
-    ]
 
-    answers = await (AG(atype=Answer) \
-                     << input_questions)
+class Movie(BaseModel):
+    movie_name: Optional[str] = None
+    description: Optional[str] = None
+    year: Optional[int] = None
 
-    answers.pretty_print()
 
-asyncio.run(main())
+class Genre(BaseModel):
+    genre: Optional[str] = Field(None, description="e.g., comedy, drama, action")
+
+movie = Movie(movie_name="The Godfather")
+
+genre = await (Genre << Movie)(movie)
+
 ```
-
-
-
-## Documentation
-
-This documentation page is written using Mkdocs. 
-You can start the server to visualize this interactively.
-```bash
-mkdocs serve
-```
-After started, documentation will be available here [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
 
 ### Installation details
 
@@ -262,3 +204,12 @@ After started, documentation will be available here [http://127.0.0.1:8000/](htt
         ```bash
         pip install ./agentics
         ```
+
+## Documentation
+
+This documentation page is written using Mkdocs. 
+You can start the server to visualize this interactively.
+```bash
+mkdocs serve
+```
+After started, documentation will be available here [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
