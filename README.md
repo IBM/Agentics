@@ -26,8 +26,16 @@
 
 ## 📦 Getting Started
 
-Install Agentics, set up your environment, and run your first logical transduction:
+Quickstart:
 
+Install Agentics in your current env, set up your environment variable, and run your first logical transduction:
+
+```bash
+uv pip install agentics-py
+```
+set up your .env using the required parameters for your LLM provider of choice. Use [.env_sample](.env_sample) as a reference. 
+
+Find out more
 👉 **Getting Started**: [docs/getting_started.md](docs/getting_started.md)
 
 **Examples**
