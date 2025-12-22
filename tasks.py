@@ -42,4 +42,44 @@ def test_in_isolation(
         )
 
 
+@task()
+def update_docs(ctx: Context, remote_name: str = ""):
+    """Updates Github contents
+
+
+    Supports multiple remote names
+    """
+
+    name_remote_url: str = ctx.run(
+        "git remote -v | awk '{print $1, $2}' | uniq", hide=True
+    ).stdout
+    remote_map = dict(line.split(" ") for line in name_remote_url.splitlines())
+    if remote_name and not remote_name in remote_map:
+        ctx.rich_exit(
+            f"Can't find [red]{remote_name}[/red] in the remotes, try running "
+            + f"[green]git remote -v[/green] and checking if {remote_name} is present"
+        )
+    try:
+        remote_name = next(
+            name
+            for name, url in remote_map.items()
+            if url.startswith("git@") and "github.com" in url
+        )
+    except StopIteration:
+        ctx.rich_exit(
+            "Can't find [bold]github.com[/bold] in the remotes, try running "
+            + "[green]git remote -v[/green] and checking if github.com is present"
+        )
+    with ctx.status(f"Updating Github pages for remote {remote_name}"):
+        ctx.run(f"uv run --group docs mkdocs gh-deploy -r {remote_name}", pty=True)
+
+
+@task()
+def serve_docs(ctx: Context):
+    """Serve the docs"""
+
+    with ctx.status("Running mkdocs serve"):
+        ctx.run("uv run --group docs server", pty=True)
+
+
 script()

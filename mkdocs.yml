@@ -2,25 +2,27 @@ site_name: Agentics Documentation
 theme:
   name: material
   palette:
-    scheme: slate 
+    scheme: slate
 
 plugins:
   - search
   - mkdocstrings
 
-
 nav:
   - 👋 Welcome to Agentics: index.md
   - Getting Started: getting_started.md
-  - What is Agentics?: background.md 
+  - What is Agentics?: background.md
   - Use Cases: use_cases.md
   - Agentics: agentics.md
   - Transduction: transduction.md
   - Memory: memory.md
-
 
 markdown_extensions:
   - pymdownx.tabbed
   - pymdownx.superfences
   - pymdownx.tabbed:
       alternate_style: true
+
+extra:
+  version:
+    provider: mike
