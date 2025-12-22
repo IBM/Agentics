@@ -1,0 +1,805 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
+    
+    
+      
+        <title>🧠 Core Concepts - Agentics Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.618322db.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#core-concepts" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Agentics Documentation" class="md-header__button md-logo" aria-label="Agentics Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Agentics Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              🧠 Core Concepts
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Agentics Documentation" class="md-nav__button md-logo" aria-label="Agentics Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Agentics Documentation
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    👋 Welcome to Agentics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting_started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../background.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What is Agentics?
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../use_cases.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use Cases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agentics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agentics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../transduction.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Transduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../memory.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Memory
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-pydantic-types-describing-structured-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Pydantic Types: Describing Structured Data 📐
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-transducible-functions-typed-llm-transformations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Transducible Functions: Typed LLM Transformations ⚙️
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-typed-state-containers-ags-working-with-collections" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Typed State Containers (AGs): Working with Collections 🗂️
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-logical-transduction-algebra-lta-the-formal-backbone" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Logical Transduction Algebra (LTA): The Formal Backbone 📚
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-mapreduce-scaling-transductions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Map–Reduce: Scaling Transductions 🚀
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Map–Reduce: Scaling Transductions 🚀">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-map-phase-amap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Map Phase (amap)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-reduce-phase-areduce" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Reduce Phase (areduce)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-how-the-concepts-fit-together" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. How the Concepts Fit Together 🔗
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Summary ✅
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="core-concepts">🧠 Core Concepts</h1>
+<p>Agentics is built around a small set of concepts that work together:</p>
+<ul>
+<li><strong>Pydantic types</strong> – how you describe structured data  </li>
+<li><strong>Transducible functions</strong> – LLM-powered, type-safe transformations  </li>
+<li><strong>Typed state containers (AGs)</strong> – collections of typed rows/documents  </li>
+<li><strong>Logical Transduction Algebra (LTA)</strong> – the formal backbone  </li>
+<li><strong>Map–Reduce</strong> – the execution pattern for large workloads  </li>
+</ul>
+<p>This page gives you the mental model you need before diving into code.</p>
+<hr />
+<h2 id="1-pydantic-types-describing-structured-data">1. Pydantic Types: Describing Structured Data 📐</h2>
+<p>At the heart of Agentics is the idea that <strong>everything is a type</strong>.</p>
+<p>You describe your data using <strong>Pydantic models</strong>:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Product</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">description</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">price</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</code></pre></div>
+<p>These models serve three roles:</p>
+<ol>
+<li><strong>Schema</strong> – they define the fields, types, and optionality  </li>
+<li><strong>Validation</strong> – they validate inputs and outputs at runtime  </li>
+<li><strong>Contract</strong> – they act as the contract between your code and the LLM  </li>
+</ol>
+<p>In Agentics, any LLM-powered transformation is expressed as:</p>
+<blockquote>
+<p>“Given a <code>Source</code> type, produce a <code>Target</code> type.”</p>
+</blockquote>
+<p>Instead of prompt engineering around raw strings, you define <strong>transformations between types</strong>.</p>
+<hr />
+<h2 id="2-transducible-functions-typed-llm-transformations">2. Transducible Functions: Typed LLM Transformations ⚙️</h2>
+<p>A <strong>transducible function</strong> is the core abstraction in Agentics.</p>
+<p>Informally:</p>
+<blockquote>
+<p>A transducible function is an LLM-backed function<br />
+that maps inputs of type <code>Source</code> to outputs of type <code>Target</code><br />
+under a set of instructions and constraints.</p>
+</blockquote>
+<p>Conceptually:</p>
+<div class="highlight"><pre><span></span><code>Target &lt;&lt; Source
+</code></pre></div>
+<p>Example:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Review</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">text</span><span class="p">:</span> <span class="nb">str</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ReviewSummary</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">sentiment</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">summary</span><span class="p">:</span> <span class="nb">str</span>
+</code></pre></div>
+<p>A transducible function might be:</p>
+<div class="highlight"><pre><span></span><code><span class="n">fn</span><span class="p">:</span> <span class="p">(</span><span class="n">Review</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ReviewSummary</span>
+</code></pre></div>
+<p>with instructions like:</p>
+<blockquote>
+<p>“Given a review, detect its sentiment (positive/negative/neutral) and produce a one-sentence summary.”</p>
+</blockquote>
+<p>Key properties:</p>
+<ul>
+<li><strong>Typed I/O</strong> – the function is bound to <code>Source</code> and <code>Target</code> Pydantic models.  </li>
+<li><strong>Single Source of Truth for Instructions</strong> – instructions live alongside the function definition.  </li>
+<li><strong>LLM-Agnostic</strong> – the function describes <em>what</em> to transform; the underlying model can change.  </li>
+<li><strong>Composable</strong> – functions can be chained, branched, or merged into larger workflows.</li>
+</ul>
+<p>You don’t call the LLM directly; you <strong>call the transducible function</strong>, which manages LLM calls, validation, retries, and evidence tracking.</p>
+<hr />
+<h2 id="3-typed-state-containers-ags-working-with-collections">3. Typed State Containers (AGs): Working with Collections 🗂️</h2>
+<p>Transformations rarely happen on a single object. You typically work with <strong>collections</strong> of items (rows, documents, events, etc.).</p>
+<p>Agentics introduces <strong>typed state containers</strong> (AG) to:</p>
+<ul>
+<li>Hold a collection of instances of a given Pydantic type  </li>
+<li>Preserve that type information across operations  </li>
+<li>Provide a uniform interface for Map–Reduce, filtering, joining, etc.</li>
+</ul>
+<p>Conceptually, you can think of an <code>AG[Source]</code> like a type-aware table:</p>
+<div class="highlight"><pre><span></span><code>AG[Review]
+  ├─ row 0: Review(text=&quot;…&quot;)
+  ├─ row 1: Review(text=&quot;…&quot;)
+  └─ row n: Review(text=&quot;…&quot;)
+</code></pre></div>
+<p>Applying a transducible function <code>(Review) -&gt; ReviewSummary</code> over an <code>AG[Review]</code> conceptually yields an <code>AG[ReviewSummary]</code>.</p>
+<p>Typed state containers give you:</p>
+<ul>
+<li><strong>Clarity</strong> – you always know what type you’re holding.  </li>
+<li><strong>Safety</strong> – operations can check types and schemas instead of guessing.  </li>
+<li><strong>Composability</strong> – containers can flow between functions and stages.</li>
+</ul>
+<p>You can think of state containers as the <strong>data plane</strong> of Agentics.</p>
+<p>Note: The name Agentics is derived as a legacy from the first version of Agentics, in which data models and transformations were blended into the same object. By introducing transducible functions as first class citizens, Agentics 2.0 uses AGs primarily as a data structure, although it is still possible to use them directly for transformations. See agentics v1.0 documentation to learn more. </p>
+<hr />
+<h2 id="4-logical-transduction-algebra-lta-the-formal-backbone">4. Logical Transduction Algebra (LTA): The Formal Backbone 📚</h2>
+<p>Transducible functions and typed states are not just coding patterns; they are backed by a formal framework called <strong>Logical Transduction Algebra (LTA)</strong>.</p>
+<p>You do <strong>not</strong> need to understand the full mathematics to use Agentics, but the intuition is important:</p>
+<ul>
+<li>
+<p><strong>Transductions as Morphisms</strong><br />
+  Each transducible function is treated as a morphism between types:<br />
+<code>Source ⟶ Target</code>.</p>
+</li>
+<li>
+<p><strong>Composability</strong><br />
+  If you have <code>f: A ⟶ B</code> and <code>g: B ⟶ C</code>, then you can form a composite transduction <code>g ∘ f: A ⟶ C</code>. Agentics gives you a practical way to do this over LLM-based functions.</p>
+</li>
+<li>
+<p><strong>Explainability &amp; Evidence</strong><br />
+  Because transductions are modeled as structured mappings, Agentics can track <strong>which fields</strong> and <strong>which steps</strong> contributed to the final outputs. This underpins <strong>evidence tracking</strong> and <strong>traceability</strong>.</p>
+</li>
+</ul>
+<p>In short:</p>
+<blockquote>
+<p>LTA provides the theoretical foundation<br />
+for why your pipelines are composable and explainable,<br />
+even though they are powered by probabilistic models.</p>
+</blockquote>
+<hr />
+<h2 id="5-mapreduce-scaling-transductions">5. Map–Reduce: Scaling Transductions 🚀</h2>
+<p>Once you have:</p>
+<ul>
+<li>Typed collections (<code>AG[Source]</code>), and  </li>
+<li>Typed transformations (<code>Source -&gt; Target</code>),</li>
+</ul>
+<p>you need a way to run these at scale. Agentics uses a familiar pattern: <strong>Map–Reduce</strong>.</p>
+<h3 id="51-map-phase-amap">5.1 Map Phase (<code>amap</code>)</h3>
+<p>The <strong>map</strong> phase applies a transducible function to each element (or batch) of a collection.</p>
+<p>Conceptually:</p>
+<div class="highlight"><pre><span></span><code>list[Source]  --amap(f)--&gt;  list[Target]
+</code></pre></div>
+<p>Where <code>f: Source -&gt; Target</code>.</p>
+<p>Properties:</p>
+<ul>
+<li><strong>Parallelizable</strong> – each element can be processed independently.  </li>
+<li><strong>Asynchronous</strong> – <code>amap</code> is designed for async I/O and concurrent execution.  </li>
+<li><strong>Typed In/Out</strong> – both input and output containers carry their types.</li>
+</ul>
+<p>Typical use cases:</p>
+<ul>
+<li>Extracting structured info from documents  </li>
+<li>Enriching rows with LLM-derived attributes  </li>
+<li>Normalizing or cleaning text fields at scale  </li>
+</ul>
+<h3 id="52-reduce-phase-areduce">5.2 Reduce Phase (<code>areduce</code>)</h3>
+<p>The <strong>reduce</strong> phase aggregates a collection back into a smaller structure (often a single summary or global view).</p>
+<div class="highlight"><pre><span></span><code>list[Target]  --areduce(g)--&gt;  GlobalSummary
+</code></pre></div>
+<p>Where <code>g</code> is a transducible function or aggregation operation that takes many items and produces fewer (often one).</p>
+<p>Examples:</p>
+<ul>
+<li>Summarizing a whole dataset into a report object  </li>
+<li>Producing global statistics or flags  </li>
+<li>Clustering and relation induction </li>
+</ul>
+<p>Map–Reduce in Agentics is a <strong>logical pattern</strong>, not tied to any specific infrastructure:</p>
+<ul>
+<li><code>amap</code> = “apply a typed transformation to many items”  </li>
+<li><code>areduce</code> = “aggregate many results into fewer structured outputs”</li>
+</ul>
+<p>Together, they define how <strong>large-scale reasoning workflows</strong> are expressed in Agentics.</p>
+<hr />
+<h2 id="6-how-the-concepts-fit-together">6. How the Concepts Fit Together 🔗</h2>
+<p>A typical workflow looks like this:</p>
+<ol>
+<li>
+<p><strong>Define your types</strong><br />
+   Use Pydantic to describe your raw data (<code>Source</code>) and desired outputs (<code>Target</code>, <code>Report</code>, etc.).</p>
+</li>
+<li>
+<p><strong>Define transducible functions</strong><br />
+   For each logical step, define a transducible function:<br />
+   extraction → normalization → classification → enrichment → summarization.</p>
+</li>
+<li>
+<p><strong>Load data into typed state containers (Optional)</strong><br />
+   Wrap your dataset into a container such as <code>AG[Source]</code>. 
+   You can also use simple python lists of objects of the intended type. </p>
+</li>
+<li>
+<p><strong>Apply Map–Reduce</strong>  </p>
+</li>
+<li>Use <code>amap</code> to apply transducible functions over the collection. </li>
+<li>
+<p>Use <code>areduce</code> to build global summaries or reports.</p>
+</li>
+<li>
+<p><strong>Rely on LTA properties</strong><br />
+   Because everything is a typed transduction, you can:  </p>
+</li>
+<li>Compose steps cleanly,  </li>
+<li>Trace outputs back to inputs,  </li>
+<li>Reason about structure and invariants in your pipeline.</li>
+</ol>
+<hr />
+<h2 id="7-summary">7. Summary ✅</h2>
+<ul>
+<li><strong>Pydantic types</strong> give you schemas and validation.  </li>
+<li><strong>Transducible functions</strong> turn LLM calls into typed, reusable transformations.  </li>
+<li><strong>Typed state containers</strong> hold collections of those types with clear semantics.  </li>
+<li><strong>Logical Transduction Algebra (LTA)</strong> explains why these transformations compose and remain interpretable.  </li>
+<li><strong>Map–Reduce</strong> provides the pattern for scaling these transductions to large datasets.</li>
+</ul>
+<p>From here, you can explore:</p>
+<ul>
+<li>👉 <a href="../transducible_functions/">Transducible Functions</a> for concrete examples of defining and using transducible functions</li>
+<li>👉 <code>types_and_states.md</code> for data modeling patterns  </li>
+<li>👉 <code>mapreduce.md</code> to see how large-scale execution works in practice  </li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": [], "search": "../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      
+    
+  </body>
+</html>

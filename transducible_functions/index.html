@@ -1,0 +1,1152 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
+    
+    
+      
+        <title>⚙️ Transducible Functions - Agentics Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.618322db.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#transducible-functions" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Agentics Documentation" class="md-header__button md-logo" aria-label="Agentics Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Agentics Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              ⚙️ Transducible Functions
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Agentics Documentation" class="md-nav__button md-logo" aria-label="Agentics Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Agentics Documentation
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    👋 Welcome to Agentics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting_started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../background.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What is Agentics?
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../use_cases.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use Cases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agentics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agentics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../transduction.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Transduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../memory.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Memory
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-what-is-a-transducible-function" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. What Is a Transducible Function?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-source-and-target-types-x-and-y" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Source and Target Types (X and Y) 📐
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-defining-transducible-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Defining Transducible Functions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-the-transducible-decorator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. The @transducible() Decorator
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. The @transducible() Decorator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-example-hybrid-llm-programmatic-logic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Example: Hybrid LLM + Programmatic Logic
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4.1 Example: Hybrid LLM + Programmatic Logic">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#llm-driven-email-generation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LLM-driven email generation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#programmatic-email-extraction-no-llm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Programmatic email extraction (no LLM)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-executing-transducible-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Executing Transducible Functions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Executing Transducible Functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-example-outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Example Outputs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-dynamic-generation-composition-of-transducible-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Dynamic Generation &amp; Composition of Transducible Functions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Dynamic Generation &amp; Composition of Transducible Functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-minimal-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Minimal Setup
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-dynamic-generation-with-type-function" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Dynamic Generation with &lt;&lt; (Type → Function)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-composing-transductions-with" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Composing Transductions with &lt;&lt;
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6.3 Composing Transductions with &lt;&lt;">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#631-two-step-composition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3.1. Two-step composition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#632-composition-via-on-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3.2. Composition via &lt;&lt; on functions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#64-using-with-for-configured-dynamic-transduction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.4 Using With(...) for Configured Dynamic Transduction
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6.4 Using With(...) for Configured Dynamic Transduction">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#65-adding-explanations-with-with" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.5. Adding explanations with With(...)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-mapreduce-scaling-transducible-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Map–Reduce: Scaling Transducible Functions 🚀
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-evidence-provenance-and-explainability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Evidence, Provenance, and Explainability
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-when-to-create-a-new-transducible-function" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. When to Create a New Transducible Function
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Summary ✅
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="transducible-functions">⚙️ Transducible Functions</h1>
+<p>Transducible functions are the <em>workhorse</em> of Agentics.<br />
+They turn “call this LLM with a prompt” into:</p>
+<blockquote>
+<p><strong>A typed, explainable transformation</strong><br />
+<code>T: X → Y</code> with guarantees about how each output field was produced.</p>
+</blockquote>
+<p>This document explains what transducible functions are, how they work in Agentics, and how to use them in practice — including <strong>dynamic generation</strong> and <strong>compositional patterns</strong> using the <code>&lt;&lt;</code> operator.</p>
+<hr />
+<h2 id="1-what-is-a-transducible-function">1. What Is a Transducible Function?</h2>
+<p>Formally, a <strong>transducible function</strong> (T : X \to Y) is an <em>explainable</em> function that satisfies:</p>
+<ol>
+<li>
+<p><strong>Totality</strong><br />
+   For every valid input (x \in \llbracket X \rrbracket), the function produces a valid output of type (Y).  </p>
+<blockquote>
+<p>No silent failures: the function always returns some well-typed <code>Y</code>.</p>
+</blockquote>
+</li>
+<li>
+<p><strong>Local Evidence</strong><br />
+   Each output slot (y_i) is computed only from its <em>evidence subset</em> (\mathcal{E}_i(x)).  </p>
+<blockquote>
+<p>No field is generated “from nowhere”: if <code>subject</code> appears in the output, we know which inputs and instructions it depended on.</p>
+</blockquote>
+</li>
+<li>
+<p><strong>Slot-Level Provenance</strong><br />
+   The mapping between input and output slots is explicit:<br />
+   [
+   \mathcal{T}(y_i) = \mathcal{E}_i
+   ]<br />
+   This induces a bipartite graph between <strong>input slots</strong> and <strong>output slots</strong>, which acts as the <em>explainability trace</em> of the transduction.</p>
+</li>
+</ol>
+<p>Intuitively:</p>
+<ul>
+<li>An ordinary function only tells you <em>“here is the output.”</em>  </li>
+<li>A <strong>transducible</strong> function also tells you <em>“here is the output, and here is exactly which inputs I used and why”</em></li>
+</ul>
+<p>Transducible functions extend normal functions with <strong>structural transparency at the slot level</strong>.</p>
+<hr />
+<h2 id="2-source-and-target-types-x-and-y">2. Source and Target Types (X and Y) 📐</h2>
+<p>Agentics uses <strong>Pydantic models</strong> to represent the input type <code>X</code> and the output type <code>Y</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">Field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">UserMessage</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">content</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Email</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A simple email schema.&quot;&quot;&quot;</span>
+    <span class="n">to</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Recipient name or email address.&quot;</span><span class="p">)</span>
+    <span class="n">subject</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">body</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+</code></pre></div>
+<ul>
+<li><code>UserMessage</code> is our <strong>Source</strong> type (<code>X</code>).</li>
+<li><code>Email</code> is our <strong>Target</strong> type (<code>Y</code>).</li>
+</ul>
+<blockquote>
+<p><strong>Recommendation</strong><br />
+In transduction scenarios, it is often useful to declare fields as <code>Optional[...] = None</code>.<br />
+This gives the LLM the ability to say <em>“I don’t have enough evidence for this field”</em> by leaving it <code>null</code>, instead of hallucinating content.</p>
+</blockquote>
+<p>The transducible function we will define next will transform exactly <strong>one</strong> <code>UserMessage</code> into <strong>one</strong> <code>Email</code> (and later, we’ll see how to scale to lists).</p>
+<hr />
+<h2 id="3-defining-transducible-functions">3. Defining Transducible Functions</h2>
+<p>In Agentics, transducible functions are <code>async</code> Python functions that:</p>
+<ul>
+<li>Accept <strong>exactly one</strong> instance of the source type <code>X</code> as input.</li>
+<li>Return <strong>exactly one</strong> instance of the target type <code>Y</code>.</li>
+</ul>
+<p>They can be defined in two main ways:</p>
+<ol>
+<li>Using the <strong><code>@transducible()</code> decorator</strong> on an async Python function.</li>
+<li><strong>Dynamically generating</strong> them from source and target types (e.g., via builders or the <code>&lt;&lt;</code> operator), with instructions and parameters.</li>
+</ol>
+<p>This section starts with the decorator pattern and then moves to dynamic generation and composition.</p>
+<hr />
+<h2 id="4-the-transducible-decorator">4. The <code>@transducible()</code> Decorator</h2>
+<p>The decorator turns an ordinary async function into a transducible function. When decorated with <code>@transducible()</code>, your function can return either:</p>
+<ul>
+<li>A <strong>concrete instance of the target type</strong> <code>Y</code> (pure Python logic), or</li>
+<li>A special <strong><code>Transduce</code></strong> object wrapping an instance of the source type <code>X</code>, which means:</li>
+</ul>
+<blockquote>
+<p>“Send this source state to the LLM and let the model generate the target type <code>Y</code>.”</p>
+</blockquote>
+<h3 id="41-example-hybrid-llm-programmatic-logic">4.1 Example: Hybrid LLM + Programmatic Logic</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">agentics.core.transducible_functions</span><span class="w"> </span><span class="kn">import</span> <span class="n">transducible</span><span class="p">,</span> <span class="n">Transduce</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">UserMessage</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">content</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Email</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">to</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">subject</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">body</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+</code></pre></div>
+<h4 id="llm-driven-email-generation">LLM-driven email generation</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@transducible</span><span class="p">()</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">write_email_with_llm</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">UserMessage</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Email</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Write a full email about the provided content.</span>
+<span class="sd">    The LLM is allowed to elaborate and make up reasonable details.&quot;&quot;&quot;</span>
+    <span class="c1"># Optionally mutate or pre-process state here</span>
+    <span class="k">return</span> <span class="n">Transduce</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+</code></pre></div>
+<p>Here, <code>Transduce(state)</code> signals:</p>
+<ul>
+<li>“Use the transduction engine with this <code>UserMessage</code> as evidence.”</li>
+<li>The LLM will generate an <code>Email</code> instance, respecting the schema.</li>
+</ul>
+<h4 id="programmatic-email-extraction-no-llm">Programmatic email extraction (no LLM)</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@transducible</span><span class="p">()</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">write_email_programmatically</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">UserMessage</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Email</span><span class="p">:</span>
+    <span class="n">pattern</span> <span class="o">=</span> <span class="sa">r</span><span class="s2">&quot;^(Hi|Dear|Hello|Hey)\s+([^,]+),\s*(.+)$&quot;</span>
+    <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="n">state</span><span class="o">.</span><span class="n">content</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">match</span><span class="p">:</span>
+        <span class="n">greeting</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">body</span> <span class="o">=</span> <span class="n">match</span><span class="o">.</span><span class="n">groups</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">Email</span><span class="p">(</span><span class="n">to</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">body</span><span class="o">=</span><span class="n">body</span><span class="p">)</span>
+    <span class="c1"># Not enough evidence → return an empty Email</span>
+    <span class="k">return</span> <span class="n">Email</span><span class="p">()</span>
+</code></pre></div>
+<p>This function is also <strong>transducible</strong>, even if it does not call any LLM:</p>
+<ul>
+<li>It still respects totality: for any <code>UserMessage</code> it returns a valid <code>Email</code>.</li>
+<li>Local evidence is explicit: <code>to</code> and <code>body</code> come directly from <code>content</code>.</li>
+<li>Slot-level provenance is trivial: each field maps to a substring in <code>content</code>.</li>
+</ul>
+<p>Because <em>both</em> functions are transducible, they can be composed, traced, and plugged into Map–Reduce pipelines in exactly the same way.</p>
+<hr />
+<h2 id="5-executing-transducible-functions">5. Executing Transducible Functions</h2>
+<p>You call a transducible function just like any other async function:</p>
+<div class="highlight"><pre><span></span><code><span class="n">message</span> <span class="o">=</span> <span class="n">UserMessage</span><span class="p">(</span>
+    <span class="n">content</span><span class="o">=</span><span class="s2">&quot;Hi Lisa, I made great progress with the new release of Agentics 2.0&quot;</span>
+<span class="p">)</span>
+
+<span class="n">target1</span> <span class="o">=</span> <span class="k">await</span> <span class="n">write_email_with_llm</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+<span class="n">target2</span> <span class="o">=</span> <span class="k">await</span> <span class="n">write_email_programmatically</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="51-example-outputs">5.1 Example Outputs</h3>
+<p><code>target1</code> (LLM-based) may return something like:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;to&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Lisa&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;subject&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Update on Agentics 2.0&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;body&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Hi Lisa,\n\nI wanted to share some exciting news about the new release of Agentics 2.0. Over the past week, I made great progress on the features we discussed...\n\nBest regards,\n[Your Name]&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><code>target2</code> (programmatic) will deterministically return:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;to&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Lisa&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;subject&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;body&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;I made great progress with the new release of Agentics 2.0&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>A few important observations:</p>
+<ul>
+<li>The LLM output is <strong>stochastic</strong>: repeated calls may differ in style, but must remain logically transducible and semantically aligned with the evidence.</li>
+<li>The programmatic output is <strong>deterministic</strong> and brittle (it depends strictly on the regex).</li>
+<li>In practice, you combine both patterns:</li>
+<li>Use deterministic logic when the pattern is simple and strict.</li>
+<li>Use LLM-based transduction when structure is fixed but content is open-ended.</li>
+</ul>
+<hr />
+<h2 id="6-dynamic-generation-composition-of-transducible-functions">6. Dynamic Generation &amp; Composition of Transducible Functions</h2>
+<p>Beyond the decorator, Agentics lets you <strong>generate and compose</strong> transducible functions <em>dynamically</em> using the <strong><code>&lt;&lt;</code> operator</strong> and helpers such as <code>With(...)</code>.</p>
+<p>Conceptually, the operator implements:</p>
+<blockquote>
+<p><strong>Typed transduction construction</strong><br />
+<code>Y &lt;&lt; X</code> means: <em>“Build a transducible function that maps from type <code>X</code> to type <code>Y</code>.”</em>  </p>
+</blockquote>
+<p>You can use it with:</p>
+<ul>
+<li><strong>Types</strong> (<code>Y &lt;&lt; X</code>),</li>
+<li><strong>Existing transducible functions</strong> (<code>Y &lt;&lt; f</code>), and</li>
+<li><strong>Configuration wrappers</strong> (<code>Y &lt;&lt; With(X, ...)</code>).</li>
+</ul>
+<h3 id="61-minimal-setup">6.1 Minimal Setup</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">Field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">agentics.core.transducible_functions</span><span class="w"> </span><span class="kn">import</span> <span class="n">With</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">GenericInput</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">content</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Email</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Email generated from a generic input.&quot;&quot;&quot;</span>
+    <span class="n">to</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Recipient of the email.&quot;</span><span class="p">)</span>
+    <span class="n">subject</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">body</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+</code></pre></div>
+<hr />
+<h3 id="62-dynamic-generation-with-type-function">6.2 Dynamic Generation with <code>&lt;&lt;</code> (Type → Function)</h3>
+<p>The simplest form of dynamic generation is:</p>
+<div class="highlight"><pre><span></span><code><span class="n">write_mail</span> <span class="o">=</span> <span class="n">Email</span> <span class="o">&lt;&lt;</span> <span class="n">GenericInput</span>
+</code></pre></div>
+<p>This constructs a transducible function:</p>
+<div class="highlight"><pre><span></span><code>write_mail: GenericInput → Email
+</code></pre></div>
+<p>Usage:</p>
+<div class="highlight"><pre><span></span><code><span class="n">input_state</span> <span class="o">=</span> <span class="n">GenericInput</span><span class="p">(</span>
+    <span class="n">content</span><span class="o">=</span><span class="s2">&quot;Write a news story on Zoran Mandani winning the election in NYC and send it to Alfio&quot;</span>
+<span class="p">)</span>
+
+<span class="n">mail</span> <span class="o">=</span> <span class="k">await</span> <span class="n">write_mail</span><span class="p">(</span><span class="n">input_state</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">mail</span><span class="o">.</span><span class="n">model_dump_json</span><span class="p">(</span><span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+</code></pre></div>
+<p>Here, <code>Email &lt;&lt; GenericInput</code> tells Agentics:</p>
+<ul>
+<li>“Create an LLM-backed transducible function that maps a <code>GenericInput</code> into an <code>Email</code>.”</li>
+<li>The default instructions depend on your configuration and global defaults (or you can refine them via <code>With</code>, shown below).</li>
+</ul>
+<hr />
+<h3 id="63-composing-transductions-with">6.3 Composing Transductions with <code>&lt;&lt;</code></h3>
+<p>You can build <strong>multi-step pipelines</strong> by composing transducible functions and types using <code>&lt;&lt;</code>.</p>
+<p>Suppose we want to add a <strong>summary</strong> step on top of the email:</p>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Summary</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">summary_text</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+</code></pre></div>
+<h4 id="631-two-step-composition">6.3.1. Two-step composition</h4>
+<div class="highlight"><pre><span></span><code><span class="n">input_state</span> <span class="o">=</span> <span class="n">GenericInput</span><span class="p">(</span>
+    <span class="n">content</span><span class="o">=</span><span class="s2">&quot;Write news story on Zoran Mandani winning the election in NYC and send it to Alfio&quot;</span>
+<span class="p">)</span>
+
+<span class="n">write_mail</span> <span class="o">=</span> <span class="n">Email</span> <span class="o">&lt;&lt;</span> <span class="n">GenericInput</span>             <span class="c1"># GenericInput → Email</span>
+<span class="n">summary_from_email</span> <span class="o">=</span> <span class="n">Summary</span> <span class="o">&lt;&lt;</span> <span class="n">Email</span>          <span class="c1"># Email → Summary</span>
+
+<span class="c1"># Composition by function application</span>
+<span class="n">mail</span> <span class="o">=</span> <span class="k">await</span> <span class="n">write_mail</span><span class="p">(</span><span class="n">input_state</span><span class="p">)</span>
+<span class="n">summary</span> <span class="o">=</span> <span class="k">await</span> <span class="n">summary_from_email</span><span class="p">(</span><span class="n">mail</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">mail</span><span class="o">.</span><span class="n">model_dump_json</span><span class="p">(</span><span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">summary</span><span class="o">.</span><span class="n">model_dump_json</span><span class="p">(</span><span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+</code></pre></div>
+<h4 id="632-composition-via-on-functions">6.3.2. Composition via <code>&lt;&lt;</code> on functions</h4>
+<p>You can also let <code>&lt;&lt;</code> perform the composition directly:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Compose Summary on top of write_mail</span>
+<span class="n">summary_composite_1</span> <span class="o">=</span> <span class="n">Summary</span> <span class="o">&lt;&lt;</span> <span class="n">write_mail</span>   <span class="c1"># GenericInput → Summary</span>
+
+<span class="n">summary1</span> <span class="o">=</span> <span class="k">await</span> <span class="n">summary_composite_1</span><span class="p">(</span><span class="n">input_state</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">summary1</span><span class="o">.</span><span class="n">model_dump_json</span><span class="p">(</span><span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+</code></pre></div>
+<p>Or inline:</p>
+<div class="highlight"><pre><span></span><code><span class="n">summary_composite_2</span> <span class="o">=</span> <span class="n">Summary</span> <span class="o">&lt;&lt;</span> <span class="p">(</span><span class="n">Email</span> <span class="o">&lt;&lt;</span> <span class="n">GenericInput</span><span class="p">)</span>
+<span class="n">summary2</span> <span class="o">=</span> <span class="k">await</span> <span class="n">summary_composite_2</span><span class="p">(</span><span class="n">input_state</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">summary2</span><span class="o">.</span><span class="n">model_dump_json</span><span class="p">(</span><span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+</code></pre></div>
+<p>In all cases, the pipeline is:</p>
+<div class="highlight"><pre><span></span><code>GenericInput  →  Email  →  Summary
+</code></pre></div>
+<p>but you can choose whether to:</p>
+<ul>
+<li>Write the steps explicitly, or</li>
+<li>Build them into a single composed transducible function.</li>
+</ul>
+<hr />
+<h3 id="64-using-with-for-configured-dynamic-transduction">6.4 Using <code>With(...)</code> for Configured Dynamic Transduction</h3>
+<p>The <code>With(...)</code> helper lets you <strong>attach instructions and options</strong> to dynamic transductions.</p>
+<p>Example: first generate an email, then rewrite it into a compact summary:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">agentics.core.transducible_functions</span><span class="w"> </span><span class="kn">import</span> <span class="n">With</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Summary</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">summary_text</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+<span class="c1"># A basic dynamic transduction</span>
+<span class="n">write_mail</span> <span class="o">=</span> <span class="n">Email</span> <span class="o">&lt;&lt;</span> <span class="n">GenericInput</span>
+
+<span class="c1"># A configured transduction: Email → Summary</span>
+<span class="n">summarize</span> <span class="o">=</span> <span class="n">Summary</span> <span class="o">&lt;&lt;</span> <span class="n">With</span><span class="p">(</span>
+    <span class="n">Email</span><span class="p">,</span>
+    <span class="n">instructions</span><span class="o">=</span><span class="s2">&quot;Rewrite the email into a concise summary.&quot;</span><span class="p">,</span>
+    <span class="n">enforce_output_type</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">verbose_transduction</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">input_state</span> <span class="o">=</span> <span class="n">GenericInput</span><span class="p">(</span>
+    <span class="n">content</span><span class="o">=</span><span class="s2">&quot;Zoran Mandani won the election in NYC. Draft a message to the press list.&quot;</span>
+<span class="p">)</span>
+
+<span class="n">mail</span> <span class="o">=</span> <span class="k">await</span> <span class="n">write_mail</span><span class="p">(</span><span class="n">input_state</span><span class="p">)</span>
+<span class="n">summary</span> <span class="o">=</span> <span class="k">await</span> <span class="n">summarize</span><span class="p">(</span><span class="n">mail</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">mail</span><span class="o">.</span><span class="n">model_dump_json</span><span class="p">(</span><span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">summary</span><span class="o">.</span><span class="n">model_dump_json</span><span class="p">(</span><span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+</code></pre></div>
+<p>Here:</p>
+<ul>
+<li><code>With(Email, ...)</code> tells Agentics:<br />
+<em>“When you see an <code>Email</code> as input, apply these instructions and guarantees to produce a <code>Summary</code>.”</em></li>
+<li><code>enforce_output_type=True</code> strengthens validation so outputs <strong>must</strong> conform to <code>Summary</code>.</li>
+<li><code>verbose_transduction=False</code> keeps logs / metadata minimal (implementation-dependent).</li>
+</ul>
+<p>Because <code>Summary &lt;&lt; With(Email, ...)</code> is still a transducible function, you can compose it further, call it on lists, or plug it into Map–Reduce.</p>
+<hr />
+<h4 id="65-adding-explanations-with-with">6.5. Adding explanations with <code>With(...)</code></h4>
+<p>You can also ask for a structured explanation of the classification:</p>
+<div class="highlight"><pre><span></span><code><span class="n">classify_genre</span> <span class="o">=</span> <span class="n">Genre</span> <span class="o">&lt;&lt;</span> <span class="n">With</span><span class="p">(</span>
+    <span class="n">Movie</span><span class="p">,</span>
+    <span class="n">provide_explanation</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">genre</span><span class="p">,</span> <span class="n">explanation</span> <span class="o">=</span> <span class="k">await</span> <span class="n">classify_genre</span><span class="p">(</span><span class="n">movie</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">genre</span><span class="o">.</span><span class="n">model_dump_json</span><span class="p">(</span><span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">explanation</span><span class="o">.</span><span class="n">model_dump_json</span><span class="p">(</span><span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+</code></pre></div>
+<p>Here, <code>provide_explanation=True</code> configures the dynamic transduction so that:</p>
+<ul>
+<li>The first output is the typed <code>Genre</code>.</li>
+<li>The second output is an explanation object (typically another Pydantic model),<br />
+  capturing <em>why</em> the classifier picked that genre.</li>
+</ul>
+<p>This pattern generalizes:</p>
+<ul>
+<li><code>With(..., provide_explanation=True)</code> can be used with other source/target pairs.</li>
+<li>Explanations can be logged, inspected, or surfaced in UI as <strong>transparent justification</strong> for the model’s decision.</li>
+</ul>
+<hr />
+<h2 id="7-mapreduce-scaling-transducible-functions">7. Map–Reduce: Scaling Transducible Functions 🚀</h2>
+<p>When wrapped by <code>@transducible()</code> <strong>or</strong> created dynamically with <code>&lt;&lt;</code>, transducible functions are overloaded to accept <strong>lists</strong> of <code>X</code> as well. When called this way, they return a corresponding list of <code>Y</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="n">messages</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">UserMessage</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="s2">&quot;Hi John, I made great progress with Agentics.&quot;</span><span class="p">),</span>
+    <span class="n">UserMessage</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="s2">&quot;Hi , I fixed the last blocking bug in the pipeline.&quot;</span><span class="p">),</span>
+<span class="p">]</span>
+
+<span class="n">emails</span> <span class="o">=</span> <span class="k">await</span> <span class="n">write_email_with_llm</span><span class="p">(</span><span class="n">messages</span><span class="p">)</span>
+</code></pre></div>
+<p>Under the hood, Agentics uses an <strong>asynchronous Map</strong> operation:</p>
+<ul>
+<li>Conceptually:<br />
+<code>amap(write_email_with_llm, messages) -&gt; list[Email]</code></li>
+<li>Each element is processed independently, enabling concurrency and parallelism.</li>
+<li>This pattern scales to <strong>batch inference, dataset scans, and large evidence extraction tasks</strong>.</li>
+</ul>
+<p>Later, you can combine this with <strong>Reduce</strong> operations (e.g., summarizing all emails into a single report), forming full Map–Reduce pipelines over typed states.</p>
+<hr />
+<h2 id="8-evidence-provenance-and-explainability">8. Evidence, Provenance, and Explainability</h2>
+<p>Because transducible functions are defined over explicit types and carry evidence subsets, Agentics can:</p>
+<ul>
+<li>Track which input fields contributed to each output field.</li>
+<li>Represent this as a <strong>bipartite graph</strong> between input and output slots.</li>
+<li>Attach this trace as <strong>metadata</strong> to your states (depending on your Agentics configuration).</li>
+</ul>
+<p>For example, in the email examples:</p>
+<ul>
+<li><code>Email.to</code> is mapped to (a span inside) <code>UserMessage.content</code>.</li>
+<li><code>Email.subject</code> may depend on the <em>entire</em> <code>content</code>.</li>
+<li><code>Email.body</code> is mostly grounded in <code>content</code>, plus stylistic priors from instructions.</li>
+</ul>
+<p>This is critical when you:</p>
+<ul>
+<li>Need <strong>auditable</strong> LLM behavior.  </li>
+<li>Want to debug why a particular field was generated.  </li>
+<li>Need to enforce <em>“no hallucination from outside these inputs”</em> policies.</li>
+</ul>
+<hr />
+<h2 id="9-when-to-create-a-new-transducible-function">9. When to Create a New Transducible Function</h2>
+<p>In a real system, you’ll typically end up with many small, focused transducible functions instead of one giant one.</p>
+<p>Good reasons to define a separate transducible function:</p>
+<ul>
+<li>You’re doing a logically distinct step:</li>
+<li>e.g., <em>extract entities</em>, <em>normalize names</em>, <em>classify intent</em>, <em>summarize conversation</em>.</li>
+<li>You want to <strong>test</strong> and <strong>benchmark</strong> that step independently.</li>
+<li>You expect to <strong>reuse</strong> it across pipelines.</li>
+<li>You need different <strong>instructions, constraints, or safety properties</strong> for that stage.</li>
+</ul>
+<p>Think of transducible functions as the <strong>operators</strong> of your Logical Transduction Algebra.</p>
+<hr />
+<h2 id="10-summary">10. Summary ✅</h2>
+<ul>
+<li>A <strong>transducible function</strong> is a typed, explainable mapping <code>T: X → Y</code> with:</li>
+<li><strong>Totality</strong>, <strong>Local Evidence</strong>, and <strong>Slot-Level Provenance</strong>.</li>
+<li>In Agentics:</li>
+<li>Inputs and outputs are modeled as Pydantic types (<code>X</code>, <code>Y</code>).</li>
+<li>You can define transducible functions via:<ul>
+<li>The <code>@transducible()</code> decorator,</li>
+<li>Dynamic builders like <code>make_transducible_function</code>, and</li>
+<li>The <code>&lt;&lt;</code> operator (with or without <code>With(...)</code>).</li>
+</ul>
+</li>
+<li>Functions can be purely programmatic, purely LLM-based, or hybrid.</li>
+<li>Transducible functions:</li>
+<li>Scale from <strong>single calls</strong> to <strong>batch Map–Reduce</strong> workloads.</li>
+<li>Expose structured explainability traces for each output field.</li>
+<li>Compose into robust, interpretable, large-scale reasoning pipelines.</li>
+</ul>
+<p>From here you can explore:</p>
+<ul>
+<li><code>core_concepts.md</code> – the broader mental model (types, states, LTA, Map–Reduce).  </li>
+<li><code>mapreduce.md</code> – how Agentics orchestrates large-scale transductions over typed state containers.  </li>
+<li><code>types_and_states.md</code> – how to design good schemas and manage collections of states.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": [], "search": "../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      
+    
+  </body>
+</html>
