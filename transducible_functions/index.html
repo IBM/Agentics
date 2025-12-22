@@ -708,18 +708,18 @@ They turn “call this LLM with a prompt” into:</p>
 <p>This document explains what transducible functions are, how they work in Agentics, and how to use them in practice — including <strong>dynamic generation</strong> and <strong>compositional patterns</strong> using the <code>&lt;&lt;</code> operator.</p>
 <hr />
 <h2 id="1-what-is-a-transducible-function">1. What Is a Transducible Function?</h2>
-<p>Formally, a <strong>transducible function</strong> (T : X \to Y) is an <em>explainable</em> function that satisfies:</p>
+<p>Formally, a <strong>transducible function</strong> <span class="arithmatex">\(T : X \to Y\)</span> is an <em>explainable</em> function that satisfies:</p>
 <ol>
 <li>
 <p><strong>Totality</strong><br />
-   For every valid input (x \in \llbracket X \rrbracket), the function produces a valid output of type (Y).  </p>
+   For every valid input <span class="arithmatex">\(x \in \llbracket X \rrbracket\)</span>, the function produces a valid output of type <span class="arithmatex">\(Y\)</span>.  </p>
 <blockquote>
 <p>No silent failures: the function always returns some well-typed <code>Y</code>.</p>
 </blockquote>
 </li>
 <li>
 <p><strong>Local Evidence</strong><br />
-   Each output slot (y_i) is computed only from its <em>evidence subset</em> (\mathcal{E}_i(x)).  </p>
+   Each output slot <span class="arithmatex">\(y_i\)</span> is computed only from its <em>evidence subset</em> <span class="arithmatex">\(\mathcal{E}_i(x)\)</span>.  </p>
 <blockquote>
 <p>No field is generated “from nowhere”: if <code>subject</code> appears in the output, we know which inputs and instructions it depended on.</p>
 </blockquote>
@@ -1146,6 +1146,10 @@ This gives the LLM the ability to say <em>“I don’t have enough evidence for 
     
     
       <script src="../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      
+        <script src="../javascripts/mathjax.js"></script>
+      
+        <script src="https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js"></script>
       
     
   </body>
