@@ -93,6 +93,7 @@ docs = [
     { name = "mkdocs" },
     { name = "mkdocs-material" },
     { name = "mkdocstrings" },
+    { name = "pymdown-extensions" },
 ]
 rhel = [
     { name = "chromadb" },
@@ -145,6 +146,7 @@ docs = [
     { name = "mkdocs", specifier = ">=1.6.1" },
     { name = "mkdocs-material", specifier = ">=9.6.18" },
     { name = "mkdocstrings", specifier = ">=0.30.0" },
+    { name = "pymdown-extensions" },
 ]
 rhel = [
     { name = "chromadb", specifier = ">=1.1.0" },
