@@ -108,15 +108,6 @@ class PydanticTransducer(AsyncExecutor):
         pass
 
 
-from typing import Optional
-
-import mellea
-from langchain_core.output_parsers import PydanticOutputParser
-from langchain_core.prompts import PromptTemplate
-from pydantic import BaseModel, Field
-
-from agentics.core.utils import extract_json_objects
-
 # class PydanticTransducerMellea(PydanticTransducer):
 #     llm: AsyncOpenAI
 #     intentional_definiton: str
@@ -254,7 +245,7 @@ class PydanticTransducerVLLM(PydanticTransducer):
             result = await openai_response(
                 model=os.getenv("VLLM_MODEL_ID"),
                 base_url=os.getenv("VLLM_URL"),
-                user_prompt=default_user_prompt + str(state),
+                user_prompt=default_user_prompt + str(input),
                 **self.llm_params,
             )
             decoded_result = self.atype.model_validate_json(result)
@@ -285,9 +276,6 @@ class PydanticTransducerVLLM(PydanticTransducer):
             return decoded_results
         else:
             return NotImplemented
-
-
-from agentics.core.utils import llm_friendly_json
 
 
 class PydanticTransducerCrewAI(PydanticTransducer):
