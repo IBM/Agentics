@@ -50,6 +50,32 @@ def _check_env(*var_names: str) -> bool:
     return all(os.getenv(var) for var in var_names)
 
 
+def _get_llm_params(model: str) -> dict:
+    """
+    Get provider-specific LLM parameters based on the model name.
+
+    Some providers have constraints (e.g., Claude doesn't allow both temperature and top_p).
+
+    Args:
+        model: The model identifier (e.g., "aws/claude-haiku-4-5", "gpt-4")
+
+    Returns:
+        dict: LLM parameters with provider-specific constraints applied
+    """
+    params: dict = {
+        "temperature": 0.8,
+        "top_p": 0.9,
+    }
+
+    # Claude models don't support both temperature and top_p together
+    if "claude" in model.lower():
+        # For Claude, only use temperature, remove top_p
+        params.pop("top_p", None)
+        params["temperature"] = 0.7
+
+    return params
+
+
 def get_llms_env_vars() -> dict[str, list[str]]:
     """
     Get the environment variables used for each LLM.
@@ -168,10 +194,18 @@ def get_available_llms() -> dict[str, LLM | AsyncOpenAI]:
         if not model_name.startswith("litellm/"):
             model_name = f"litellm/{model_name}"
 
+        # Get provider-specific parameters
+        litellm_params = _get_llm_params(model_name)
+
+        # Override with env vars if present
+        if os.getenv("LITELLM_TEMPERATURE"):
+            litellm_params["temperature"] = float(os.getenv("LITELLM_TEMPERATURE"))
+        if os.getenv("LITELLM_TOP_P") and "top_p" in litellm_params:
+            litellm_params["top_p"] = float(os.getenv("LITELLM_TOP_P"))
+
         litellm_llm = LLM(
             model=model_name,
-            temperature=float(os.getenv("LITELLM_TEMPERATURE", "0.8")),
-            top_p=float(os.getenv("LITELLM_TOP_P", "0.9")),
+            **litellm_params,
         )
         llms["litellm"] = litellm_llm
         _llms_env_vars["litellm"] = [
@@ -191,12 +225,22 @@ def get_available_llms() -> dict[str, LLM | AsyncOpenAI]:
                 "Please set LITELLM_PROXY_MODEL to a value like 'litellm_proxy/<name>'."
             )
         else:
+            # Get provider-specific parameters
+            proxy_params = _get_llm_params(proxy_model)
+
+            # Override with env vars if present
+            if os.getenv("LITELLM_PROXY_TEMPERATURE"):
+                proxy_params["temperature"] = float(
+                    os.getenv("LITELLM_PROXY_TEMPERATURE")
+                )
+            if os.getenv("LITELLM_PROXY_TOP_P") and "top_p" in proxy_params:
+                proxy_params["top_p"] = float(os.getenv("LITELLM_PROXY_TOP_P"))
+
             litellm_proxy_llm = LLM(
                 model=proxy_model,
-                temperature=float(os.getenv("LITELLM_PROXY_TEMPERATURE", "0.8")),
-                top_p=float(os.getenv("LITELLM_PROXY_TOP_P", "0.9")),
                 api_key=os.getenv("LITELLM_PROXY_API_KEY"),
                 base_url=os.getenv("LITELLM_PROXY_URL"),
+                **proxy_params,
             )
             llms["litellm_proxy_llm"] = litellm_proxy_llm
             llms["litellm_proxy"] = litellm_proxy_llm
