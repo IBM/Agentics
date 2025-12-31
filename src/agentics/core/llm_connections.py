@@ -7,7 +7,8 @@ from openai import AsyncOpenAI
 
 load_dotenv()
 
-verbose = False
+# Track which environment variables are used for each LLM
+_llms_env_vars: dict[str, list[str]] = {}
 
 
 def get_llm_provider(provider_name: str | None = None) -> LLM | AsyncOpenAI | None:
@@ -21,22 +22,21 @@ def get_llm_provider(provider_name: str | None = None) -> LLM | AsyncOpenAI | No
     Returns:
         LLM | AsyncOpenAI | None: The corresponding LLM instance.
     """
-    llms = _get_available_llms()
+    llms = get_available_llms()
 
-    if provider_name is None or provider_name == "":
-        if len(llms) > 0:
-            if verbose:
-                logger.debug(
-                    f"Available LLM providers: {list(llms)}. None specified, defaulting to '{list(llms)[0]}'"
-                )
-            return list(llms.values())[0]
+    if not provider_name:
+        if llms:  # Not empty
+            logger.trace(
+                f"Available LLM providers: {list(llms)}. None specified, defaulting to '{list(llms)[0]}'"
+            )
+            first_provider = next((iter(llms.values())))
+            return first_provider
         else:
-            logger.debug("No LLM is available. Please check your .env configuration.")
+            logger.trace("No LLM is available. Please check your .env configuration.")
             return None
 
     if provider_name in llms:
-        if verbose:
-            logger.debug(f"Using specified LLM provider: {provider_name}")
+        logger.trace(f"Using specified LLM provider: {provider_name}")
         return llms[provider_name]
 
     logger.debug(
@@ -50,35 +50,20 @@ def _check_env(*var_names: str) -> bool:
     return all(os.getenv(var) for var in var_names)
 
 
-def _get_openai_compatible_variants() -> dict[str, tuple[str, str, str]]:
-    """Discover OpenAI-compatible variants from env vars like OPENAI_COMPATIBLE_<VARIANT>_API_KEY."""
-    variants = {}
-    suffixes = set()
+def get_llms_env_vars() -> dict[str, list[str]]:
+    """
+    Get the environment variables used for each LLM.
 
-    # Find all unique suffixes
-    for var_name in os.environ:
-        if var_name.startswith("OPENAI_COMPATIBLE_") and var_name.endswith("_API_KEY"):
-            suffix = var_name[len("OPENAI_COMPATIBLE_") : -len("_API_KEY")]
-            suffixes.add(suffix)
-
-    # Create entries for each suffix
-    for suffix in suffixes:
-        prefix = f"OPENAI_COMPATIBLE_{suffix}" if suffix else "OPENAI_COMPATIBLE"
-        key = f"openai_compatible_{suffix.lower()}" if suffix else "openai_compatible"
-
-        api_key_var = f"{prefix}_API_KEY"
-        model_id_var = f"{prefix}_MODEL_ID"
-        base_url_var = f"{prefix}_BASE_URL"
-
-        if _check_env(api_key_var, model_id_var, base_url_var):
-            variants[key] = (api_key_var, model_id_var, base_url_var)
-
-    return variants
+    Returns:
+        dict[str, list[str]]: A mapping of LLM names to the env vars used to configure them.
+    """
+    return _llms_env_vars.copy()
 
 
-def _get_available_llms() -> dict[str, LLM | AsyncOpenAI]:
+def get_available_llms() -> dict[str, LLM | AsyncOpenAI]:
     """Dynamically compute available LLMs based on environment configuration."""
     llms: dict[str, LLM | AsyncOpenAI] = {}
+    _llms_env_vars.clear()
 
     # Gemini LLM
     if os.getenv("GEMINI_API_KEY"):
@@ -87,6 +72,7 @@ def _get_available_llms() -> dict[str, LLM | AsyncOpenAI]:
             temperature=0.7,
         )
         llms["gemini"] = gemini_llm
+        _llms_env_vars["gemini"] = ["GEMINI_API_KEY", "GEMINI_MODEL_ID"]
 
     # Ollama LLM
     if _check_env("OLLAMA_MODEL_ID"):
@@ -94,6 +80,7 @@ def _get_available_llms() -> dict[str, LLM | AsyncOpenAI]:
             model=os.getenv("OLLAMA_MODEL_ID"),
             base_url="http://localhost:11434",
         )
+        _llms_env_vars["ollama_llm"] = ["OLLAMA_MODEL_ID"]
 
     # OpenAI LLM
     if _check_env("OPENAI_API_KEY"):
@@ -107,23 +94,33 @@ def _get_available_llms() -> dict[str, LLM | AsyncOpenAI]:
         )
         llms["openai_llm"] = openai_llm
         llms["openai"] = openai_llm
+        env_vars = ["OPENAI_API_KEY", "OPENAI_MODEL_ID"]
+        _llms_env_vars["openai_llm"] = env_vars
+        _llms_env_vars["openai"] = env_vars
 
-    # OpenAI Compatible LLMs (supports multiple variants)
-    for key, (
-        api_key_var,
-        model_id_var,
-        base_url_var,
-    ) in _get_openai_compatible_variants().items():
-        llm = LLM(
-            model=os.getenv(model_id_var),
+    # OpenAI Compatible LLM
+    if _check_env(
+        "OPENAI_COMPATIBLE_API_KEY",
+        "OPENAI_COMPATIBLE_MODEL_ID",
+        "OPENAI_COMPATIBLE_BASE_URL",
+    ):
+        openai_compatible_llm = LLM(
+            model=os.getenv("OPENAI_COMPATIBLE_MODEL_ID"),
             temperature=0.8,
             top_p=0.9,
-            api_key=os.getenv(api_key_var),
-            base_url=os.getenv(base_url_var),
+            api_key=os.getenv("OPENAI_COMPATIBLE_API_KEY"),
+            base_url=os.getenv("OPENAI_COMPATIBLE_BASE_URL"),
             seed=42,
         )
-        llms[f"{key}_llm"] = llm
-        llms[key] = llm
+        llms["openai_compatible_llm"] = openai_compatible_llm
+        llms["openai_compatible"] = openai_compatible_llm
+        env_vars = [
+            "OPENAI_COMPATIBLE_API_KEY",
+            "OPENAI_COMPATIBLE_MODEL_ID",
+            "OPENAI_COMPATIBLE_BASE_URL",
+        ]
+        _llms_env_vars["openai_compatible_llm"] = env_vars
+        _llms_env_vars["openai_compatible"] = env_vars
 
     # WatsonX LLM
     if _check_env("WATSONX_APIKEY", "WATSONX_URL", "WATSONX_PROJECTID", "MODEL_ID"):
@@ -138,6 +135,9 @@ def _get_available_llms() -> dict[str, LLM | AsyncOpenAI]:
         )
         llms["watsonx_llm"] = watsonx_llm
         llms["watsonx"] = watsonx_llm
+        env_vars = ["WATSONX_APIKEY", "WATSONX_URL", "WATSONX_PROJECTID", "MODEL_ID"]
+        _llms_env_vars["watsonx_llm"] = env_vars
+        _llms_env_vars["watsonx"] = env_vars
 
     # VLLM (AsyncOpenAI)
     if _check_env("VLLM_URL"):
@@ -146,6 +146,7 @@ def _get_available_llms() -> dict[str, LLM | AsyncOpenAI]:
             base_url=os.getenv("VLLM_URL"),
             default_headers={"Content-Type": "application/json"},
         )
+        _llms_env_vars["vllm_llm"] = ["VLLM_URL"]
 
     # VLLM (CrewAI)
     if _check_env("VLLM_URL", "VLLM_MODEL_ID"):
@@ -156,6 +157,7 @@ def _get_available_llms() -> dict[str, LLM | AsyncOpenAI]:
             max_tokens=1000,
             temperature=0.0,
         )
+        _llms_env_vars["vllm_crewai"] = ["VLLM_URL", "VLLM_MODEL_ID"]
 
     # LiteLLM (100+ providers via CrewAI's native support)
     # CrewAI natively supports LiteLLM. Use model format: "litellm/provider/model-name"
@@ -172,6 +174,41 @@ def _get_available_llms() -> dict[str, LLM | AsyncOpenAI]:
             top_p=float(os.getenv("LITELLM_TOP_P", "0.9")),
         )
         llms["litellm"] = litellm_llm
+        _llms_env_vars["litellm"] = [
+            "LITELLM_MODEL",
+            "LITELLM_TEMPERATURE",
+            "LITELLM_TOP_P",
+        ]
+
+    # LiteLLM Proxy
+    if _check_env("LITELLM_PROXY_URL", "LITELLM_PROXY_API_KEY", "LITELLM_PROXY_MODEL"):
+        proxy_model = os.getenv("LITELLM_PROXY_MODEL")
+        # Validate that model name starts with litellm_proxy/
+        if not proxy_model.startswith("litellm_proxy/"):
+            logger.warning(
+                f"LITELLM_PROXY_MODEL '{proxy_model}' does not start with 'litellm_proxy/'. "
+                "Skipping LiteLLM Proxy configuration. "
+                "Please set LITELLM_PROXY_MODEL to a value like 'litellm_proxy/<name>'."
+            )
+        else:
+            litellm_proxy_llm = LLM(
+                model=proxy_model,
+                temperature=float(os.getenv("LITELLM_PROXY_TEMPERATURE", "0.8")),
+                top_p=float(os.getenv("LITELLM_PROXY_TOP_P", "0.9")),
+                api_key=os.getenv("LITELLM_PROXY_API_KEY"),
+                base_url=os.getenv("LITELLM_PROXY_URL"),
+            )
+            llms["litellm_proxy_llm"] = litellm_proxy_llm
+            llms["litellm_proxy"] = litellm_proxy_llm
+            env_vars = [
+                "LITELLM_PROXY_URL",
+                "LITELLM_PROXY_API_KEY",
+                "LITELLM_PROXY_MODEL",
+                "LITELLM_PROXY_TEMPERATURE",
+                "LITELLM_PROXY_TOP_P",
+            ]
+            _llms_env_vars["litellm_proxy_llm"] = env_vars
+            _llms_env_vars["litellm_proxy"] = env_vars
 
     return llms
 
@@ -183,9 +220,9 @@ def __getattr__(name: str) -> dict[str, LLM | AsyncOpenAI] | LLM | AsyncOpenAI |
     Allows accessing 'available_llms' and individual LLM variables dynamically.
     """
     if name == "available_llms":
-        return _get_available_llms()
+        return get_available_llms()
 
-    llms = _get_available_llms()
+    llms = get_available_llms()
     if name in llms:
         return llms[name]
 
@@ -198,6 +235,7 @@ def __getattr__(name: str) -> dict[str, LLM | AsyncOpenAI] | LLM | AsyncOpenAI |
         "vllm",
         "ollama",
         "litellm",
+        "litellm_proxy",
     )
     if any(name.startswith(prefix) for prefix in known_prefixes):
         return None
