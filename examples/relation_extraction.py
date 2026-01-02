@@ -11,10 +11,12 @@ from agentics.core.transducible_functions import With, transducible
 
 N_TERMS = 500
 N_CLUSTERS = 5
-llm = "watsonx/openai/gpt-oss-120b"
+# llm = "watsonx/openai/gpt-oss-120b"
 
 
-# llm=AG.get_llm_provider()
+llm = AG.get_llm_provider()
+
+
 class InputTerms(BaseModel):
     terms: list[str] = None
 
@@ -73,7 +75,6 @@ async def relation_extracton_map_reduce(
 
 
 async def evaluate_relation_extraction(outout_file: str = None, n_terms=10000):
-
     terms = random_frequent_terms(n=n_terms)
     # for i in range(1000, 1001, 500):
 
