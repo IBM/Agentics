@@ -6,13 +6,15 @@
 #     "dotenv",
 # ]
 # ///
+#
+# This task file can be run with
+#
 
 import os
 import subprocess
 from pathlib import Path
 from shutil import which
 
-from dotenv import load_dotenv
 from invoke_toolkit import Context, script, task
 
 toplvel = subprocess.check_output("git rev-parse --show-toplevel", shell=True).decode()
@@ -173,6 +175,20 @@ def change_litlellm_env_model(ctx: Context, envfile: str = ".env", query: str = 
         ctx.print(
             f"[yellow]⚠[/yellow] Value unchanged: {envfile} already has LITELLM_PROXY_MODEL={new_model!r}"
         )
+
+
+@task()
+def debug_llm_run(ctx: Context, script: str):
+    """
+    This is [bold green]uv run[/bold green] with [bold white]hunter[/bold white] tracing litellm calls
+    """
+    env = {
+        "PYTHONHUNTER": 'Q(module_regex="(litellm.main.*)$")&(Q(kind="call")|Q(kind="return"))'
+    }
+    ctx.print_err(
+        f"Running {script} with  🐍 tracer set for this expression", env["PYTHONHUNTER"]
+    )
+    ctx.run(f"uv run --with hunter {script}", pty=True)
 
 
 script()
