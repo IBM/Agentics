@@ -36,9 +36,7 @@ dependencies = [
     "numerize>=0.12",
     "hnswlib>=0.8.0",
     "jsonfinder",
-    "crewai[google-genai]",
     "litellm",
-    "jsonfinder",
     "mellea",
     "plotly>=6.5.0",
 ]
