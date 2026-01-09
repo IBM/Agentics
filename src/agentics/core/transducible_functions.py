@@ -55,6 +55,33 @@ class Transduce:
                 return str(x)
         return str(x)
 
+    def __str__(self) -> str:
+        obj = self.object
+
+        # List case
+        if isinstance(obj, list):
+            return "\n".join(self._one_to_str(x) for x in obj)
+
+        # Single object
+        return self._one_to_str(obj)
+
+    def __repr__(self) -> str:
+        return f"Transduce(object={self._one_to_str(self.object)})"
+
+    @staticmethod
+    def _one_to_str(x: Any) -> str:
+        if isinstance(x, BaseModel):
+            return x.model_dump_json(indent=2)
+        if isinstance(x, (dict, list, tuple)):
+            # readable generic fallback
+            import json
+
+            try:
+                return json.dumps(x, indent=2, ensure_ascii=False, default=str)
+            except TypeError:
+                return str(x)
+        return str(x)
+
 
 class TransductionResult:
     def __init__(self, value, explanation):
@@ -135,7 +162,6 @@ def transducible(
     post_processing_function: Optional[Callable[[BaseModel], BaseModel]] = None,
     persist_output: str = None,
     transduce_fields: list[str] = None,
-    prompt_template: str = None,
 ):
     if tools is None:
         tools = []
@@ -177,6 +203,7 @@ def transducible(
             amap_batch_size=batch_size,
             transduction_timeout=timeout,
             save_amap_batches_to_path=persist_output,
+            transduce_fields=transduce_fields,
             transduce_fields=transduce_fields,
         )
 

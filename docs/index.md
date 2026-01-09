@@ -19,14 +19,14 @@ Agentics is a lightweight, Python-native framework for building **structured and
 - **[Agentics](agentics.md)** 🧬  
   Defining Pydantic models for inputs/outputs, working with `AG` containers, loading data from JSON/CSV/DataFrames, and preserving type information across the pipeline.
 
-- **[Logical Transduction Algebra](tutorials/logical_transduction_algebra.ipynb)** 🔁  
+- **[Logical Transduction Algebra](../tutorials/logical_transduction_algebra.ipynb)** 🔁  
   Chaining transducible functions, branching, fan-in/fan-out patterns, and building reusable pipeline components.
 
-- **[Async Map–Reduce Execution](tutorials/map_reduce.ipynb)** 🚀  
+- **[Async Map–Reduce Execution](../tutorials/map_reduce.ipynb)** 🚀  
   Using `amap` and `areduce` for large-scale runs, batching strategies, handling failures, and performance considerations.
 
 
-- **[Examples & Use Cases](./examples)** 📘  
+- **[Examples & Use Cases](../examples)** 📘  
   End-to-end examples: text-to-SQL, data extraction and enrichment, classification, document workflows, evaluation pipelines, and more.
 
 
