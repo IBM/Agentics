@@ -1,0 +1,128 @@
+[project]
+name = "agentics-py"
+# version = "0.0.8"
+dynamic = ["version"]
+description = "Agentics is a Python framework that provides structured, scalable, and semantically grounded agentic computation."
+authors = [
+    { name = "Alfio Gliozzo", email = "gliozzo@us.ibm.com" },
+    { name = "Junkyu Lee", email = "Junkyu.Lee@ibm.com" },
+    { name = "Nahuel Defosse", email = "nahuel.defosse@ibm.com" },
+    { name = "Mustafa Eyceoz", email = "Mustafa.Eyceoz@partner.ibm.com" },
+    { name = "Naweed Aghmad Khan", email = "naweed.khan@ibm.com" },
+]
+requires-python = ">=3.11,<3.13"
+readme = "README.md"
+license = "Apache-2.0"
+dependencies = [
+    "ddgs",
+    "pydantic",
+    "crewai[tools]",
+    "crewai-tools[mcp]",
+    "crewai[google-genai]",
+    "langchain-huggingface (>=0.2.0,<0.3.0)",
+    "openapi-python-client (>=0.24.3,<0.25.0)",
+    "streamlit (>=1.45.1,<2.0.0)",
+    "pyyaml (>=6.0.2,<7.0.0)",
+    # "aiosqlite (>=0.21.0,<0.22.0)",
+    "openai (>=1.88.0,<2.0.0)",
+    # "datamodel-code-generator (>=0.31.1,<0.32.0)",
+    "json-schema-to-pydantic (>=0.3.0,<0.4.0)",
+    "loguru (>=0.7.3,<0.8.0)",
+    "datasets (>=4.0.0,<5.0.0)",
+    "mcp (>=1.13.1,<2.0.0)",
+    "google (>=3.0.0,<4.0.0)",
+    "ipywidgets>=8.1.7",
+    "aiosqlite>=0.21.0",
+    "numerize>=0.12",
+    "hnswlib>=0.8.0",
+    "jsonfinder",
+    "litellm",
+    "mellea",
+    "plotly>=6.5.0",
+    "rich>=13.0.0,<14.0.0",
+]
+
+
+
+[tool.uv]
+package = true
+required-environments = [
+    "sys_platform == 'darwin' and platform_machine == 'x86_64'",
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
+]
+
+[build-system]
+requires = ["hatchling", "uv-dynamic-versioning"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agentics"]
+
+[tool.hatch.build.targets.sdist]
+packages = ["src/agentics"]
+
+[project.scripts]
+show-llms = "agentics.scripts.show_llms:main"
+
+[dependency-groups]
+dev = [
+  "pytest >=8.4.0,<9",
+  "black[jupyter]>=25.1.0,<26",
+  "isort >=6.0.1,<7",
+  "pre-commit >=4.2.0,<5",
+  "pdbpp >=0.11.6,<1",
+  "pytest-asyncio >=1.0.0,<2",
+  "pytest-html >=4.1.1,<5",
+  "invoke>=2.2.0",
+  "papermill>=2.6.0",
+  "pytest-xdist>=3.8.0",
+  "pytest-subtests>=0.15.0",
+  "hunter>=3.9.0",
+]
+docling = [
+  "langchain-docling >=0.2.0,<0.3.0"
+]
+docs = [
+    "mkdocs>=1.6.1",
+    "mkdocs-material>=9.6.18",
+    "mkdocstrings>=0.30.0",
+    "pymdown-extensions",
+]
+rhel = [
+    "chromadb>=1.1.0",
+    "pysqlite3-binary>=0.5.4; sys_platform == 'linux'",
+]
+
+
+[tool.isort]
+profile = "black"
+
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Force HTML report generation for debugging of test failures on long tests
+# i.e.: db2 docker instances
+addopts = "--html=report.html --self-contained-html"
+
+[tool.codespell]
+ignore-words-list = ["ans" , "AGs"]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cpu" },
+]
+
+[tool.uv.workspace]
+members = [
+    "sandbox/polymarkets",
+    "polymarket",
+]

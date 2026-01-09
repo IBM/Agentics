@@ -202,6 +202,50 @@ def infer_pydantic_type(dtype: Any, sample_values: pd.Series = None) -> Any:
 
 
 def pydantic_model_from_dict(dict) -> type[BaseModel]:
+    """
+    Create a dynamic Pydantic model class from a sample dictionary.
+
+    This utility inspects the provided mapping and generates a new `pydantic.BaseModel`
+    subclass whose fields correspond to the dictionary keys. For each key, the field
+    type is inferred from the sample value using `infer_pydantic_type(...)`, and the
+    resulting field is created with a default of `None` (i.e., optional-by-default in
+    practice, depending on the inferred type).
+
+    Field names are normalized via `sanitize_field_name(...)` to ensure they are valid
+    Python identifiers and compatible with Pydantic model field naming rules.
+
+    The model class name is synthesized as:
+        "AType#<key1>:<key2>:...:<keyN>"
+
+    Parameters
+    ----------
+    dict : Mapping[str, Any]
+        A representative dictionary whose keys define field names and whose values
+        are used to infer field types.
+
+    Returns
+    -------
+    type[BaseModel]
+        A newly created Pydantic model class (subclass of `BaseModel`) with fields
+        derived from the input dictionary.
+
+    Notes
+    -----
+    - This function uses only the *sample values* present in the input mapping to
+      infer types; it does not scan multiple rows/records unless you pass richer
+      `sample_values` to `infer_pydantic_type` yourself.
+    - All fields are created with `Field(default=None)`, which makes them effectively
+      nullable unless additional validation is enforced by the inferred type.
+    - If two different keys sanitize to the same field name, the latter will overwrite
+      the former in `new_fields`.
+
+    Examples
+    --------
+    >>> Sample = pydantic_model_from_dict({"reviewId": 123, "reviewText": "Great!"})
+    >>> obj = Sample(reviewId=1, reviewText="Nice movie")
+    >>> obj.model_dump()
+    {'reviewId': 1, 'reviewText': 'Nice movie'}
+    """
     model_name = "AType#" + ":".join(dict.keys())
     fields = {}
 
@@ -256,7 +300,7 @@ def create_pydantic_model(
     Dynamically create a Pydantic model from a list of field definitions.
 
     Args:
-        fields: A list of (field_name, type_name, description) tuples.
+        fields: A list of (field_name, type_name, description, required) tuples.
         name: Optional name of the model.
 
     Returns:

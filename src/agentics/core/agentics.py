@@ -626,11 +626,14 @@ class AG(BaseModel, Generic[T]):
                 reasoning=self.reasoning,
                 **self.crew_prompt_params,
             )
-            transduced_results = await pt.execute(
-                *input_prompts,
-                description=f"Transducing {self.__name__} << {'AG[str]' if not isinstance(other, AG) else other.__name__}",
-                transient_pbar=self.transient_pbar,
-            )
+            chunks = chunk_list(input_prompts, chunk_size=self.amap_batch_size)
+            transduced_results = []
+            for chunk in chunks:
+                transduced_results += await pt.execute(
+                    *chunk,
+                    description=f"Transducing {self.__name__[:30]} << {'AG[str]' if not isinstance(other, AG) else other.__name__[:30]}",
+                    transient_pbar=self.transient_pbar,
+                )
         except Exception as e:
             transduced_results = self.states
 
@@ -663,14 +666,15 @@ class AG(BaseModel, Generic[T]):
                     output_state_dict = dict([output_state])
                 else:
                     output_state_dict = output_state.model_dump()
-
-                merged = self.atype(
-                    **(
-                        (self[i].model_dump() if len(self) > i else {})
-                        | other[i].model_dump()
-                        | output_state_dict
-                    )
+                data = (
+                    (self[i].model_dump() if len(self) > i else {})
+                    | other[i].model_dump()
+                    | output_state_dict
                 )
+                allowed = self.atype.model_fields.keys()  # pydantic v2
+                filtered = {k: v for k, v in data.items() if k in allowed}
+                merged = self.atype(**filtered)
+
                 output.states.append(merged)
         # elif is_str_or_list_of_str(other):
         elif isinstance(other, list):
