@@ -42,3 +42,5 @@ invoke.json
 invoke.y*ml
 # Igore profiling flamegraphs
 profile*.svg
+
+examples/
