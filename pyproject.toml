@@ -41,6 +41,9 @@ dependencies = [
     "jsonfinder",
     "mellea",
     "plotly>=6.5.0",
+    "duckdb>=1.4.3",
+    "pandas>=2.3.3",
+    "async-lru>=2.0.5",
 ]
 
 

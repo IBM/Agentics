@@ -13,6 +13,15 @@ class Astr(BaseModel):
         super().__init__(value=value)
 
 
+class Abool(BaseModel):
+    value: bool
+
+    def __init__(self, value):
+        if not isinstance(value, bool):
+            raise TypeError("Abool must be constructed with a bool")
+        super().__init__(value=value)
+
+
 class Explanation(BaseModel):
     explanation: Optional[str] = Field(
         None,
