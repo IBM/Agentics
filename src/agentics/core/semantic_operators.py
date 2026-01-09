@@ -15,11 +15,19 @@ from agentics import AG
 from agentics.core.atype import create_pydantic_model
 
 
+def normalize_input_data(source: AG | pd.DataFrame) -> AG:
+    if type(source) is pd.DataFrame:
+        return AG.from_dataframe(source)
+    elif type(source) is AG:
+        return source.clone()
+    else:
+        raise ValueError("source must be of type AG or pd.DataFrame")
+
+
 async def sem_map(
     source: AG | pd.DataFrame,
     target_type: Type[BaseModel] | str,
-    instructions: str = None,
-    source_fields: list[str] = None,
+    instructions: str,
     merge_output: bool = True,  ## Target, Merged
     **kwargs,
 ) -> AG | pd.DataFrame:
@@ -69,12 +77,7 @@ async def sem_map(
     -----
     - The semantic mapping is executed asynchronously via `await (target_ag << source)`.
     """
-    if type(source) is pd.DataFrame:
-        ag_source = AG.from_dataframe(source)
-    elif type(source) is AG:
-        ag_source = source.clone()
-    else:
-        raise ValueError("source must be of type AG or pd.DataFrame")
+    ag_source = normalize_input_data(source)
     target_ag = AG(
         atype=(
             create_pydantic_model(
@@ -86,7 +89,7 @@ async def sem_map(
         **kwargs,
     )
 
-    ag_source.transduce_fields = source_fields
+    ag_source.prompt_template = instructions
 
     map_out = await (target_ag << ag_source)
     output_ag = None
@@ -142,12 +145,7 @@ async def sem_filter(
     - Default classifier settings include `amap_batch_size=20` for batched evaluation.
     """
 
-    if type(source) is pd.DataFrame:
-        ag_source = AG.from_dataframe(source)
-    elif type(source) is AG:
-        ag_source = source.clone()
-    else:
-        raise ValueError("source must be of type AG or pd.DataFrame")
+    ag_source = normalize_input_data(source)
 
     target_ag = AG(
         atype=create_pydantic_model(
@@ -171,3 +169,32 @@ async def sem_filter(
         return target.to_dataframe()
     else:
         return target
+
+
+async def sem_agg(
+    source: AG | pd.DataFrame,
+    target_type: Type[BaseModel] | str,
+    instructions: str = None,
+    # merge_output: bool = True,  ## Target, Merged
+    **kwargs,
+) -> AG | pd.DataFrame:
+    """ """
+    ag_source = normalize_input_data(source)
+    target_ag = AG(
+        atype=(
+            create_pydantic_model(
+                [(target_type, "str", instructions, False)], target_type
+            )
+            if isinstance(target_type, str)
+            else target_type
+        ),
+        **kwargs,
+    )
+
+    ag_source.prompt_template = instructions
+    ag_source.transduction_type = "areduce"
+
+    output_ag = await (target_ag << ag_source)
+    if type(source) is pd.DataFrame:
+        return output_ag.to_dataframe()
+    return output_ag
