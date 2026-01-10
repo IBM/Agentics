@@ -39,6 +39,7 @@ dependencies = [
     "litellm",
     "mellea",
     "plotly>=6.5.0",
+    "rich>=13.0.0,<14.0.0",
 ]
 
 
@@ -63,6 +64,8 @@ packages = ["src/agentics"]
 [tool.hatch.build.targets.sdist]
 packages = ["src/agentics"]
 
+[project.scripts]
+show-llms = "agentics.scripts.show_llms:main"
 
 [dependency-groups]
 dev = [
@@ -77,6 +80,7 @@ dev = [
   "papermill>=2.6.0",
   "pytest-xdist>=3.8.0",
   "pytest-subtests>=0.15.0",
+  "hunter>=3.9.0",
 ]
 docling = [
   "langchain-docling >=0.2.0,<0.3.0"
