@@ -1,21 +1,26 @@
-from dotenv import load_dotenv
-load_dotenv()
-from agentics import  AG
+import asyncio
 import json
+import os
+import time
 from typing import Optional, Union
 from pydantic import BaseModel, Field
-from agentic_db import AgenticDB
-from eval.new_eval import run_eval_gold_vs_gen_NL_hypo_workflow
-import asyncio
-import os
 from pathlib import Path
 from pandas import DataFrame
-from loguru import logger
+
+from dotenv import load_dotenv
+load_dotenv()
+
+from agentics import  AG
+from agentic_db import AgenticDB
 import agentics.core.llm_connections as llm_connections
+from eval.new_eval import run_eval_gold_vs_gen_NL_hypo_workflow
+
+from loguru import logger
 import logging
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
 DISCOVERYBENCH_ROOT=os.getenv("DISCOVERYBENCH_ROOT", "/tmp/discoverybench")
+
 
 class IntermediateEvidence(BaseModel):
     evidence_found:Optional[bool] = Field(None,description="Return True if you found any relevant evidence for the QUESTION, False otherwise")
@@ -70,7 +75,7 @@ class Dataset(BaseModel):
     @classmethod
     def import_from_discovery_bench_metadata(cls, 
                                              dataset, 
-                                             metadata_path=os.path.join(DISCOVERYBENCH_ROOT, "/discoverybench/real/test")) -> str:
+                                             metadata_path=os.path.join(DISCOVERYBENCH_ROOT, "discoverybench/real/test")) -> str:
         dataset_obj=Dataset()
         
         if not dataset_obj.questions: dataset_obj.questions=[]
@@ -151,7 +156,7 @@ WORKFLOW_TAGS: {state.metadata["workflow_tags"]}
 
 async def execute_all_datasets(output_path:str, 
                                selected_datasets:list[str]=None, 
-                               task_path:str =os.path.join(DISCOVERYBENCH_ROOT, "/discoverybench/real/test")):
+                               task_path:str=os.path.join(DISCOVERYBENCH_ROOT, "discoverybench/real/test")):
     """Save answers on disk to minimize memory space as AG[Question] jsonl files, one for each dataset.
     """
     task_path=Path(task_path)
@@ -181,21 +186,22 @@ async def execute_all_datasets(output_path:str,
                     answer.to_jsonl(output_path/f"{dataset_name}.jsonl",append=True)
             else: logger.warning(f"Skipping question {question.question}\nAlready Processed")
 
+
 def evaluate_dataset(dataset: str, 
                     questions:AG,
-                    ground_truth:str = os.path.join(DISCOVERYBENCH_ROOT, "/eval/answer_key_real.csv"),
+                    ground_truth:str = os.path.join(DISCOVERYBENCH_ROOT, "eval/answer_key_real.csv"),
                     output_eval:str=None,
-                    use_short_answer:bool=False,
-                    llm_provider:str=None)-> float:
+                    use_short_answer:bool=False)-> float:
     ground_truth=AG.from_csv(ground_truth)
     examples_hash={}
     for example in ground_truth:
         examples_hash[f"{example.dataset},{example.metadataid},{example.query_id}"] = example.gold_hypo
 
-    if llm_provider:
-        selected_llm = _get_cached_available_llms().get(llm_provider)
+    if Config.llm_provider:
+        selected_llm = llm_connections.__getattr__(Config.llm_provider)
     else:
-        selected_llm = get_llm_provider()
+        available_llms = llm_connections.__getattr__("available_llms")
+        selected_llm = next(iter(available_llms.values()), None) if len(available_llms) > 0 else None
 
     final_score=0
     for question in questions :
@@ -230,7 +236,8 @@ def evaluate_dataset(dataset: str,
     return final_score/len(questions)
 
     
-def evaluate_all(system_output_path:str, use_short_answer:False, llm_provider:str=None):
+def evaluate_all(system_output_path:str, 
+                 use_short_answer:False):
     """Evaluate all datasets in the output folder.
     Args:
         system_output_path: Path to the generated hypotheses
@@ -244,8 +251,7 @@ def evaluate_all(system_output_path:str, use_short_answer:False, llm_provider:st
         evaluate_dataset(dataset_name,
                          answers, 
                          output_eval= system_output_path / "evaluation.json",
-                         use_short_answer = use_short_answer,
-                         llm_provider=llm_provider)
+                         use_short_answer = use_short_answer)
 
 
 import argparse
@@ -307,8 +313,11 @@ def main():
     if args.mode == "generation":
         asyncio.run(execute_all_datasets(args.output_folder, selected_datasets=[args.selected_dataset] if args.selected_dataset else None))
     elif args.mode == "evaluation":
-        evaluate_all(args.output_folder, use_short_answer=args.use_short_answer, llm_provider=args.llm_provider)
+        evaluate_all(args.output_folder, use_short_answer=args.use_short_answer)
 
 
 if __name__ == "__main__":
+    t0 = time.time()
     main()
+    print("Total time (s): ", time.time() - t0)
+
