@@ -10,6 +10,9 @@ load_dotenv()
 # Track which environment variables are used for each LLM
 _llms_env_vars: dict[str, list[str]] = {}
 
+# Cache for available LLMs (computed once at first use)
+_available_llms_cache: dict[str, LLM | AsyncOpenAI] | None = None
+
 
 def get_llm_provider(provider_name: str | None = None) -> LLM | AsyncOpenAI | None:
     """
@@ -22,7 +25,7 @@ def get_llm_provider(provider_name: str | None = None) -> LLM | AsyncOpenAI | No
     Returns:
         LLM | AsyncOpenAI | None: The corresponding LLM instance.
     """
-    llms = get_available_llms()
+    llms = _get_cached_available_llms()
 
     if not provider_name:
         if llms:  # Not empty
@@ -48,6 +51,30 @@ def get_llm_provider(provider_name: str | None = None) -> LLM | AsyncOpenAI | No
 def _check_env(*var_names: str) -> bool:
     """Check if all given environment variables are non-empty."""
     return all(os.getenv(var) for var in var_names)
+
+
+def _get_cached_available_llms() -> dict[str, LLM | AsyncOpenAI]:
+    """
+    Get cached LLMs or compute and cache them on first call.
+    
+    This avoids repeatedly scanning environment variables on every access.
+    Call refresh_llm_cache() if you need to reload the configuration.
+    """
+    global _available_llms_cache
+    if _available_llms_cache is None:
+        _available_llms_cache = get_available_llms()
+    return _available_llms_cache
+
+
+def refresh_llm_cache() -> dict[str, LLM | AsyncOpenAI]:
+    """
+    Force refresh the LLM cache.
+    
+    Call this if environment variables change at runtime.
+    """
+    global _available_llms_cache
+    _available_llms_cache = None
+    return _get_cached_available_llms()
 
 
 def _get_llm_params(model: str) -> dict:
@@ -97,8 +124,9 @@ def get_available_llms() -> dict[str, LLM | AsyncOpenAI]:
             model=os.getenv("GEMINI_MODEL_ID", "gemini/gemini-2.0-flash"),
             temperature=0.7,
         )
-        llms["gemini"] = gemini_llm
-        _llms_env_vars["gemini"] = ["GEMINI_API_KEY", "GEMINI_MODEL_ID"]
+        if gemini_llm:
+            llms["gemini"] = gemini_llm
+            _llms_env_vars["gemini"] = ["GEMINI_API_KEY", "GEMINI_MODEL_ID"]
 
     # Ollama LLM
     if _check_env("OLLAMA_MODEL_ID"):
@@ -254,6 +282,49 @@ def get_available_llms() -> dict[str, LLM | AsyncOpenAI]:
             _llms_env_vars["litellm_proxy_llm"] = env_vars
             _llms_env_vars["litellm_proxy"] = env_vars
 
+    # LiteLLM Proxy - Multiple Numbered Configurations (for parallel experiments)
+    # Scan for LITELLM_PROXY_1_*, LITELLM_PROXY_2_*, etc.
+    # Supports up to 10 numbered configurations (1-10)
+    for i in range(1, 11):
+        url_key = f"LITELLM_PROXY_{i}_URL"
+        api_key_key = f"LITELLM_PROXY_{i}_API_KEY"
+        model_key = f"LITELLM_PROXY_{i}_MODEL"
+        temp_key = f"LITELLM_PROXY_{i}_TEMPERATURE"
+        top_p_key = f"LITELLM_PROXY_{i}_TOP_P"
+
+        if _check_env(url_key, api_key_key, model_key):
+            proxy_model = os.getenv(model_key)
+            # Validate that model name starts with litellm_proxy/
+            if not proxy_model.startswith("litellm_proxy/"):
+                logger.warning(
+                    f"{model_key} '{proxy_model}' does not start with 'litellm_proxy/'. "
+                    f"Skipping LiteLLM Proxy configuration #{i}. "
+                    f"Please set {model_key} to a value like 'litellm_proxy/<name>'."
+                )
+                continue
+
+            # Get provider-specific parameters
+            proxy_params = _get_llm_params(proxy_model)
+
+            # Override with env vars if present
+            if os.getenv(temp_key):
+                proxy_params["temperature"] = float(os.getenv(temp_key))
+            if os.getenv(top_p_key) and "top_p" in proxy_params:
+                proxy_params["top_p"] = float(os.getenv(top_p_key))
+
+            litellm_proxy_llm = LLM(
+                model=proxy_model,
+                api_key=os.getenv(api_key_key),
+                base_url=os.getenv(url_key),
+                **proxy_params,
+            )
+            # Register with both numbered and short names for convenience
+            provider_name = f"litellm_proxy_{i}"
+            llms[provider_name] = litellm_proxy_llm
+            env_vars = [url_key, api_key_key, model_key, temp_key, top_p_key]
+            _llms_env_vars[provider_name] = env_vars
+            logger.debug(f"Registered LLM provider: {provider_name}")
+
     return llms
 
 
@@ -264,9 +335,9 @@ def __getattr__(name: str) -> dict[str, LLM | AsyncOpenAI] | LLM | AsyncOpenAI |
     Allows accessing 'available_llms' and individual LLM variables dynamically.
     """
     if name == "available_llms":
-        return get_available_llms()
+        return _get_cached_available_llms()
 
-    llms = get_available_llms()
+    llms = _get_cached_available_llms()
     if name in llms:
         return llms[name]
 

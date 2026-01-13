@@ -26,6 +26,7 @@ from typing import (
 import pandas as pd
 import yaml
 from crewai import LLM
+from crewai.llms.base_llm import BaseLLM
 from langchain_core.prompts import PromptTemplate
 from loguru import logger
 from pandas import DataFrame
@@ -56,7 +57,7 @@ from agentics.core.default_types import (
     StateOperator,
     StateReducer,
 )
-from agentics.core.llm_connections import available_llms, get_llm_provider
+from agentics.core.llm_connections import _get_cached_available_llms
 from agentics.core.utils import (
     chunk_list,
     get_function_io_types,
@@ -106,7 +107,7 @@ class AG(BaseModel, Generic[T]):
         "amap",
         description="Type of transduction to be used, amap, areduce",
     )
-    llm: Any = Field(default_factory=get_llm_provider, exclude=True)
+    llm: Any = Field(default_factory=lambda: AG.get_llm_provider("first"), exclude=True)
 
     provide_explanations: bool = False
     explanations: Optional[list[Explanation]] = None
@@ -220,6 +221,7 @@ class AG(BaseModel, Generic[T]):
     def get_llm_provider(
         cls, provider_name: str = "first"
     ) -> Union[LLM, dict[str, LLM]]:
+        available_llms = _get_cached_available_llms()
         if provider_name == "first":
             return (
                 next(iter(available_llms.values()), None)
@@ -602,8 +604,10 @@ class AG(BaseModel, Generic[T]):
         # Perform Transduction
         transducer_class = (
             PydanticTransducerCrewAI
-            if type(self.llm) == LLM
-            else PydanticTransducerMellea if type(self.llm) == str else None
+            if isinstance(self.llm, (LLM, BaseLLM))
+            else PydanticTransducerMellea
+            if type(self.llm) == str
+            else None
         )
         if not transducer_class:
             raise TypeError(
