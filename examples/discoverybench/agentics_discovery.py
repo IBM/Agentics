@@ -260,6 +260,8 @@ import argparse
 class Config:
     """Module-level configuration for LLM provider and other settings."""
     llm_provider = None
+    output_folder = None
+    mode = None
 
 
 def main():
@@ -304,7 +306,9 @@ def main():
     
     # Set global config
     Config.llm_provider = args.llm_provider
-    
+    Config.output_folder = args.output_folder
+    Config.mode = args.mode
+
     if Config.llm_provider:
         logger.info(f"Using LLM provider: {Config.llm_provider}")
     else:
@@ -319,5 +323,8 @@ def main():
 if __name__ == "__main__":
     t0 = time.time()
     main()
-    print("Total time (s): ", time.time() - t0)
+    print(f"mode: {Config.mode}")
+    print(f"output_folder: {Config.output_folder}")
+    print(f"llm_provider: {Config.llm_provider}")
+    print(f"Total time (s): {time.time() - t0}")
 
