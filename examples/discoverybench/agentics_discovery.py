@@ -343,8 +343,8 @@ def merge_jsonl_files(main_file: Path, tmp_file: Path) -> None:
             f.write(json.dumps(entry) + '\n')
     
     # Remove tmp file
-    # if tmp_file.exists():
-    #     tmp_file.unlink()
+    if tmp_file.exists():
+        tmp_file.unlink()
     
     logger.info(f"Merged {tmp_file.name} into {main_file.name} and removed tmp file")
 
@@ -436,7 +436,7 @@ def evaluate_all(system_output_path:str,
     
     for output in os.listdir(system_output_path):
         dataset_name = output.split(".")[0]
-        if not output.endswith(".jsonl"):
+        if not output.endswith(".jsonl") or output.endswith("_tmp.jsonl"):
             continue
         answers = AG.from_jsonl(system_output_path/output, atype=Question)
         dataset_score, num_questions = evaluate_dataset(
