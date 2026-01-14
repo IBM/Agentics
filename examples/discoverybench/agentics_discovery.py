@@ -282,6 +282,7 @@ def evaluate_dataset(dataset: str,
         evaluation_result["metadata_id"] = question.metadata_id
         evaluation_result["qid"] = question.qid
         evaluation_result["question_type"] = question.question_type
+        evaluation_result["llm_provider"] = Config.llm_provider
 
         total_final_score += evaluation_result["final_score"]
         num_evaluated += 1
@@ -467,9 +468,10 @@ def evaluate_all(system_output_path:str,
     print("\n" + "="*60)
     print("OVERALL EVALUATION RESULTS")
     print("="*60)
-    for dataset_name, score, count in dataset_results:
+    for dataset_name, score, count, num_missing_predictions in dataset_results:
         avg = score / count if count > 0 else 0
-        print(f"  {dataset_name}: score={score:.2f}, questions={count}, avg={avg:.4f}")
+        avg_non_missing = score / (count - num_missing_predictions) if (count - num_missing_predictions) > 0 else 0
+        print(f"  {dataset_name}: score={score:.2f}, questions={count}, avg={avg:.4f}, avg_non_missing={avg_non_missing:.4f}")
     print("-"*60)
     print(f"Total Questions Evaluated: {total_questions}")
     print(f"Total Missing Predictions: {total_missing_predictions}")

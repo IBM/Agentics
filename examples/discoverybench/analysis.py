@@ -111,16 +111,18 @@ def analyze_evaluation_file(file_path: str) -> Dict:
     """
     Analyze a single evaluation file (NDJSON format).
     Groups results by dataset, question_type, and dataset+question_type.
+    Also tracks llm_provider for aggregation across files.
     
     Args:
         file_path: Path to evaluation.json file
         
     Returns:
-        Dict with overall statistics and per-group statistics
+        Dict with overall statistics, per-group statistics, and llm_provider info
     """
     file_stats = {
         'file': os.path.basename(file_path),
         'num_problems': 0,
+        'llm_provider': None,  # Will be set from first record that has it
         'overall_mean_var_score': 0.0,
         'overall_mean_rel_score': 0.0,
         'overall_mean_context_score': 0.0,
@@ -157,6 +159,10 @@ def analyze_evaluation_file(file_path: str) -> Dict:
                 
                 try:
                     eval_result = json.loads(line)
+                    
+                    # Track llm_provider from first occurrence
+                    if file_stats['llm_provider'] is None and 'llm_provider' in eval_result:
+                        file_stats['llm_provider'] = eval_result['llm_provider']
                     
                     # Add dimension means to this result
                     eval_result = analyze_single_result(eval_result)
@@ -262,6 +268,8 @@ def analyze_evaluation_file(file_path: str) -> Dict:
         }
     
     logger.info(f"Analyzed {file_stats['num_problems']} problems from {os.path.basename(file_path)}")
+    if file_stats['llm_provider']:
+        logger.info(f"  LLM Provider: {file_stats['llm_provider']}")
     logger.info(f"  Overall mean_var_score: {file_stats['overall_mean_var_score']:.4f}")
     logger.info(f"  Overall mean_rel_score: {file_stats['overall_mean_rel_score']:.4f}")
     logger.info(f"  Overall mean_context_score: {file_stats['overall_mean_context_score']:.4f}")
@@ -275,6 +283,7 @@ def analyze_evaluation_file(file_path: str) -> Dict:
 def analyze_directory(output_dir: str) -> None:
     """
     Analyze all evaluation files in a directory.
+    Aggregates statistics by llm_provider and across all files.
     
     Args:
         output_dir: Directory containing evaluation.json files
@@ -314,24 +323,252 @@ def analyze_directory(output_dir: str) -> None:
     # Write summary to analysis_summary.json
     summary_path = output_path / 'analysis_summary.json'
     
-    # Per-file statistics only (no cross-file aggregation)
+    # Per-file statistics
     summary_data = {
         'files': all_file_stats,
     }
+    
+    # Aggregate by llm_provider
+    llm_provider_groups = defaultdict(lambda: {
+        'files': [], 'num_files': 0, 'total_problems': 0,
+        'var_scores': [], 'rel_scores': [], 'context_scores': [], 'final_scores': [], 'accuracy_scores': [],
+        'by_dataset': defaultdict(lambda: {'var_scores': [], 'rel_scores': [], 'context_scores': [], 'final_scores': [], 'accuracy_scores': [], 'num_problems': 0}),
+        'by_question_type': defaultdict(lambda: {'var_scores': [], 'rel_scores': [], 'context_scores': [], 'final_scores': [], 'accuracy_scores': [], 'num_problems': 0}),
+        'by_dataset_question_type': defaultdict(lambda: {'var_scores': [], 'rel_scores': [], 'context_scores': [], 'final_scores': [], 'accuracy_scores': [], 'num_problems': 0}),
+    })
+    
+    # Aggregate all files regardless of llm_provider
+    all_aggregate = {
+        'files': [], 'num_files': 0, 'total_problems': 0,
+        'var_scores': [], 'rel_scores': [], 'context_scores': [], 'final_scores': [], 'accuracy_scores': [],
+        'by_dataset': defaultdict(lambda: {'var_scores': [], 'rel_scores': [], 'context_scores': [], 'final_scores': [], 'accuracy_scores': [], 'num_problems': 0}),
+        'by_question_type': defaultdict(lambda: {'var_scores': [], 'rel_scores': [], 'context_scores': [], 'final_scores': [], 'accuracy_scores': [], 'num_problems': 0}),
+        'by_dataset_question_type': defaultdict(lambda: {'var_scores': [], 'rel_scores': [], 'context_scores': [], 'final_scores': [], 'accuracy_scores': [], 'num_problems': 0}),
+    }
+    
+    # Process each file for aggregation
+    for file_stat in all_file_stats:
+        llm_provider = file_stat.get('llm_provider')
+        
+        # Collect per-llm_provider stats
+        if llm_provider:
+            group = llm_provider_groups[llm_provider]
+            group['files'].append(file_stat['file'])
+            group['num_files'] += 1
+            group['total_problems'] += file_stat['num_problems']
+            
+            # Collect overall scores
+            group['var_scores'].append(file_stat['overall_mean_var_score'])
+            group['rel_scores'].append(file_stat['overall_mean_rel_score'])
+            group['context_scores'].append(file_stat['overall_mean_context_score'])
+            group['final_scores'].append(file_stat['overall_mean_final_score'])
+            group['accuracy_scores'].append(file_stat['mean_accuracy_scores'])
+            
+            # Aggregate by_dataset
+            for dataset, stats in file_stat['by_dataset'].items():
+                group['by_dataset'][dataset]['var_scores'].extend([stats['mean_var_score']] * stats['num_problems'])
+                group['by_dataset'][dataset]['rel_scores'].extend([stats['mean_rel_score']] * stats['num_problems'])
+                group['by_dataset'][dataset]['context_scores'].extend([stats['mean_context_score']] * stats['num_problems'])
+                group['by_dataset'][dataset]['final_scores'].extend([stats['mean_final_score']] * stats['num_problems'])
+                group['by_dataset'][dataset]['accuracy_scores'].extend([stats['mean_accuracy_score']] * stats['num_problems'])
+                group['by_dataset'][dataset]['num_problems'] += stats['num_problems']
+            
+            # Aggregate by_question_type
+            for qtype, stats in file_stat['by_question_type'].items():
+                group['by_question_type'][qtype]['var_scores'].extend([stats['mean_var_score']] * stats['num_problems'])
+                group['by_question_type'][qtype]['rel_scores'].extend([stats['mean_rel_score']] * stats['num_problems'])
+                group['by_question_type'][qtype]['context_scores'].extend([stats['mean_context_score']] * stats['num_problems'])
+                group['by_question_type'][qtype]['final_scores'].extend([stats['mean_final_score']] * stats['num_problems'])
+                group['by_question_type'][qtype]['accuracy_scores'].extend([stats['mean_accuracy_score']] * stats['num_problems'])
+                group['by_question_type'][qtype]['num_problems'] += stats['num_problems']
+            
+            # Aggregate by_dataset_question_type
+            for key, stats in file_stat['by_dataset_question_type'].items():
+                group['by_dataset_question_type'][key]['var_scores'].extend([stats['mean_var_score']] * stats['num_problems'])
+                group['by_dataset_question_type'][key]['rel_scores'].extend([stats['mean_rel_score']] * stats['num_problems'])
+                group['by_dataset_question_type'][key]['context_scores'].extend([stats['mean_context_score']] * stats['num_problems'])
+                group['by_dataset_question_type'][key]['final_scores'].extend([stats['mean_final_score']] * stats['num_problems'])
+                group['by_dataset_question_type'][key]['accuracy_scores'].extend([stats['mean_accuracy_score']] * stats['num_problems'])
+                group['by_dataset_question_type'][key]['num_problems'] += stats['num_problems']
+        
+        # Aggregate all files
+        all_aggregate['files'].append(file_stat['file'])
+        all_aggregate['num_files'] += 1
+        all_aggregate['total_problems'] += file_stat['num_problems']
+        all_aggregate['var_scores'].append(file_stat['overall_mean_var_score'])
+        all_aggregate['rel_scores'].append(file_stat['overall_mean_rel_score'])
+        all_aggregate['context_scores'].append(file_stat['overall_mean_context_score'])
+        all_aggregate['final_scores'].append(file_stat['overall_mean_final_score'])
+        all_aggregate['accuracy_scores'].append(file_stat['mean_accuracy_scores'])
+        
+        # Aggregate by_dataset
+        for dataset, stats in file_stat['by_dataset'].items():
+            all_aggregate['by_dataset'][dataset]['var_scores'].extend([stats['mean_var_score']] * stats['num_problems'])
+            all_aggregate['by_dataset'][dataset]['rel_scores'].extend([stats['mean_rel_score']] * stats['num_problems'])
+            all_aggregate['by_dataset'][dataset]['context_scores'].extend([stats['mean_context_score']] * stats['num_problems'])
+            all_aggregate['by_dataset'][dataset]['final_scores'].extend([stats['mean_final_score']] * stats['num_problems'])
+            all_aggregate['by_dataset'][dataset]['accuracy_scores'].extend([stats['mean_accuracy_score']] * stats['num_problems'])
+            all_aggregate['by_dataset'][dataset]['num_problems'] += stats['num_problems']
+        
+        # Aggregate by_question_type
+        for qtype, stats in file_stat['by_question_type'].items():
+            all_aggregate['by_question_type'][qtype]['var_scores'].extend([stats['mean_var_score']] * stats['num_problems'])
+            all_aggregate['by_question_type'][qtype]['rel_scores'].extend([stats['mean_rel_score']] * stats['num_problems'])
+            all_aggregate['by_question_type'][qtype]['context_scores'].extend([stats['mean_context_score']] * stats['num_problems'])
+            all_aggregate['by_question_type'][qtype]['final_scores'].extend([stats['mean_final_score']] * stats['num_problems'])
+            all_aggregate['by_question_type'][qtype]['accuracy_scores'].extend([stats['mean_accuracy_score']] * stats['num_problems'])
+            all_aggregate['by_question_type'][qtype]['num_problems'] += stats['num_problems']
+        
+        # Aggregate by_dataset_question_type
+        for key, stats in file_stat['by_dataset_question_type'].items():
+            all_aggregate['by_dataset_question_type'][key]['var_scores'].extend([stats['mean_var_score']] * stats['num_problems'])
+            all_aggregate['by_dataset_question_type'][key]['rel_scores'].extend([stats['mean_rel_score']] * stats['num_problems'])
+            all_aggregate['by_dataset_question_type'][key]['context_scores'].extend([stats['mean_context_score']] * stats['num_problems'])
+            all_aggregate['by_dataset_question_type'][key]['final_scores'].extend([stats['mean_final_score']] * stats['num_problems'])
+            all_aggregate['by_dataset_question_type'][key]['accuracy_scores'].extend([stats['mean_accuracy_score']] * stats['num_problems'])
+            all_aggregate['by_dataset_question_type'][key]['num_problems'] += stats['num_problems']
+    
+    # Helper function to compute aggregated stats
+    def compute_aggregated_stats(scores_dict):
+        result = {}
+        if scores_dict['var_scores']:
+            result['mean_var_score'] = sum(scores_dict['var_scores']) / len(scores_dict['var_scores'])
+        else:
+            result['mean_var_score'] = 0.0
+        
+        if scores_dict['rel_scores']:
+            result['mean_rel_score'] = sum(scores_dict['rel_scores']) / len(scores_dict['rel_scores'])
+        else:
+            result['mean_rel_score'] = 0.0
+        
+        if scores_dict['context_scores']:
+            result['mean_context_score'] = sum(scores_dict['context_scores']) / len(scores_dict['context_scores'])
+        else:
+            result['mean_context_score'] = 0.0
+        
+        if scores_dict['final_scores']:
+            result['mean_final_score'] = sum(scores_dict['final_scores']) / len(scores_dict['final_scores'])
+        else:
+            result['mean_final_score'] = 0.0
+        
+        if scores_dict['accuracy_scores']:
+            result['mean_accuracy_score'] = sum(scores_dict['accuracy_scores']) / len(scores_dict['accuracy_scores'])
+        else:
+            result['mean_accuracy_score'] = 0.0
+        
+        return result
+    
+    # Add aggregated llm_provider groups to summary
+    for llm_provider, group in llm_provider_groups.items():
+        llm_stats = {
+            'num_files': group['num_files'],
+            'total_problems': group['total_problems'],
+            'files': group['files'],
+        }
+        
+        # Compute overall stats
+        llm_stats.update(compute_aggregated_stats({
+            'var_scores': group['var_scores'],
+            'rel_scores': group['rel_scores'],
+            'context_scores': group['context_scores'],
+            'final_scores': group['final_scores'],
+            'accuracy_scores': group['accuracy_scores'],
+        }))
+        
+        # Compute by_dataset
+        llm_stats['by_dataset'] = {}
+        for dataset, stats in group['by_dataset'].items():
+            llm_stats['by_dataset'][dataset] = {
+                'num_problems': stats['num_problems'],
+            }
+            llm_stats['by_dataset'][dataset].update(compute_aggregated_stats(stats))
+        
+        # Compute by_question_type
+        llm_stats['by_question_type'] = {}
+        for qtype, stats in group['by_question_type'].items():
+            llm_stats['by_question_type'][qtype] = {
+                'num_problems': stats['num_problems'],
+            }
+            llm_stats['by_question_type'][qtype].update(compute_aggregated_stats(stats))
+        
+        # Compute by_dataset_question_type
+        llm_stats['by_dataset_question_type'] = {}
+        for key, stats in group['by_dataset_question_type'].items():
+            llm_stats['by_dataset_question_type'][key] = {
+                'num_problems': stats['num_problems'],
+            }
+            llm_stats['by_dataset_question_type'][key].update(compute_aggregated_stats(stats))
+        
+        summary_data[llm_provider] = llm_stats
+    
+    # Add all_llm_provider aggregation
+    all_stats = {
+        'num_files': all_aggregate['num_files'],
+        'total_problems': all_aggregate['total_problems'],
+        'files': all_aggregate['files'],
+    }
+    
+    # Compute overall stats
+    all_stats.update(compute_aggregated_stats({
+        'var_scores': all_aggregate['var_scores'],
+        'rel_scores': all_aggregate['rel_scores'],
+        'context_scores': all_aggregate['context_scores'],
+        'final_scores': all_aggregate['final_scores'],
+        'accuracy_scores': all_aggregate['accuracy_scores'],
+    }))
+    
+    # Compute by_dataset
+    all_stats['by_dataset'] = {}
+    for dataset, stats in all_aggregate['by_dataset'].items():
+        all_stats['by_dataset'][dataset] = {
+            'num_problems': stats['num_problems'],
+        }
+        all_stats['by_dataset'][dataset].update(compute_aggregated_stats(stats))
+    
+    # Compute by_question_type
+    all_stats['by_question_type'] = {}
+    for qtype, stats in all_aggregate['by_question_type'].items():
+        all_stats['by_question_type'][qtype] = {
+            'num_problems': stats['num_problems'],
+        }
+        all_stats['by_question_type'][qtype].update(compute_aggregated_stats(stats))
+    
+    # Compute by_dataset_question_type
+    all_stats['by_dataset_question_type'] = {}
+    for key, stats in all_aggregate['by_dataset_question_type'].items():
+        all_stats['by_dataset_question_type'][key] = {
+            'num_problems': stats['num_problems'],
+        }
+        all_stats['by_dataset_question_type'][key].update(compute_aggregated_stats(stats))
+    
+    summary_data['all_llm_provider'] = all_stats
     
     with open(summary_path, 'w') as f:
         json.dump(summary_data, f, indent=2)
     
     logger.info(f"\nAnalysis summary written to {summary_path}")
+    logger.info(f"Total files: {all_aggregate['num_files']}")
+    logger.info(f"Total problems: {all_aggregate['total_problems']}")
     
-    # Log per-file statistics
-    for file_stat in all_file_stats:
-        logger.info(f"\n{file_stat['file']}:")
-        logger.info(f"  problems: {file_stat['num_problems']}")
-        logger.info(f"  mean_var_score: {file_stat['overall_mean_var_score']:.4f}")
-        logger.info(f"  mean_rel_score: {file_stat['overall_mean_rel_score']:.4f}")
-        logger.info(f"  mean_context_score: {file_stat['overall_mean_context_score']:.4f}")
-        logger.info(f"  mean_final_score: {file_stat['overall_mean_final_score']:.4f}")
+    # Log per-llm_provider statistics
+    for llm_provider in sorted(llm_provider_groups.keys()):
+        logger.info(f"\n{llm_provider}:")
+        logger.info(f"  Files: {llm_provider_groups[llm_provider]['num_files']}")
+        logger.info(f"  Problems: {llm_provider_groups[llm_provider]['total_problems']}")
+        stats = summary_data[llm_provider]
+        logger.info(f"  mean_var_score: {stats.get('mean_var_score', 0.0):.4f}")
+        logger.info(f"  mean_rel_score: {stats.get('mean_rel_score', 0.0):.4f}")
+        logger.info(f"  mean_context_score: {stats.get('mean_context_score', 0.0):.4f}")
+        logger.info(f"  mean_final_score: {stats.get('mean_final_score', 0.0):.4f}")
+    
+    # Log all_llm_provider statistics
+    logger.info(f"\nall_llm_provider:")
+    logger.info(f"  Files: {all_stats['num_files']}")
+    logger.info(f"  Problems: {all_stats['total_problems']}")
+    logger.info(f"  mean_var_score: {all_stats.get('mean_var_score', 0.0):.4f}")
+    logger.info(f"  mean_rel_score: {all_stats.get('mean_rel_score', 0.0):.4f}")
+    logger.info(f"  mean_context_score: {all_stats.get('mean_context_score', 0.0):.4f}")
+    logger.info(f"  mean_final_score: {all_stats.get('mean_final_score', 0.0):.4f}")
 
 
 if __name__ == '__main__':
