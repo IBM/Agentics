@@ -241,8 +241,9 @@ def evaluate_dataset(dataset: str,
     assert Config.llm_provider is not None, "LLM provider must be specified for evaluation."
     selected_llm = llm_connections.__getattr__(Config.llm_provider)    
 
-    final_score = 0
+    total_final_score = 0
     num_evaluated = 0
+    num_missing_prediction = 0
     
     for question in questions:
         gold = examples_hash.get(f"{dataset},{question.metadata_id},{question.qid}")
@@ -271,8 +272,9 @@ def evaluate_dataset(dataset: str,
                 "mean_accuracy_score": 0,
                 "final_score": 0
             }
+            num_missing_prediction += 1
         
-        final_score += evaluation_result["final_score"]
+        total_final_score += evaluation_result["final_score"]
         num_evaluated += 1
         
         if output_eval:
@@ -280,9 +282,9 @@ def evaluate_dataset(dataset: str,
                 f.write(json.dumps(evaluation_result) + "\n")
         print(evaluation_result)
 
-    avg_score = final_score / num_evaluated if num_evaluated > 0 else 0
-    logger.info(f"Dataset {dataset}: final_score={final_score}, num_questions={num_evaluated}, avg_score={avg_score}")
-    return final_score, num_evaluated
+    avg_score = total_final_score / num_evaluated if num_evaluated > 0 else 0
+    logger.info(f"Dataset {dataset}: total_final_score={total_final_score}, num_questions={num_evaluated}, avg_score={avg_score}, num_missing_prediction={num_missing_prediction}")
+    return total_final_score, num_evaluated, num_missing_prediction
 
 
 def merge_jsonl_files(main_file: Path, tmp_file: Path) -> None:
@@ -432,6 +434,7 @@ def evaluate_all(system_output_path:str,
     
     total_score = 0
     total_questions = 0
+    total_missing_predictions = 0
     dataset_results = []
     
     for output in os.listdir(system_output_path):
@@ -439,7 +442,7 @@ def evaluate_all(system_output_path:str,
         if not output.endswith(".jsonl") or output.endswith("_tmp.jsonl"):
             continue
         answers = AG.from_jsonl(system_output_path/output, atype=Question)
-        dataset_score, num_questions = evaluate_dataset(
+        dataset_score, num_questions, num_missing_predictions = evaluate_dataset(
             dataset_name,
             answers, 
             output_eval=system_output_path / "evaluation.json",
@@ -447,7 +450,8 @@ def evaluate_all(system_output_path:str,
         )
         total_score += dataset_score
         total_questions += num_questions
-        dataset_results.append((dataset_name, dataset_score, num_questions))
+        total_missing_predictions += num_missing_predictions
+        dataset_results.append((dataset_name, dataset_score, num_questions, num_missing_predictions))
     
     # Print overall results
     overall_avg_score = total_score / total_questions if total_questions > 0 else 0
@@ -459,8 +463,10 @@ def evaluate_all(system_output_path:str,
         print(f"  {dataset_name}: score={score:.2f}, questions={count}, avg={avg:.4f}")
     print("-"*60)
     print(f"Total Questions Evaluated: {total_questions}")
+    print(f"Total Missing Predictions: {total_missing_predictions}")
     print(f"Total Score: {total_score:.2f}")
     print(f"Overall Average Score: {overall_avg_score:.4f}")
+    print(f"Hypothesis Matching Score: {overall_avg_score*100:.2f}")
     print("="*60 + "\n")
 
 
