@@ -72,15 +72,80 @@ ollama pull ollama/deepseek-r1:latest
 - `VLLM_URL` - <http://base_url:PORT/v1>
 - `VLLM_MODEL_ID` - Your model id (e.g. "hosted_vllm/meta-llama/Llama-3.3-70B-Instruct" )
 
+#### LiteLLM (100+ providers via single interface)
+
+LiteLLM provides a unified interface to access 100+ LLM providers. You can use models from OpenAI, Anthropic, Google, Cohere, Azure, Hugging Face, and more.
+
+**Basic Setup (Local LiteLLM)**:
+
+- `LITELLM_MODEL` - Model in format `provider/model-name` (e.g., `openai/gpt-4`, `claude/claude-opus-4-5-20251101`, `gemini/gemini-2.0-flash`)
+- The required API key for your provider should be in environment variables (e.g., `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, etc.)
+- Optional: `LITELLM_TEMPERATURE` - Set temperature (default: varies by provider)
+- Optional: `LITELLM_TOP_P` - Set top-p sampling (default: varies by provider)
+
+**Examples**:
+
+OpenAI via LiteLLM:
+```bash
+export LITELLM_MODEL="openai/gpt-4"
+export OPENAI_API_KEY="sk-..."
+```
+
+Anthropic Claude via LiteLLM:
+```bash
+export LITELLM_MODEL="claude/claude-opus-4-5-20251101"
+export ANTHROPIC_API_KEY="sk-ant-..."
+```
+
+Google Gemini via LiteLLM:
+```bash
+export LITELLM_MODEL="gemini/gemini-2.0-flash"
+export GOOGLE_API_KEY="..."
+```
+
+**LiteLLM Proxy Server**
+
+If you have a self-hosted LiteLLM proxy server:
+
+- `LITELLM_PROXY_URL` - Base URL of your LiteLLM proxy (e.g., `http://localhost:8000`)
+- `LITELLM_PROXY_API_KEY` - API key for the proxy
+- `LITELLM_PROXY_MODEL` - Model name in format `litellm_proxy/<model-name>` (e.g., `litellm_proxy/gpt-4`)
+- Optional: `LITELLM_PROXY_TEMPERATURE` - Set temperature
+- Optional: `LITELLM_PROXY_TOP_P` - Set top-p sampling
+
+**Example**:
+```bash
+export LITELLM_PROXY_URL="http://localhost:8000"
+export LITELLM_PROXY_API_KEY="sk-proxy-key-123"
+export LITELLM_PROXY_MODEL="litellm_proxy/my-model"
+```
+
+Also you can use the provided script for configuration in the git repo (⚠️not available
+through `pip install`)
+
+```bash
+uv run tasks.py setup
+```
+
+**Checking LiteLLM Status**
+
+After configuration, you can check if your LiteLLM setup is working:
+
+```bash
+show-llms
+```
+
+This will display a table showing the authentication status of all configured LLMs, including LiteLLM.
+
 
 ## Test Installation
 
 test hello world example (need to set up llm credentials first)
 
 ```bash
-python python examples/hello_world.py
-python examples/self_transduction.py
-python examples/agentics_web_search_report.py
+uv run examples/hello_world.py
+uv run examples/self_transduction.py
+uv run examples/agentics_web_search_report.py
 
 ```
 

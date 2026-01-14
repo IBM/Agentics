@@ -26,6 +26,7 @@ from typing import (
 import pandas as pd
 import yaml
 from crewai import LLM
+from crewai.llms.base_llm import BaseLLM
 from langchain_core.prompts import PromptTemplate
 from loguru import logger
 from pandas import DataFrame
@@ -182,7 +183,6 @@ class AG(BaseModel, Generic[T]):
     async def generate_atype(
         self, description: str, retry: int = 3
     ) -> Tuple[str, Type[BaseModel]] | None:
-
         class GeneratedAtype(BaseModel):
             python_code: Optional[str] = Field(
                 None, description="Python Code for the described Pydantic type"
@@ -191,14 +191,13 @@ class AG(BaseModel, Generic[T]):
 
         i = 0
         while i < retry:
-
             generated_atype_ag = await (
                 AG(
                     atype=GeneratedAtype,
-                    instructions="""Generate python code for the input nl type specs. 
-                Make all fields Optional. Use only primitive types for the fields, avoiding nested. 
+                    instructions="""Generate python code for the input nl type specs.
+                Make all fields Optional. Use only primitive types for the fields, avoiding nested.
                 Provide descriptions for the class and all its fields, using Field(None,description= "...")
-                If the input nl type spec is a question, generate a pydantic type that can be used to 
+                If the input nl type spec is a question, generate a pydantic type that can be used to
                 represent the answer to that question.
                 """,
                 )
@@ -511,13 +510,11 @@ class AG(BaseModel, Generic[T]):
                 return [x.string for x in input_messages.states]
 
         if self.transduction_type == "areduce":
-
             if other.transduce_fields is not None:
                 new_other = other.subset_atype(other.transduce_fields)
             else:
                 new_other = other
             if is_str_or_list_of_str(new_other):
-
                 chunks = chunk_list(new_other, chunk_size=self.areduce_batch_size)
             else:
                 chunks = chunk_list(
@@ -602,7 +599,7 @@ class AG(BaseModel, Generic[T]):
         # Perform Transduction
         transducer_class = (
             PydanticTransducerCrewAI
-            if type(self.llm) == LLM
+            if isinstance(self.llm, BaseLLM)
             else PydanticTransducerMellea if type(self.llm) == str else None
         )
         if not transducer_class:
@@ -1116,7 +1113,6 @@ class AG(BaseModel, Generic[T]):
         )
 
     async def map_atypes_fast(self, other: AG) -> ATypeMapping:
-
         if self.verbose_agent:
             logger.debug(f"Mapping type {other.atype} into type {self.atype}")
 
