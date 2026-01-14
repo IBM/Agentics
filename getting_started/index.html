@@ -388,6 +388,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#litellm-100-providers-via-single-interface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LiteLLM (100+ providers via single interface)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -740,6 +751,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#litellm-100-providers-via-single-interface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LiteLLM (100+ providers via single interface)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -915,11 +937,56 @@
 <li><code>VLLM_URL</code> - <a href="http://base_url:PORT/v1">http://base_url:PORT/v1</a></li>
 <li><code>VLLM_MODEL_ID</code> - Your model id (e.g. "hosted_vllm/meta-llama/Llama-3.3-70B-Instruct" )</li>
 </ul>
+<h4 id="litellm-100-providers-via-single-interface">LiteLLM (100+ providers via single interface)</h4>
+<p>LiteLLM provides a unified interface to access 100+ LLM providers. You can use models from OpenAI, Anthropic, Google, Cohere, Azure, Hugging Face, and more.</p>
+<p><strong>Basic Setup (Local LiteLLM)</strong>:</p>
+<ul>
+<li><code>LITELLM_MODEL</code> - Model in format <code>provider/model-name</code> (e.g., <code>openai/gpt-4</code>, <code>claude/claude-opus-4-5-20251101</code>, <code>gemini/gemini-2.0-flash</code>)</li>
+<li>The required API key for your provider should be in environment variables (e.g., <code>OPENAI_API_KEY</code>, <code>ANTHROPIC_API_KEY</code>, etc.)</li>
+<li>Optional: <code>LITELLM_TEMPERATURE</code> - Set temperature (default: varies by provider)</li>
+<li>Optional: <code>LITELLM_TOP_P</code> - Set top-p sampling (default: varies by provider)</li>
+</ul>
+<p><strong>Examples</strong>:</p>
+<p>OpenAI via LiteLLM:
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">LITELLM_MODEL</span><span class="o">=</span><span class="s2">&quot;openai/gpt-4&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_API_KEY</span><span class="o">=</span><span class="s2">&quot;sk-...&quot;</span>
+</code></pre></div></p>
+<p>Anthropic Claude via LiteLLM:
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">LITELLM_MODEL</span><span class="o">=</span><span class="s2">&quot;claude/claude-opus-4-5-20251101&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">ANTHROPIC_API_KEY</span><span class="o">=</span><span class="s2">&quot;sk-ant-...&quot;</span>
+</code></pre></div></p>
+<p>Google Gemini via LiteLLM:
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">LITELLM_MODEL</span><span class="o">=</span><span class="s2">&quot;gemini/gemini-2.0-flash&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">GOOGLE_API_KEY</span><span class="o">=</span><span class="s2">&quot;...&quot;</span>
+</code></pre></div></p>
+<p><strong>LiteLLM Proxy Server</strong></p>
+<p>If you have a self-hosted LiteLLM proxy server:</p>
+<ul>
+<li><code>LITELLM_PROXY_URL</code> - Base URL of your LiteLLM proxy (e.g., <code>http://localhost:8000</code>)</li>
+<li><code>LITELLM_PROXY_API_KEY</code> - API key for the proxy</li>
+<li><code>LITELLM_PROXY_MODEL</code> - Model name in format <code>litellm_proxy/&lt;model-name&gt;</code> (e.g., <code>litellm_proxy/gpt-4</code>)</li>
+<li>Optional: <code>LITELLM_PROXY_TEMPERATURE</code> - Set temperature</li>
+<li>Optional: <code>LITELLM_PROXY_TOP_P</code> - Set top-p sampling</li>
+</ul>
+<p><strong>Example</strong>:
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">LITELLM_PROXY_URL</span><span class="o">=</span><span class="s2">&quot;http://localhost:8000&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">LITELLM_PROXY_API_KEY</span><span class="o">=</span><span class="s2">&quot;sk-proxy-key-123&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">LITELLM_PROXY_MODEL</span><span class="o">=</span><span class="s2">&quot;litellm_proxy/my-model&quot;</span>
+</code></pre></div></p>
+<p>Also you can use the provided script for configuration in the git repo (⚠️not available
+through <code>pip install</code>)</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>tasks.py<span class="w"> </span>setup
+</code></pre></div>
+<p><strong>Checking LiteLLM Status</strong></p>
+<p>After configuration, you can check if your LiteLLM setup is working:</p>
+<div class="highlight"><pre><span></span><code>show-llms
+</code></pre></div>
+<p>This will display a table showing the authentication status of all configured LLMs, including LiteLLM.</p>
 <h2 id="test-installation">Test Installation</h2>
 <p>test hello world example (need to set up llm credentials first)</p>
-<div class="highlight"><pre><span></span><code>python<span class="w"> </span>python<span class="w"> </span>examples/hello_world.py
-python<span class="w"> </span>examples/self_transduction.py
-python<span class="w"> </span>examples/agentics_web_search_report.py
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>examples/hello_world.py
+uv<span class="w"> </span>run<span class="w"> </span>examples/self_transduction.py
+uv<span class="w"> </span>run<span class="w"> </span>examples/agentics_web_search_report.py
 </code></pre></div>
 <h2 id="hello-world">Hello World</h2>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span>
