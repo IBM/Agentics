@@ -201,10 +201,13 @@ async def execute_all_datasets(output_path:str,
 
                 answer = await (temp_ag.amap(answer_question_from_data))
                 # drop a few fields to save space
-                if len(answer) > 0: 
-                    answer[0].dbs = None
-                    answer[0].metadata = None
-                    answer.to_jsonl(tmp_file, append=True)
+                if len(answer) > 0:
+                    try: 
+                        answer[0].dbs = None
+                        answer[0].metadata = None
+                        answer.to_jsonl(tmp_file, append=True)
+                    except Exception as e:
+                        logger.error(f"Error processing answer for question {question.question}: {e}")
             else: 
                 logger.warning(f"Skipping question {question.question}\nAlready Processed with non-null hypothesis")
         
