@@ -190,7 +190,7 @@ async def execute_all_datasets(output_path:str,
             if answer.generated_hypothesis:
                 already_processed.add((answer.question, answer.qid))
             else:
-                generated_hypothesis_null.add(answer.question, answer.qid))
+                generated_hypothesis_null.add((answer.question, answer.qid))
         logger.info(f"Dataset: {dataset_name} | Total Questions: {len(questions)} | Already Processed (non-null hypothesis): {len(already_processed)} | Failed (null hypothesis): {len(generated_hypothesis_null)}")
 
         for question in questions:
@@ -200,7 +200,10 @@ async def execute_all_datasets(output_path:str,
                     temp_ag.llm = llm_connections.__getattr__(Config.llm_provider)
 
                 answer = await (temp_ag.amap(answer_question_from_data))
+                # drop a few fields to save space
                 if len(answer) > 0: 
+                    answer[0].dbs = None
+                    answer[0].metadata = None
                     answer.to_jsonl(tmp_file, append=True)
             else: 
                 logger.warning(f"Skipping question {question.question}\nAlready Processed with non-null hypothesis")
