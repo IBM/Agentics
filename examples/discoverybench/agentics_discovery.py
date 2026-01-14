@@ -10,7 +10,7 @@ from pandas import DataFrame
 from dotenv import load_dotenv
 load_dotenv()
 
-from agentics import  AG
+from agentics import AG
 from agentic_db import AgenticDB
 import agentics.core.llm_connections as llm_connections
 from eval.new_eval import run_eval_gold_vs_gen_NL_hypo_workflow
@@ -158,100 +158,310 @@ async def execute_all_datasets(output_path:str,
                                selected_datasets:list[str]=None, 
                                task_path:str=os.path.join(DISCOVERYBENCH_ROOT, "discoverybench/real/test")):
     """Save answers on disk to minimize memory space as AG[Question] jsonl files, one for each dataset.
+    Writes to temporary files during processing, then merges with main files after completion.
     """
     task_path=Path(task_path)
     output_path=Path(output_path)
     if not os.path.exists(output_path): os.mkdir(output_path)
+    processed_datasets = []
+    
     for dataset_name in selected_datasets or os.listdir(task_path):
     
         dataset=Dataset.import_from_discovery_bench_metadata(dataset_name)
         questions=AG(atype=Question,states=dataset.questions)
+        for ind, q in enumerate(questions):
+            print(ind, q.question)
+
         if Config.llm_provider:
             questions.llm=llm_connections.__getattr__(Config.llm_provider)
 
-        if os.path.exists(output_path/f"{dataset_name}.jsonl"):
-            already_processed_answers = AG.from_jsonl(output_path/f"{dataset_name}.jsonl", atype=Question)
-        else: already_processed_answers=[]
-        already_processed = set([answer.question for answer in already_processed_answers])
+        main_file = output_path/f"{dataset_name}.jsonl"
+        tmp_file = output_path/f"{dataset_name}_tmp.jsonl"
+        
+        if os.path.exists(main_file):
+            already_processed_answers = AG.from_jsonl(main_file, atype=Question)
+        else: 
+            already_processed_answers=[]
+
+        already_processed = set()
+        generated_hypothesis_null = set()
+        for answer in already_processed_answers:
+            if answer.generated_hypothesis:
+                already_processed.add(answer.question)
+            else:
+                generated_hypothesis_null.add(answer.question)
+        logger.info(f"Dataset: {dataset_name} | Total Questions: {len(questions)} | Already Processed (non-null hypothesis): {len(already_processed)} | Failed (null hypothesis): {len(generated_hypothesis_null)}")
 
         for question in questions:
             if question.question not in already_processed:
-
                 temp_ag =  AG(atype=Question, states=[question])
                 if Config.llm_provider:
                     temp_ag.llm = llm_connections.__getattr__(Config.llm_provider)
 
                 answer = await (temp_ag.amap(answer_question_from_data))
                 if len(answer) > 0: 
-                    answer.to_jsonl(output_path/f"{dataset_name}.jsonl",append=True)
-            else: logger.warning(f"Skipping question {question.question}\nAlready Processed")
+                    answer.to_jsonl(tmp_file, append=True)
+            else: 
+                logger.warning(f"Skipping question {question.question}\nAlready Processed with non-null hypothesis")
+        
+        processed_datasets.append(dataset_name)
+    
+    logger.info("Merging temporary files with main output files...")
+    for dataset_name in processed_datasets:
+        main_file = output_path/f"{dataset_name}.jsonl"
+        tmp_file = output_path/f"{dataset_name}_tmp.jsonl"
+        if tmp_file.exists():
+            merge_jsonl_files(main_file, tmp_file)
+    
+    validate_jsonl_files(output_path)
 
 
 def evaluate_dataset(dataset: str, 
                     questions:AG,
                     ground_truth:str = os.path.join(DISCOVERYBENCH_ROOT, "eval/answer_key_real.csv"),
                     output_eval:str=None,
-                    use_short_answer:bool=False)-> float:
+                    use_short_answer:bool=False)-> tuple:
+    """Evaluate a dataset and return accumulated score and question count.
+    
+    Args:
+        dataset: Dataset name
+        questions: AG object containing questions
+        ground_truth: Path to ground truth CSV
+        output_eval: Path to evaluation output file
+        use_short_answer: Whether to use short or full answer
+        
+    Returns:
+        Tuple of (accumulated_final_score, num_questions_evaluated)
+    """
     ground_truth=AG.from_csv(ground_truth)
     examples_hash={}
     for example in ground_truth:
         examples_hash[f"{example.dataset},{example.metadataid},{example.query_id}"] = example.gold_hypo
 
-    if Config.llm_provider:
-        selected_llm = llm_connections.__getattr__(Config.llm_provider)
-    else:
-        available_llms = llm_connections.__getattr__("available_llms")
-        selected_llm = next(iter(available_llms.values()), None) if len(available_llms) > 0 else None
+    assert Config.llm_provider is not None, "LLM provider must be specified for evaluation."
+    selected_llm = llm_connections.__getattr__(Config.llm_provider)    
 
-    final_score=0
-    for question in questions :
-        gold= examples_hash.get(f"{dataset},{question.metadata_id},{question.qid}")
-        system_prediction=  question.generated_hypothesis if use_short_answer else  (question.full_answer and question.full_answer.full_answer)
-        if system_prediction:
-            if gold:
-                evaluation_result= run_eval_gold_vs_gen_NL_hypo_workflow(
-                    question.question, 
-                    examples_hash[f"{dataset},{question.metadata_id},{question.qid}"], 
-                    None, 
-                    system_prediction,
-                    None, 
-                    question.metadata, 
-                    'gpt-4-1106-preview', 
-                    dataset_type = "real",
-                    llm_object=selected_llm)
+    final_score = 0
+    num_evaluated = 0
+    
+    for question in questions:
+        gold = examples_hash.get(f"{dataset},{question.metadata_id},{question.qid}")
+        system_prediction = question.generated_hypothesis if use_short_answer else (question.full_answer and question.full_answer.full_answer)
+        
+        # Handle all cases properly
+        if system_prediction and gold:
+            # Both exist - run evaluation
+            evaluation_result = run_eval_gold_vs_gen_NL_hypo_workflow(
+                question.question, 
+                gold, 
+                None, 
+                system_prediction,
+                None, 
+                question.metadata, 
+                'gpt-4-1106-preview', 
+                dataset_type = "real",
+                llm_object=selected_llm)
         else:
-            evaluation_result = {"query":question.question,
-                                 "HypoA": gold,
-                                 "HypoB": system_prediction,
-                                 "recall_context": 0,
-                                 "mean_accuracy_score":0,
-                                 "final_score":0}
-            
+            # Missing prediction or gold - create default result
+            evaluation_result = {
+                "query": question.question,
+                "HypoA": gold,
+                "HypoB": system_prediction,
+                "recall_context": 0,
+                "mean_accuracy_score": 0,
+                "final_score": 0
+            }
+        
         final_score += evaluation_result["final_score"]
+        num_evaluated += 1
+        
         if output_eval:
-            with open(output_eval,"a") as f: f.write(json.dumps(evaluation_result) + "\n")
+            with open(output_eval, "a") as f: 
+                f.write(json.dumps(evaluation_result) + "\n")
         print(evaluation_result)
 
-    print("final_score: ",final_score/len(questions))
-    return final_score/len(questions)
+    avg_score = final_score / num_evaluated if num_evaluated > 0 else 0
+    logger.info(f"Dataset {dataset}: final_score={final_score}, num_questions={num_evaluated}, avg_score={avg_score}")
+    return final_score, num_evaluated
+
+
+def merge_jsonl_files(main_file: Path, tmp_file: Path) -> None:
+    """Merge tmp jsonl file with main jsonl file, prioritizing entries with non-null generated_hypothesis.
+    
+    Args:
+        main_file: Path to the main jsonl file
+        tmp_file: Path to the temporary jsonl file
+    """
+    # Load all entries from both files
+    main_entries = {}
+    tmp_entries = {}
+    
+    # Read main file if it exists
+    if main_file.exists():
+        with open(main_file, 'r') as f:
+            for line in f:
+                if line.strip():
+                    entry = json.loads(line)
+                    key = (entry.get('qid'), entry.get('question'))
+                    main_entries[key] = entry
+    
+    # Read tmp file if it exists
+    if tmp_file.exists():
+        with open(tmp_file, 'r') as f:
+            for line in f:
+                if line.strip():
+                    entry = json.loads(line)
+                    key = (entry.get('qid'), entry.get('question'))
+                    tmp_entries[key] = entry
+    
+    # Merge: prioritize entries with non-null generated_hypothesis
+    merged_entries = {}
+    
+    # Start with main entries
+    merged_entries.update(main_entries)
+    
+    # Add/update with tmp entries, preferring non-null generated_hypothesis
+    for key, tmp_entry in tmp_entries.items():
+        if key in merged_entries:
+            main_entry = merged_entries[key]
+            # If tmp has non-null generated_hypothesis, use it
+            if tmp_entry.get('generated_hypothesis'):
+                merged_entries[key] = tmp_entry
+            # If main has null but tmp has non-null, use tmp
+            elif not main_entry.get('generated_hypothesis') and tmp_entry.get('generated_hypothesis'):
+                merged_entries[key] = tmp_entry
+            # If both are null, keep tmp (which is more recent)
+            elif not main_entry.get('generated_hypothesis') and not tmp_entry.get('generated_hypothesis'):
+                merged_entries[key] = tmp_entry
+        else:
+            # New entry from tmp
+            merged_entries[key] = tmp_entry
+    
+    # Write merged entries to main file
+    with open(main_file, 'w') as f:
+        for entry in merged_entries.values():
+            f.write(json.dumps(entry) + '\n')
+    
+    # Remove tmp file
+    # if tmp_file.exists():
+    #     tmp_file.unlink()
+    
+    logger.info(f"Merged {tmp_file.name} into {main_file.name} and removed tmp file")
+
+
+def validate_jsonl_files(output_path: Path) -> None:
+    """Validate all JSONL files in the output folder for encoding errors.
+    
+    Attempts to fix encoding issues if possible, otherwise removes the corrupted file.
+    
+    Args:
+        output_path: Path to the output folder containing JSONL files
+    """
+    logger.info("Validating JSONL files for encoding errors...")
+    
+    for file_path in output_path.glob("*.jsonl"):
+        try:
+            # Try to read the file with strict UTF-8 encoding
+            with open(file_path, 'r', encoding='utf-8') as f:
+                lines = []
+                for line in f:
+                    if line.strip():
+                        lines.append(line)
+            logger.info(f"✓ {file_path.name}: Valid UTF-8 encoding ({len(lines)} lines)")
+            
+        except UnicodeDecodeError as e:
+            logger.warning(f"✗ {file_path.name}: Unicode decoding error at position {e.start}")
+            
+            # Try to recover by reading with error handling
+            try:
+                with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
+                    valid_lines = []
+                    for line in f:
+                        if line.strip():
+                            try:
+                                # Verify each line is valid JSON
+                                json.loads(line)
+                                valid_lines.append(line)
+                            except json.JSONDecodeError:
+                                logger.debug(f"  Skipping malformed JSON line in {file_path.name}")
+                                continue
+                
+                if valid_lines:
+                    # Rewrite file with valid lines only
+                    with open(file_path, 'w', encoding='utf-8') as f:
+                        for line in valid_lines:
+                            f.write(line)
+                    logger.info(f"  Fixed: {file_path.name} - kept {len(valid_lines)} valid lines")
+                else:
+                    # File is empty after recovery attempt
+                    file_path.unlink()
+                    logger.warning(f"  Discarded: {file_path.name} - no valid lines recovered")
+                    
+            except Exception as recovery_error:
+                # Recovery failed, remove the file
+                logger.error(f"  Failed to recover {file_path.name}: {recovery_error}")
+                file_path.unlink()
+                logger.warning(f"  Discarded: {file_path.name}")
+        
+        except Exception as e:
+            logger.error(f"Error validating {file_path.name}: {e}")
 
     
+def rename_evaluation_files(output_path: Path) -> None:
+    existing_files = sorted(output_path.glob("evaluation*.json"), key=lambda p: p.name)
+    
+    if existing_files:   
+        evaluation_file = output_path / "evaluation.json"
+        new_name = output_path / f"evaluation_{len(existing_files)}.json"
+        evaluation_file.rename(new_name)
+        logger.info(f"Renamed {evaluation_file.name} to {new_name.name}")
+
+
 def evaluate_all(system_output_path:str, 
                  use_short_answer:False):
-    """Evaluate all datasets in the output folder.
+    """Evaluate all datasets in the output folder and compute overall score.
+    
     Args:
-        system_output_path: Path to the generated hypotheses
+        system_output_path: Path to the output folder
         use_short_answer: If True, use short_answer; if False, use full_answer
-        llm_provider: Optional LLM provider name (e.g., 'gemini', 'litellm_proxy_1', 'litellm_proxy_2')
     """
     system_output_path=Path(system_output_path)
+    
+    # Rotate existing evaluation files to preserve previous runs
+    rename_evaluation_files(system_output_path)
+    
+    total_score = 0
+    total_questions = 0
+    dataset_results = []
+    
     for output in os.listdir(system_output_path):
-        dataset_name=output.split(".")[0]
-        answers=AG.from_jsonl(system_output_path/output, atype=Question)
-        evaluate_dataset(dataset_name,
-                         answers, 
-                         output_eval= system_output_path / "evaluation.json",
-                         use_short_answer = use_short_answer)
+        dataset_name = output.split(".")[0]
+        if not output.endswith(".jsonl"):
+            continue
+        answers = AG.from_jsonl(system_output_path/output, atype=Question)
+        dataset_score, num_questions = evaluate_dataset(
+            dataset_name,
+            answers, 
+            output_eval=system_output_path / "evaluation.json",
+            use_short_answer=use_short_answer
+        )
+        total_score += dataset_score
+        total_questions += num_questions
+        dataset_results.append((dataset_name, dataset_score, num_questions))
+    
+    # Print overall results
+    overall_avg_score = total_score / total_questions if total_questions > 0 else 0
+    print("\n" + "="*60)
+    print("OVERALL EVALUATION RESULTS")
+    print("="*60)
+    for dataset_name, score, count in dataset_results:
+        avg = score / count if count > 0 else 0
+        print(f"  {dataset_name}: score={score:.2f}, questions={count}, avg={avg:.4f}")
+    print("-"*60)
+    print(f"Total Questions Evaluated: {total_questions}")
+    print(f"Total Score: {total_score:.2f}")
+    print(f"Overall Average Score: {overall_avg_score:.4f}")
+    print("="*60 + "\n")
 
 
 import argparse
