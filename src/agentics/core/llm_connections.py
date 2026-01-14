@@ -120,13 +120,12 @@ def get_available_llms() -> dict[str, LLM | AsyncOpenAI]:
 
     # Gemini LLM
     if os.getenv("GEMINI_API_KEY"):
-        gemini_llm = LLM(
+        llms["gemini"] = LLM(
             model=os.getenv("GEMINI_MODEL_ID", "gemini/gemini-2.0-flash"),
             temperature=0.7,
         )
-        if gemini_llm:
-            llms["gemini"] = gemini_llm
-            _llms_env_vars["gemini"] = ["GEMINI_API_KEY", "GEMINI_MODEL_ID"]
+        _llms_env_vars["gemini"] = ["GEMINI_API_KEY", "GEMINI_MODEL_ID"]
+        logger.debug(f"Registered LLM provider: gemini")
 
     # Ollama LLM
     if _check_env("OLLAMA_MODEL_ID"):
@@ -135,6 +134,7 @@ def get_available_llms() -> dict[str, LLM | AsyncOpenAI]:
             base_url="http://localhost:11434",
         )
         _llms_env_vars["ollama_llm"] = ["OLLAMA_MODEL_ID"]
+        logger.debug(f"Registered LLM provider: ollama_llm")
 
     # OpenAI LLM
     if _check_env("OPENAI_API_KEY"):
@@ -151,6 +151,8 @@ def get_available_llms() -> dict[str, LLM | AsyncOpenAI]:
         env_vars = ["OPENAI_API_KEY", "OPENAI_MODEL_ID"]
         _llms_env_vars["openai_llm"] = env_vars
         _llms_env_vars["openai"] = env_vars
+        logger.debug(f"Registered LLM provider: openai_llm")
+        logger.debug(f"Registered LLM provider: openai")
 
     # OpenAI Compatible LLM
     if _check_env(
@@ -175,6 +177,8 @@ def get_available_llms() -> dict[str, LLM | AsyncOpenAI]:
         ]
         _llms_env_vars["openai_compatible_llm"] = env_vars
         _llms_env_vars["openai_compatible"] = env_vars
+        logger.debug(f"Registered LLM provider: openai_compatible_llm")
+        logger.debug(f"Registered LLM provider: openai_compatible")
 
     # WatsonX LLM
     if _check_env("WATSONX_APIKEY", "WATSONX_URL", "WATSONX_PROJECTID", "MODEL_ID"):
@@ -192,6 +196,8 @@ def get_available_llms() -> dict[str, LLM | AsyncOpenAI]:
         env_vars = ["WATSONX_APIKEY", "WATSONX_URL", "WATSONX_PROJECTID", "MODEL_ID"]
         _llms_env_vars["watsonx_llm"] = env_vars
         _llms_env_vars["watsonx"] = env_vars
+        logger.debug(f"Registered LLM provider: watsonx_llm")
+        logger.debug(f"Registered LLM provider: watsonx")
 
     # VLLM (AsyncOpenAI)
     if _check_env("VLLM_URL"):
@@ -241,6 +247,7 @@ def get_available_llms() -> dict[str, LLM | AsyncOpenAI]:
             "LITELLM_TEMPERATURE",
             "LITELLM_TOP_P",
         ]
+        logger.debug(f"Registered LLM provider: litellm")
 
     # LiteLLM Proxy
     if _check_env("LITELLM_PROXY_URL", "LITELLM_PROXY_API_KEY", "LITELLM_PROXY_MODEL"):
