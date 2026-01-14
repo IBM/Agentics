@@ -55,7 +55,7 @@ def get_score_from_answer(type, answer):
                     "f1": -1.0
                 }
             var_json = json.loads(answer_clean)
-            #print(f"var_json:{var_json}")
+            print(f"var_json:{var_json}")
             p=0.0
             r=0.0
             f1=0.0
@@ -76,7 +76,7 @@ def get_score_from_answer(type, answer):
                     "intersection": var_json['intersection'],
                     "explanation": var_json['explanation'],
             }
-            #print(f"var_eval: {eval_rec}")
+            print(f"var_eval: {eval_rec}")
             return eval_rec
         except Exception as e:
             logger.warning(f"Failed to parse var answer: {e}")
@@ -256,56 +256,18 @@ def prepare_dataset_metadata_json(dataset_meta, dataset_type, use_column_metadat
 
 
 def get_sub_hypotheses(query, hypo, workflow, dataset_meta, llm_used, dataset_type, use_column_metadata=True, llm_object=None):
-    # extraction_prompt = f"""\
-    #     Given a set of dataset columns, a ground-truth hypothesis, and the analysis workflow used, your task is to extract three dimensions that define the hypothesis: Context, Variables, and Relations. \
-    #     Here are the definitions for these dimensions:
-    #     - Contexts: Boundary conditions that limit the scope of a hypothesis. E.g., “for men over \
-    #     the age of 30”, “in Asia and Europe”. If the context applies to the full dataset, then extract the context from the dataset_descrption.
-    #     - Variables: Known concepts that interact in a meaningful way under a given context to \
-    #     produce the hypothesis. E.g., gender, age, income, or "None" if there is no interacting variable.
-    #     - Relations: Interactions between a given set of variables under a given context to produce \
-    #     the hypothesis. E.g., “quadratic relationship”, “inversely proportional”, piecewise conditionals, \
-    #     or "None" if there is no interacting relationship.
-    #     Make sure to only use the information present in the hypothesis and the workflow. Do not add any new information. \
-    #     For each dimension, be specific, and do not omit any important details.
-
-    #     Here is the metadata for the task:
-    #     ```json
-    #     {{
-    #     "datasets": %s,
-    #     "hypothesis": "%s",
-    #     "workflow": "%s"
-    #     }}
-    #     ```
-
-    #     Return your answer as a JSON object in the following format:
-    #     ```json
-    #     {{
-    #     "sub_hypo": [
-    #         {{
-    #             "text": the hypothesis in natural language,
-    #             "context": a short text description of the context of the hypothesis,
-    #             "variables": a list of columns involved in the hypothesis,
-    #             "relations": a short text description of the relationship between the variables of the hypothesis
-    #         }},
-    #         ...
-    #     ]
-    #     }}```
-    #     """
     extraction_prompt = f"""\
-        Given a set of dataset columns, a ground-truth hypothesis, and the analysis workflow used, your task is to extract the \
-        set of sub-hypotheses that are present in the hypothesis such that each sub-hypothesis covers a separate context, is \
-        self-sufficient, and operates on a coherent set of 3 dimensions: Context, Variables, and Relations. \
+        Given a set of dataset columns, a ground-truth hypothesis, and the analysis workflow used, your task is to extract three dimensions that define the hypothesis: Context, Variables, and Relations. \
         Here are the definitions for these dimensions:
-        - Contexts: Boundary conditions that limit the scope of a sub-hypothesis. E.g., “for men over \
+        - Contexts: Boundary conditions that limit the scope of a hypothesis. E.g., “for men over \
         the age of 30”, “in Asia and Europe”. If the context applies to the full dataset, then extract the context from the dataset_descrption.
         - Variables: Known concepts that interact in a meaningful way under a given context to \
-        produce the sub-hypothesis. E.g., gender, age, income, or "None" if there is no interacting variable.
+        produce the hypothesis. E.g., gender, age, income, or "None" if there is no interacting variable.
         - Relations: Interactions between a given set of variables under a given context to produce \
-        the sub-hypothesis. E.g., “quadratic relationship”, “inversely proportional”, piecewise conditionals, \
+        the hypothesis. E.g., “quadratic relationship”, “inversely proportional”, piecewise conditionals, \
         or "None" if there is no interacting relationship.
         Make sure to only use the information present in the hypothesis and the workflow. Do not add any new information. \
-        If no sub-hypotheses can be extracted, return an empty list.
+        For each dimension, be specific, and do not omit any important details.
 
         Here is the metadata for the task:
         ```json
@@ -321,16 +283,54 @@ def get_sub_hypotheses(query, hypo, workflow, dataset_meta, llm_used, dataset_ty
         {{
         "sub_hypo": [
             {{
-                "text": the sub-hypothesis in natural language,
-                "context": a short text description of the context of the sub-hypothesis,
-                "variables": a list of columns involved in the sub-hypothesis,
-                "relations": a short text description of the relationship between the variables of the sub-hypothesis,
-                "explanation": a short text explanation for the breakdown of the sub-hypothesis
+                "text": the hypothesis in natural language,
+                "context": a short text description of the context of the hypothesis,
+                "variables": a list of columns involved in the hypothesis,
+                "relations": a short text description of the relationship between the variables of the hypothesis
             }},
             ...
         ]
         }}```
         """
+    # extraction_prompt = f"""\
+    #     Given a set of dataset columns, a ground-truth hypothesis, and the analysis workflow used, your task is to extract the \
+    #     set of sub-hypotheses that are present in the hypothesis such that each sub-hypothesis covers a separate context, is \
+    #     self-sufficient, and operates on a coherent set of 3 dimensions: Context, Variables, and Relations. \
+    #     Here are the definitions for these dimensions:
+    #     - Contexts: Boundary conditions that limit the scope of a sub-hypothesis. E.g., “for men over \
+    #     the age of 30”, “in Asia and Europe”. If the context applies to the full dataset, then extract the context from the dataset_descrption.
+    #     - Variables: Known concepts that interact in a meaningful way under a given context to \
+    #     produce the sub-hypothesis. E.g., gender, age, income, or "None" if there is no interacting variable.
+    #     - Relations: Interactions between a given set of variables under a given context to produce \
+    #     the sub-hypothesis. E.g., “quadratic relationship”, “inversely proportional”, piecewise conditionals, \
+    #     or "None" if there is no interacting relationship.
+    #     Make sure to only use the information present in the hypothesis and the workflow. Do not add any new information. \
+    #     If no sub-hypotheses can be extracted, return an empty list.
+
+    #     Here is the metadata for the task:
+    #     ```json
+    #     {{
+    #     "datasets": %s,
+    #     "hypothesis": "%s",
+    #     "workflow": "%s"
+    #     }}
+    #     ```
+
+    #     Return your answer as a JSON object in the following format:
+    #     ```json
+    #     {{
+    #     "sub_hypo": [
+    #         {{
+    #             "text": the sub-hypothesis in natural language,
+    #             "context": a short text description of the context of the sub-hypothesis,
+    #             "variables": a list of columns involved in the sub-hypothesis,
+    #             "relations": a short text description of the relationship between the variables of the sub-hypothesis,
+    #             "explanation": a short text explanation for the breakdown of the sub-hypothesis
+    #         }},
+    #         ...
+    #     ]
+    #     }}```
+    #     """
     datasets_json = prepare_dataset_metadata_json(dataset_meta, dataset_type, use_column_metadata=use_column_metadata)
     _prompt = extraction_prompt % (datasets_json, hypo, workflow)
     
@@ -342,9 +342,8 @@ def get_sub_hypotheses(query, hypo, workflow, dataset_meta, llm_used, dataset_ty
         sub_hypo_json = get_response(client=client, prompt=_prompt, model=llm_used, max_retry=1)
 
     if sub_hypo_json != None:
-        # print(f"full hypothesis: {hypo}")
-        #print(f"sub_hypo_json: {sub_hypo_json}")
-        pass
+        print(f"full hypothesis: {hypo}")
+        print(f"sub_hypo_json: {sub_hypo_json}")
     else:
         sub_hypo_json = {
                  "sub_hypo": [],
@@ -461,14 +460,14 @@ def run_eval_gold_vs_gen_NL_hypo_workflow(query, gold_hypo, gold_workflow, gen_h
                                        dataset_meta=dataset_meta, llm_used=llm_used, dataset_type=dataset_type, use_column_metadata=use_column_metadata, llm_object=llm_object)
     if len(gold_sub_hypo_json['sub_hypo']) == 0:
         gold_sub_hypo_json['sub_hypo'] = [{"text": gold_hypo, "context": "None", "variables": [], "relations": "", "explanation": "unable to segment"}]
-    #print(f"gold_sub_hypo_json: {gold_sub_hypo_json}")
+    print(f"gold_sub_hypo_json: {gold_sub_hypo_json}")
 
     gen_sub_hypo_json = get_sub_hypotheses(query=query,
                                        hypo=gen_hypo, workflow=gen_workflow,
                                        dataset_meta=dataset_meta, llm_used=llm_used, dataset_type=dataset_type, use_column_metadata=use_column_metadata, llm_object=llm_object)
     if len(gen_sub_hypo_json['sub_hypo']) == 0:
         gen_sub_hypo_json['sub_hypo'] = [{"text": gen_hypo, "context": "None", "variables": [], "relations": "", "explanation": "unable to segment"}]
-    #print(f"gen_sub_hypo_json: {gen_sub_hypo_json}")
+    print(f"gen_sub_hypo_json: {gen_sub_hypo_json}")
 
     eval_rec['gold_sub_hypo'] = gold_sub_hypo_json
     eval_rec['gen_sub_hypo'] = gen_sub_hypo_json
@@ -501,7 +500,7 @@ def run_eval_gold_vs_gen_NL_hypo_workflow(query, gold_hypo, gold_workflow, gen_h
                 }
                 break
 
-    #print(f"gen_subh_to_gold_subh: {gen_subh_to_gold_subh}")
+    print(f"gen_subh_to_gold_subh: {gen_subh_to_gold_subh}")
     eval_rec['gen_subh_to_gold_subh'] = gen_subh_to_gold_subh
     eval_rec['gold_subh_covered'] = gold_subh_covered
     matched_gold_gen_subh_evals = dict()
@@ -520,6 +519,6 @@ def run_eval_gold_vs_gen_NL_hypo_workflow(query, gold_hypo, gold_workflow, gen_h
     eval_rec['mean_accuracy_score'] = mean_accuracy_score
     final_score = eval_rec['recall_context'] * mean_accuracy_score
     eval_rec['final_score'] = final_score
-    #print(f"eval_rec: {json.dumps(eval_rec, indent=2)}")
+    print(f"eval_rec: {json.dumps(eval_rec, indent=2)}")
 
     return eval_rec
