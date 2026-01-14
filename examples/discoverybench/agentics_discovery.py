@@ -14,6 +14,7 @@ from agentics import AG
 from agentic_db import AgenticDB
 import agentics.core.llm_connections as llm_connections
 from eval.new_eval import run_eval_gold_vs_gen_NL_hypo_workflow
+from analysis import analyze_directory
 
 from loguru import logger
 import logging
@@ -187,13 +188,13 @@ async def execute_all_datasets(output_path:str,
         generated_hypothesis_null = set()
         for answer in already_processed_answers:
             if answer.generated_hypothesis:
-                already_processed.add(answer.question)
+                already_processed.add((answer.question, answer.qid))
             else:
-                generated_hypothesis_null.add(answer.question)
+                generated_hypothesis_null.add(answer.question, answer.qid))
         logger.info(f"Dataset: {dataset_name} | Total Questions: {len(questions)} | Already Processed (non-null hypothesis): {len(already_processed)} | Failed (null hypothesis): {len(generated_hypothesis_null)}")
 
         for question in questions:
-            if question.question not in already_processed:
+            if (question.question, question.qid) not in already_processed:
                 temp_ag =  AG(atype=Question, states=[question])
                 if Config.llm_provider:
                     temp_ag.llm = llm_connections.__getattr__(Config.llm_provider)
@@ -274,6 +275,11 @@ def evaluate_dataset(dataset: str,
             }
             num_missing_prediction += 1
         
+        evaluation_result["dataset"] = dataset
+        evaluation_result["metadata_id"] = question.metadata_id
+        evaluation_result["qid"] = question.qid
+        evaluation_result["question_type"] = question.question_type
+
         total_final_score += evaluation_result["final_score"]
         num_evaluated += 1
         
@@ -502,8 +508,7 @@ def main():
         "-m", "--mode",
         type=str,
         default="generation",
-        help="If mode = generation, run an entire evaluation on the whole discovery bench" \
-        "if mode = evaluation a Performs a complete evaluation of the system output in --output_folder"
+        help="Mode of operation: 'generation' runs discovery, 'evaluation' evaluates outputs, 'analysis' analyzes evaluation results"
     )
     parser.add_argument(
         "-s", "--use_short_answer",
@@ -534,6 +539,10 @@ def main():
         asyncio.run(execute_all_datasets(args.output_folder, selected_datasets=[args.selected_dataset] if args.selected_dataset else None))
     elif args.mode == "evaluation":
         evaluate_all(args.output_folder, use_short_answer=args.use_short_answer)
+    elif args.mode == "analysis":
+        analyze_directory(args.output_folder)
+    else:
+        logger.error(f"Unknown mode: {args.mode}. Choose from 'generation', 'evaluation', or 'analysis'")
 
 
 if __name__ == "__main__":
