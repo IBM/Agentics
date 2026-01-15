@@ -228,17 +228,17 @@ def evaluate_dataset(dataset: str,
                     ground_truth:str = os.path.join(DISCOVERYBENCH_ROOT, "eval/answer_key_real.csv"),
                     output_eval:str=None,
                     use_short_answer:bool=False)-> tuple:
-    """Evaluate a dataset and return accumulated score and question count.
+    """Evaluate a dataset and return accumulated score, question count, and evaluation results.
     
     Args:
         dataset: Dataset name
         questions: AG object containing questions
         ground_truth: Path to ground truth CSV
-        output_eval: Path to evaluation output file
+        output_eval: Path to evaluation output file (not used for writing, just for compatibility)
         use_short_answer: Whether to use short or full answer
         
     Returns:
-        Tuple of (accumulated_final_score, num_questions_evaluated)
+        Tuple of (accumulated_final_score, num_questions_evaluated, num_missing_predictions, evaluation_results_list)
     """
     ground_truth=AG.from_csv(ground_truth)
     examples_hash={}
@@ -251,10 +251,15 @@ def evaluate_dataset(dataset: str,
     total_final_score = 0
     num_evaluated = 0
     num_missing_prediction = 0
+    evaluation_results = []  # Collect results for sorting
     
     for question in questions:
         gold = examples_hash.get(f"{dataset},{question.metadata_id},{question.qid}")
-        system_prediction = question.generated_hypothesis if use_short_answer else (question.full_answer and question.full_answer.full_answer)
+        # system_prediction = question.generated_hypothesis if use_short_answer else (question.full_answer and question.full_answer.full_answer)
+        if question.generated_hypothesis:
+            system_prediction = question.generated_hypothesis 
+        else:
+            system_prediction = question.full_answer.full_answer if question.full_answer else None
         
         # Handle all cases properly
         if system_prediction and gold:
@@ -290,14 +295,13 @@ def evaluate_dataset(dataset: str,
         total_final_score += evaluation_result["final_score"]
         num_evaluated += 1
         
-        if output_eval:
-            with open(output_eval, "a") as f: 
-                f.write(json.dumps(evaluation_result) + "\n")
+        # Collect result for sorting (no immediate write)
+        evaluation_results.append(evaluation_result)
         print(evaluation_result)
 
     avg_score = total_final_score / num_evaluated if num_evaluated > 0 else 0
     logger.info(f"Dataset {dataset}: total_final_score={total_final_score}, num_questions={num_evaluated}, avg_score={avg_score}, num_missing_prediction={num_missing_prediction}")
-    return total_final_score, num_evaluated, num_missing_prediction
+    return total_final_score, num_evaluated, num_missing_prediction, evaluation_results
 
 
 def merge_jsonl_files(main_file: Path, tmp_file: Path) -> None:
@@ -352,16 +356,33 @@ def merge_jsonl_files(main_file: Path, tmp_file: Path) -> None:
             # New entry from tmp
             merged_entries[key] = tmp_entry
     
-    # Write merged entries to main file
+    # Sort merged entries by metadata_id and qid (both as integers) in ascending order
+    def sort_key(entry):
+        metadata_id = entry.get('metadata_id')
+        qid = entry.get('qid')
+        # Convert to int if they are strings or int; handle None values
+        try:
+            metadata_id = int(metadata_id) if metadata_id is not None else float('inf')
+        except (ValueError, TypeError):
+            metadata_id = float('inf')
+        try:
+            qid = int(qid) if qid is not None else float('inf')
+        except (ValueError, TypeError):
+            qid = float('inf')
+        return (metadata_id, qid)
+    
+    sorted_entries = sorted(merged_entries.values(), key=sort_key)
+    
+    # Write sorted merged entries to main file
     with open(main_file, 'w') as f:
-        for entry in merged_entries.values():
+        for entry in sorted_entries:
             f.write(json.dumps(entry) + '\n')
     
     # Remove tmp file
     if tmp_file.exists():
         tmp_file.unlink()
     
-    logger.info(f"Merged {tmp_file.name} into {main_file.name} and removed tmp file")
+    logger.info(f"Merged and sorted {tmp_file.name} into {main_file.name} (sorted by metadata_id, qid) and removed tmp file")
 
 
 def validate_jsonl_files(output_path: Path) -> None:
@@ -426,8 +447,8 @@ def rename_evaluation_files(output_path: Path) -> None:
     existing_files = sorted(output_path.glob("evaluation*.json"), key=lambda p: p.name)
     
     if existing_files:   
-        evaluation_file = output_path / "evaluation.json"
-        new_name = output_path / f"evaluation_{len(existing_files)}.json"
+        evaluation_file = output_path / "evaluation.jsonl"
+        new_name = output_path / f"evaluation_{len(existing_files)}.jsonl"
         evaluation_file.rename(new_name)
         logger.info(f"Renamed {evaluation_file.name} to {new_name.name}")
 
@@ -449,22 +470,48 @@ def evaluate_all(system_output_path:str,
     total_questions = 0
     total_missing_predictions = 0
     dataset_results = []
+    all_evaluation_results = []  # Collect all results for sorting
     
     for output in os.listdir(system_output_path):
         dataset_name = output.split(".")[0]
         if not output.endswith(".jsonl") or output.endswith("_tmp.jsonl"):
             continue
         answers = AG.from_jsonl(system_output_path/output, atype=Question)
-        dataset_score, num_questions, num_missing_predictions = evaluate_dataset(
+        dataset_score, num_questions, num_missing_predictions, evaluation_results = evaluate_dataset(
             dataset_name,
             answers, 
-            output_eval=system_output_path / "evaluation.json",
+            output_eval=system_output_path / "evaluation.jsonl",
             use_short_answer=use_short_answer
         )
         total_score += dataset_score
         total_questions += num_questions
         total_missing_predictions += num_missing_predictions
         dataset_results.append((dataset_name, dataset_score, num_questions, num_missing_predictions))
+        all_evaluation_results.extend(evaluation_results)  # Collect for later sorting
+    
+    # Sort all evaluation results by metadata_id and qid before writing
+    def sort_key(result):
+        metadata_id = result.get('metadata_id')
+        qid = result.get('qid')
+        # Convert to int if they are strings or int; handle None values
+        try:
+            metadata_id = int(metadata_id) if metadata_id is not None else float('inf')
+        except (ValueError, TypeError):
+            metadata_id = float('inf')
+        try:
+            qid = int(qid) if qid is not None else float('inf')
+        except (ValueError, TypeError):
+            qid = float('inf')
+        return (metadata_id, qid)
+    
+    sorted_results = sorted(all_evaluation_results, key=sort_key)
+    
+    # Write sorted results to evaluation file
+    evaluation_file = system_output_path / "evaluation.jsonl"
+    with open(evaluation_file, 'w') as f:
+        for result in sorted_results:
+            f.write(json.dumps(result) + '\n')
+    logger.info(f"Wrote {len(sorted_results)} sorted evaluation results to {evaluation_file.name}")
     
     # Print overall results
     overall_avg_score = total_score / total_questions if total_questions > 0 else 0

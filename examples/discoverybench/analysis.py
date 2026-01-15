@@ -297,13 +297,13 @@ def analyze_directory(output_dir: str) -> None:
     # Find all evaluation files
     eval_files = []
     
-    # Look for evaluation.json
-    eval_json = output_path / 'evaluation.json'
-    if eval_json.exists():
-        eval_files.append(eval_json)
+    # Look for evaluation.jsonl
+    eval_jsonl = output_path / 'evaluation.jsonl'
+    if eval_jsonl.exists():
+        eval_files.append(eval_jsonl)
     
-    # Look for evaluation_{number}.json
-    for file in output_path.glob('evaluation_*.json'):
+    # Look for evaluation_{number}.jsonl
+    for file in output_path.glob('evaluation_*.jsonl'):
         eval_files.append(file)
     
     if not eval_files:
