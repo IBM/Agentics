@@ -1,5 +1,7 @@
 import asyncio
 import os
+import subprocess
+from pathlib import Path
 
 import streamlit as st
 from agentic_db import AgenticDB
@@ -7,7 +9,15 @@ from atypes import Dataset, Question
 from pandas import DataFrame
 from transductions import answer_question_from_data
 
-DISCOVERY_TASK_PATH = "/Users/gliozzo/Code/agentics911/agentics/sandbox/discoverybench/discoverybench/real/demo"
+top_level = Path(
+    subprocess.check_output("git rev-parse --show-toplevel", shell=True)
+    .decode()
+    .strip()
+)
+
+# DISCOVERY_TASK_PATH = "/Users/gliozzo/Code/agentics911/agentics/sandbox/discoverybench/discoverybench/real/demo"
+DISCOVERY_TASK_PATH = top_level / "examples/discoverybench/discoverybench/real/demo"
+
 
 st.header("Discovery Demo")
 if "databases" not in st.session_state:
@@ -65,8 +75,8 @@ with st.sidebar:
     if st.session_state.databases:
         for db in st.session_state.databases:
             st.markdown(
-                f"""### {db.name if db.name else ''} 
-N rows: {len(DataFrame(db.df))  if db.df else ''}
+                f"""### {db.name if db.name else ""}
+N rows: {len(DataFrame(db.df)) if db.df else ""}
 
 """
             )
@@ -86,7 +96,6 @@ N rows: {len(DataFrame(db.df))  if db.df else ''}
         st.success(f"{len(uploaded_files)} file(s) uploaded successfully.")
         st.session_state.databases = []
         for file in uploaded_files:
-
             try:
                 db = AgenticDB()
                 df = db.import_db_from_csv(file)  # ✅ pass the buffer
@@ -122,7 +131,6 @@ if execute_query_button:
     with st.spinner(
         "Agentics is reading your documents and generating intermediate evidence before answering your question. This might take some time ..."
     ):
-
         question = Question(
             question=question,
             dbs=st.session_state.databases,
@@ -131,15 +139,15 @@ if execute_query_button:
         answer = asyncio.run(answer_question_from_data(question))
         st.markdown(
             f"""
-#### Short Answer: 
+#### Short Answer:
 
 {question.full_answer.short_answer}
 
-#### Full Answer 
+#### Full Answer
 
 {question.full_answer.full_answer}
 
-##### evidence 
+##### evidence
 """
         )
     if question.full_answer.selected_evidence:
