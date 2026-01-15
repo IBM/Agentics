@@ -35,7 +35,7 @@ def run_chatgpt_query_multi_turn(messages,
                       temperature=0.0,
                       json_response=False):
     response = None
-    num_retries = 3
+    num_retries = 10
     retry = 0
     while retry < num_retries:
         retry += 1
@@ -118,7 +118,7 @@ def _run_crewai_llm_query(messages: List[dict], llm: Any, json_response: bool = 
     Returns:
         Response object with .choices[0].message.content attribute
     """
-    num_retries = 3
+    num_retries = 10
     response = None
     
     for retry in range(num_retries):

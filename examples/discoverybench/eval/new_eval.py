@@ -197,6 +197,7 @@ def ask_dimension_question(query, gold_hypo, gold_workflow, gen_hypo,
          "content": dimension_question_str
          }
     )
+    response_text = ""
     for retry in range(num_retries):
         response = run_llm_query_multi_turn(
                 messages=messages,
@@ -397,6 +398,126 @@ def is_matching_context(gold_hyp, gold_context, pred_hyp, pred_context, llm_used
         return False
     return match_context_with_gpt(gold_hyp, gold_context, pred_hyp, pred_context, model=llm_used, llm_object=llm_object)
 
+def compare_hypothesis_similarity(query, gold_hypo, gen_hypo, dataset_meta, llm_used, dataset_type, use_column_metadata=True, llm_object=None):
+    """
+    Directly compare two hypotheses for semantic similarity.
+    Returns a score of 1.0 (perfect match), 0.5 (partial match), or 0.0 (no match).
+    """
+    
+    datasets_json = prepare_dataset_metadata_json(dataset_meta, dataset_type=dataset_type, use_column_metadata=use_column_metadata)
+    
+    comparison_prompt = f"""\
+        You are an AI assistant that evaluates the semantic similarity between two hypotheses.
+        You are precise, focused, and only respond with the exact answer to the query without additional conversation.
+        
+        Given a query and two natural language hypotheses (HypoA and HypoB), assess whether they are semantically equivalent.
+        Consider whether HypoB adequately addresses the same research question as HypoA, accounting for the query context.
+        
+        Evaluation criteria:
+        - A) Perfect match (1.0): HypoB conveys the same key findings, variables, and relationships as HypoA
+        - B) Partial match (0.5): HypoB addresses the same question but is more general, less specific, or missing some dimensions
+        - C) No match (0.0): HypoB addresses a different question or contradicts HypoA
+        
+        Here is the metadata for the task:
+        ```json
+        {{
+        "datasets": {datasets_json},
+        "query": "{query}",
+        "HypoA (Ground Truth)": "{gold_hypo}",
+        "HypoB (Generated)": "{gen_hypo}"
+        }}
+        ```
+        
+        Question: Are HypoA and HypoB semantically equivalent in the context of the given query and dataset(s)?
+        
+        Return your answer as a JSON object in the following format:
+        ```json
+        {{
+        "category": one of "A) Perfect match", "B) Partial match", "C) No match"
+        "score": 1.0 or 0.5 or 0.0
+        "explanation": a short explanation of your assessment
+        }}```
+        
+        Answer:"""
+    
+    messages = [
+        {"role": "system",
+         "content": "You are an AI assistant that evaluates hypothesis similarity. You are precise, objective, and only respond with the exact answer to queries without additional conversation."
+         },
+        {"role": "user",
+         "content": comparison_prompt
+         }
+    ]
+    
+    num_tokens = 512
+    json_response = True
+    
+    response = run_llm_query_multi_turn(
+        messages=messages,
+        model_name=llm_used,
+        max_tokens=num_tokens,
+        temperature=0,  # greedy decoding for consistent evaluation
+        json_response=json_response,
+        llm_object=llm_object
+    )
+    
+    answer = ""
+    score = 0.0
+    explanation = ""
+    
+    if response is not None:
+        response_text = response.choices[0].message.content.strip()
+        if response_text:
+            answer = response_text
+            try:
+                answer_clean = answer.strip().strip("```json").strip("```").strip()
+                result_json = json.loads(answer_clean)
+                
+                score_value = result_json.get("score", 0.0)
+                # Validate score is one of the allowed values
+                if score_value in [1.0, 0.5, 0.0]:
+                    score = score_value
+                else:
+                    logger.warning(f"Invalid score value: {score_value}, defaulting to 0.0")
+                    score = 0.0
+                
+                explanation = result_json.get("explanation", "")
+                
+            except Exception as e:
+                logger.warning(f"Failed to parse hypothesis comparison answer with JSON: {e}")
+                # Emergency decoding: try regex matching for score extraction
+                import re
+                score_match = re.search(r'"?score"?\s*:\s*([\d.]+)', answer, re.IGNORECASE)
+                if score_match:
+                    try:
+                        parsed_score = float(score_match.group(1))
+                        if parsed_score in [1.0, 0.5, 0.0]:
+                            score = parsed_score
+                        else:
+                            logger.warning(f"Regex-extracted score {parsed_score} not in allowed values, defaulting to 0.0")
+                            score = 0.0
+                        explanation = "Score extracted via regex emergency decoding"
+                        logger.info(f"Successfully recovered score {score} via regex from malformed response")
+                    except ValueError:
+                        logger.warning(f"Failed to convert regex-extracted score to float")
+                        score = 0.0
+                        explanation = f"Error parsing response (JSON and regex failed): {str(e)}"
+                else:
+                    logger.warning(f"No score found via regex in response")
+                    score = 0.0
+                    explanation = f"Error parsing response (JSON and regex failed): {str(e)}"
+    else:
+        logger.warning("No response received for hypothesis comparison")
+        score = 0.0
+        explanation = "No response from LLM"
+    
+    return {
+        "question": comparison_prompt,
+        "answer": answer,
+        "score": score,
+        "explanation": explanation
+    }
+
 def run_eval_gold_vs_gen_NL_subhypo(query, gold_hypo, gold_workflow, gen_hypo, gen_workflow, dataset_meta, llm_used, context_score, dataset_type, use_column_metadata=True, llm_object=None):
     # GPT-4 based evaluation to evaluate generated hypothesis in terms of context, variables, relation
 
@@ -454,6 +575,20 @@ def run_eval_gold_vs_gen_NL_hypo_workflow(query, gold_hypo, gold_workflow, gen_h
         "HypoB": gen_hypo,
         "WorkflowB": gen_workflow,
     }
+
+    # Direct comparison of hypotheses at the natural language level
+    # Assesses semantic similarity: 1.0 (perfect), 0.5 (partial), 0.0 (no match)
+    hypothesis_comparison = compare_hypothesis_similarity(
+        query=query,
+        gold_hypo=gold_hypo,
+        gen_hypo=gen_hypo,
+        dataset_meta=dataset_meta,
+        llm_used=llm_used,
+        dataset_type=dataset_type,
+        use_column_metadata=use_column_metadata,
+        llm_object=llm_object
+    )
+    eval_rec["hypothesis_comparison"] = hypothesis_comparison
 
     gold_sub_hypo_json = get_sub_hypotheses(query=query,
                                        hypo=gold_hypo, workflow=gold_workflow,

@@ -204,7 +204,7 @@ async def execute_all_datasets(output_path:str,
                 if len(answer) > 0:
                     try: 
                         answer[0].dbs = None
-                        answer[0].metadata = None
+                        # answer[0].metadata = None     # this is needed!
                         answer.to_jsonl(tmp_file, append=True)
                     except Exception as e:
                         logger.error(f"Error processing answer for question {question.question}: {e}")
@@ -227,7 +227,7 @@ def evaluate_dataset(dataset: str,
                     questions:AG,
                     ground_truth:str = os.path.join(DISCOVERYBENCH_ROOT, "eval/answer_key_real.csv"),
                     output_eval:str=None,
-                    use_short_answer:bool=False)-> tuple:
+                    use_short_answer:bool=True)-> tuple:
     """Evaluate a dataset and return accumulated score, question count, and evaluation results.
     
     Args:
@@ -255,9 +255,12 @@ def evaluate_dataset(dataset: str,
     
     for question in questions:
         gold = examples_hash.get(f"{dataset},{question.metadata_id},{question.qid}")
-        # system_prediction = question.generated_hypothesis if use_short_answer else (question.full_answer and question.full_answer.full_answer)
-        if question.generated_hypothesis:
-            system_prediction = question.generated_hypothesis 
+
+        if use_short_answer:
+            if question.generated_hypothesis:
+                system_prediction = question.generated_hypothesis 
+            else:
+                system_prediction = question.full_answer.full_answer if question.full_answer else None
         else:
             system_prediction = question.full_answer.full_answer if question.full_answer else None
         
@@ -282,7 +285,8 @@ def evaluate_dataset(dataset: str,
                 "HypoB": system_prediction,
                 "recall_context": 0,
                 "mean_accuracy_score": 0,
-                "final_score": 0
+                "final_score": 0,
+                "hypothesis_comparison": 0
             }
             num_missing_prediction += 1
         
@@ -539,6 +543,7 @@ class Config:
     llm_provider = None
     output_folder = None
     mode = None
+    use_short_answer = True
 
 
 def main():
@@ -568,7 +573,7 @@ def main():
     parser.add_argument(
         "-s", "--use_short_answer",
         type=bool,
-        default=False,
+        default=True,
         help="(Optional) Use generated short answer as output hypothesis if True, use full_answer"
     )
     parser.add_argument(
@@ -584,6 +589,7 @@ def main():
     Config.llm_provider = args.llm_provider
     Config.output_folder = args.output_folder
     Config.mode = args.mode
+    Config.use_short_answer = args.use_short_answer
 
     if Config.llm_provider:
         logger.info(f"Using LLM provider: {Config.llm_provider}")
