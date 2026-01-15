@@ -295,6 +295,7 @@ def evaluate_dataset(dataset: str,
         evaluation_result["qid"] = question.qid
         evaluation_result["question_type"] = question.question_type
         evaluation_result["llm_provider"] = Config.llm_provider
+        evaluation_result["metadata"] = question.metadata
 
         total_final_score += evaluation_result["final_score"]
         num_evaluated += 1
