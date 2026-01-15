@@ -102,11 +102,6 @@ def process_folder(folder_path: str) -> None:
             
             # Replace original file with sorted file
             output_file.replace(jsonl_file)
-
-            # Remove original file
-            jsonl_file.unlink()
-            output_file.rename(jsonl_file)
-            print(f"  ✓ Replaced: {jsonl_file.name}")
             
         except Exception as e:
             print(f"  ✗ Error processing {jsonl_file.name}: {e}\n")
