@@ -1065,24 +1065,28 @@ class AG(BaseModel, Generic[T]):
         Merge states of two AGs pairwise
 
         """
-        merged = self.clone()
-        merged.states = []
-        merged.explanations = []
-        merged.atype = merge_pydantic_models(
-            self.atype,
-            other.atype,
-            name=f"Merged{self.atype.__name__}#{other.atype.__name__}",
-        )
-        for self_state in self:
-            for other_state in other:
+        if len(self) == len(other):
+            merged = self.clone()
+            merged.states = []
+            merged.explanations = []
+            merged.atype = merge_pydantic_models(
+                self.atype,
+                other.atype,
+                name=f"Merged{self.atype.__name__}#{other.atype.__name__}",
+            )
+            for self_state, other_state in zip(self, other):
                 merged.states.append(
                     merged.atype(**other_state.model_dump(), **self_state.model_dump())
                 )
-        return merged
+            return merged
+        else:
+            raise ValueError(
+                f"Cannot merge states of AGs with different lengths: {len(self)} != {len(other)}"
+            )
 
     def compose_states(self, other: AG) -> AG:
         """
-        compose states of two AGs pairwise,
+        compose states of two AGs,
 
         """
         merged = self.clone()

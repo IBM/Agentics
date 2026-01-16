@@ -12,6 +12,32 @@ load_dotenv()
 verbose = False
 
 
+from typing import Any, Dict, List
+
+from crewai.llm import BaseLLM
+
+
+class LangChainLLMAdapter(BaseLLM):
+    """
+    CrewAI LLM adapter that delegates calls to a LangChain LLM.
+    """
+
+    def __init__(self, lc_llm, model_name: str = "langchain-wrapped"):
+        super().__init__(model=model_name)
+        self.lc_llm = lc_llm
+
+    def call(self, messages: List[Dict[str, str]], **kwargs) -> str:
+        """
+        messages: [{"role": "system|user|assistant", "content": "..."}]
+        """
+        # LangChain expects a string or messages depending on LLM type.
+        # For chat models, concatenate safely:
+        prompt = "\n".join(f"{m['role']}: {m['content']}" for m in messages)
+
+        result = self.lc_llm.invoke(prompt)
+        return result.content if hasattr(result, "content") else str(result)
+
+
 def get_llm_provider(provider_name: str = None) -> LLM:
     """
     Retrieve the LLM instance based on the provider name. If no provider name is given,
