@@ -636,8 +636,8 @@ def compose_types(A, B, *, name=None):
 
     Composite = create_model(
         name,
-        left=(Optional[A], None),
-        right=(Optional[B], None),
+        target=(Optional[A], None),
+        source=(Optional[B], None),
         __base__=BaseModel,
     )
 
@@ -670,7 +670,7 @@ ModelMetaclass.__matmul__ = _istype_matmul
 def _instance_matmul(a: BaseModel, b: BaseModel):
     """
     INSTANCE composition:
-        a @ b → Composite(left=a, right=b)
+        a @ b → Composite(target=a, surce=b)
     """
     if not isinstance(b, BaseModel):
         raise TypeError(f"Cannot compose instance {a} with {b}")
@@ -681,7 +681,7 @@ def _instance_matmul(a: BaseModel, b: BaseModel):
     CompositeModel = A @ B
 
     # Build structural composite
-    return CompositeModel(left=a, right=b)
+    return CompositeModel(target=a, source=b)
 
 
 BaseModel.__matmul__ = _instance_matmul

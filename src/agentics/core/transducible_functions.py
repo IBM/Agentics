@@ -135,6 +135,7 @@ def transducible(
     post_processing_function: Optional[Callable[[BaseModel], BaseModel]] = None,
     persist_output: str = None,
     transduce_fields: list[str] = None,
+    prompt_template: str = None,
 ):
     if tools is None:
         tools = []
@@ -169,6 +170,7 @@ def transducible(
             transduction_timeout=timeout,
             save_amap_batches_to_path=persist_output,
             provide_explanations=provide_explanation,
+            prompt_template=prompt_template,
         )
         source_ag_template = AG(
             atype=SourceModel,
@@ -228,7 +230,7 @@ INSTRUCTIONS:
                         if provide_explanation and len(target_ag.explanations) == 1:
                             return TransductionResult(out, target_ag.explanations[0])
 
-                        return out
+                        return TransductionResult(out, None)
 
                     raise RuntimeError("Transduction returned no output.")
 

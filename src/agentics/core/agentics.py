@@ -689,15 +689,18 @@ class AG(BaseModel, Generic[T]):
 
         if self.provide_explanations and isinstance(other, AG):
             target_explanation = AG(atype=Explanation)
+            output.prompt_template = None
+            output.transduce_fields = None
             target_explanation.instructions = f"""
-            You have been presented with two Pydantic Objects:
-            a left object that was logically derived from a right object.
-            Your task is to provide a detailed explanation of how the left object was derived from the right object."""
-            target_explanation = await (
-                target_explanation << output.compose_states(other)
-            )
+            You have previously transduced an object of type {other.atype.__name__} (source) from an object of type {self.atype.__name__} (target).
+            Now look back at both objects and provide a detailed explanation on how each field of the target object was logically derived from the source object.
+            Provide short and concise, data grounded explanations, field by field, avoiding redundancy.
+            If you think that transduction was wrong or not logically supported by the source object, say it clearly in the explanation and provide low confidence score (0.0).
+            Provide high confidence score (1.0) only if you are certain that the transduction is logically correct and fully supported by the source object.
+            """
+            explanation = await (target_explanation << output.compose_states(other))
 
-            self.explanations = target_explanation.states
+            self.explanations = explanation.states
             self.states = output.states
             return self
         else:
@@ -983,7 +986,7 @@ class AG(BaseModel, Generic[T]):
         Returns:
             DataFrame: A pandas DataFrame representing the current states.
         """
-        data = [state.model_dump() for state in self.states]
+        data = [state.model_dump(mode="json") for state in self.states]
         return pd.DataFrame(data)
 
     ########################################
@@ -1089,15 +1092,16 @@ class AG(BaseModel, Generic[T]):
         compose states of two AGs,
 
         """
-        merged = self.clone()
-        merged.states = []
-        merged.explanations = []
-        merged.atype = self.atype @ other.atype
+        composed = self.clone()
+        composed.states = []
+        composed.explanations = []
+        composed.atype = self.atype @ other.atype
 
-        for self_state in self:
-            for other_state in other:
-                merged.states.append(merged.atype(right=other_state, left=self_state))
-        return merged
+        for self_state, other_state in zip(self.states, other.states):
+            composed.states.append(
+                composed.atype(source=other_state, target=self_state)
+            )
+        return composed
 
     async def map_atypes(self, other: AG) -> ATypeMapping:
         if self.verbose_agent:
