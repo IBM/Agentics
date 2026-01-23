@@ -10,25 +10,23 @@ authors = [
     { name = "Mustafa Eyceoz", email = "Mustafa.Eyceoz@partner.ibm.com" },
     { name = "Naweed Aghmad Khan", email = "naweed.khan@ibm.com" },
 ]
-requires-python = ">=3.11,<3.13"
+requires-python = ">=3.10,<=3.14"
 readme = "README.md"
 license = "Apache-2.0"
 dependencies = [
     "ddgs",
     "pydantic",
-    "crewai[tools]",
-    "crewai-tools[mcp]",
+    # "crewai[tools]",
+    # "crewai-tools[mcp]",
     "crewai[google-genai]",
-    "langchain-huggingface (>=0.2.0,<0.3.0)",
-    "openapi-python-client (>=0.24.3,<0.25.0)",
+    "langchain-huggingface",
+    "openapi-python-client",
     "streamlit (>=1.45.1,<2.0.0)",
     "pyyaml (>=6.0.2,<7.0.0)",
-    # "aiosqlite (>=0.21.0,<0.22.0)",
-    "openai (>=1.88.0,<2.0.0)",
-    # "datamodel-code-generator (>=0.31.1,<0.32.0)",
+    "openai",
     "json-schema-to-pydantic (>=0.3.0,<0.4.0)",
     "loguru (>=0.7.3,<0.8.0)",
-    "datasets (>=4.0.0,<5.0.0)",
+    "datasets (>=2.14.7,<5.0.0)",
     "mcp (>=1.13.1,<2.0.0)",
     "google (>=3.0.0,<4.0.0)",
     "ipywidgets>=8.1.7",
@@ -36,10 +34,10 @@ dependencies = [
     "numerize>=0.12",
     "hnswlib>=0.8.0",
     "jsonfinder",
-    "litellm",
     "mellea",
     "plotly>=6.5.0",
     "rich>=13.0.0,<14.0.0",
+    "litellm",
 ]
 
 
