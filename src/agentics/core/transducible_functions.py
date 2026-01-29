@@ -182,9 +182,9 @@ def transducible(
 
         target_ag_template.instructions = f"""
 ===============================================
-TASK : 
+TASK :
 You are transducing the function {fn.__name__}.
-Input Type: {SourceModel.__name__} 
+Input Type: {SourceModel.__name__}
 Output Type: {TargetModel.__name__}.
 
 INSTRUCTIONS:
@@ -556,8 +556,8 @@ async def generate_prototypical_instances(
     target = AG(
         atype=DynamicModel,
         instructions=f"""
-              Generate list of {n_instances} random instances of the following type 
-              {type.model_json_schema()}. 
+              Generate list of {n_instances} random instances of the following type
+              {type.model_json_schema()}.
               Try to fill most of the attributed for each generated instance as possible
               """,
         llm=llm,
