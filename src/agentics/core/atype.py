@@ -325,7 +325,6 @@ def create_pydantic_model(
         model_name = name
 
     field_definitions = {}
-    print(fields)
     for field_name, type_name, description, required in fields:
         ptype = type_mapping[type_name] if type_name in type_mapping else Any
         if required:
