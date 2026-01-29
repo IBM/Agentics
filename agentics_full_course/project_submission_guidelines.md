@@ -49,8 +49,8 @@ Your project folder should be named after your project and organized as follows:
 
 Create a **5-minute recorded video** presenting your project.
 
-- Introduce the project goals, methods, and key results.  
-- Optionally include a demo or short code walkthrough with slides.  
+- Introduce the project goals, methods, and key results.
+- Optionally include a demo or short code walkthrough with slides.
 - You will present the same video **in person** during the student workshop.
 
 ---
@@ -59,20 +59,20 @@ Create a **5-minute recorded video** presenting your project.
 
 Schedule a meeting with professors **at least two weeks before the final submission** to receive feedback on:
 
-- The draft of your short paper  
-- Your runnable code and documentation  
+- The draft of your short paper
+- Your runnable code and documentation
 - Your recorded video presentation
 
 ---
 
 ## ✅ Submission Checklist
 
-- [ ] Conference-style project paper (PDF)  
-- [ ] Runnable code in `applications/<project_name>`  
-- [ ] `README.md` with install/test instructions  
-- [ ] Documentation in `docs/` folder  
-- [ ] 5-minute recorded presentation video  
-- [ ] Faculty feedback meeting completed  
+- [ ] Conference-style project paper (PDF)
+- [ ] Runnable code in `applications/<project_name>`
+- [ ] `README.md` with install/test instructions
+- [ ] Documentation in `docs/` folder
+- [ ] 5-minute recorded presentation video
+- [ ] Faculty feedback meeting completed
 
 ---
 

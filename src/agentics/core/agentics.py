@@ -623,11 +623,14 @@ class AG(BaseModel, Generic[T]):
                 reasoning=self.reasoning,
                 **self.crew_prompt_params,
             )
-            transduced_results = await pt.execute(
-                *input_prompts,
-                description=f"Transducing {self.__name__} << {'AG[str]' if not isinstance(other, AG) else other.__name__}",
-                transient_pbar=self.transient_pbar,
-            )
+            chunks = chunk_list(input_prompts, chunk_size=self.amap_batch_size)
+            transduced_results = []
+            for chunk in chunks:
+                transduced_results += await pt.execute(
+                    *chunk,
+                    description=f"Transducing {self.__name__[:30]} << {'AG[str]' if not isinstance(other, AG) else other.__name__[:30]}",
+                    transient_pbar=self.transient_pbar,
+                )
         except Exception as e:
             transduced_results = self.states
 
@@ -660,14 +663,15 @@ class AG(BaseModel, Generic[T]):
                     output_state_dict = dict([output_state])
                 else:
                     output_state_dict = output_state.model_dump()
-
-                merged = self.atype(
-                    **(
-                        (self[i].model_dump() if len(self) > i else {})
-                        | other[i].model_dump()
-                        | output_state_dict
-                    )
+                data = (
+                    (self[i].model_dump() if len(self) > i else {})
+                    | other[i].model_dump()
+                    | output_state_dict
                 )
+                allowed = self.atype.model_fields.keys()  # pydantic v2
+                filtered = {k: v for k, v in data.items() if k in allowed}
+                merged = self.atype(**filtered)
+
                 output.states.append(merged)
         # elif is_str_or_list_of_str(other):
         elif isinstance(other, list):
@@ -682,15 +686,18 @@ class AG(BaseModel, Generic[T]):
 
         if self.provide_explanations and isinstance(other, AG):
             target_explanation = AG(atype=Explanation)
+            output.prompt_template = None
+            output.transduce_fields = None
             target_explanation.instructions = f"""
-            You have been presented with two Pydantic Objects:
-            a left object that was logically derived from a right object.
-            Your task is to provide a detailed explanation of how the left object was derived from the right object."""
-            target_explanation = await (
-                target_explanation << output.compose_states(other)
-            )
+            You have previously transduced an object of type {other.atype.__name__} (source) from an object of type {self.atype.__name__} (target).
+            Now look back at both objects and provide a detailed explanation on how each field of the target object was logically derived from the source object.
+            Provide short and concise, data grounded explanations, field by field, avoiding redundancy.
+            If you think that transduction was wrong or not logically supported by the source object, say it clearly in the explanation and provide low confidence score (0.0).
+            Provide high confidence score (1.0) only if you are certain that the transduction is logically correct and fully supported by the source object.
+            """
+            explanation = await (target_explanation << output.compose_states(other))
 
-            self.explanations = target_explanation.states
+            self.explanations = explanation.states
             self.states = output.states
             return self
         else:
@@ -1058,35 +1065,40 @@ class AG(BaseModel, Generic[T]):
         Merge states of two AGs pairwise
 
         """
-        merged = self.clone()
-        merged.states = []
-        merged.explanations = []
-        merged.atype = merge_pydantic_models(
-            self.atype,
-            other.atype,
-            name=f"Merged{self.atype.__name__}#{other.atype.__name__}",
-        )
-        for self_state in self:
-            for other_state in other:
+        if len(self) == len(other):
+            merged = self.clone()
+            merged.states = []
+            merged.explanations = []
+            merged.atype = merge_pydantic_models(
+                self.atype,
+                other.atype,
+                name=f"Merged{self.atype.__name__}#{other.atype.__name__}",
+            )
+            for self_state, other_state in zip(self, other):
                 merged.states.append(
                     merged.atype(**other_state.model_dump(), **self_state.model_dump())
                 )
-        return merged
+            return merged
+        else:
+            raise ValueError(
+                f"Cannot merge states of AGs with different lengths: {len(self)} != {len(other)}"
+            )
 
     def compose_states(self, other: AG) -> AG:
         """
-        compose states of two AGs pairwise,
+        compose states of two AGs,
 
         """
-        merged = self.clone()
-        merged.states = []
-        merged.explanations = []
-        merged.atype = self.atype @ other.atype
+        composed = self.clone()
+        composed.states = []
+        composed.explanations = []
+        composed.atype = self.atype @ other.atype
 
-        for self_state in self:
-            for other_state in other:
-                merged.states.append(merged.atype(right=other_state, left=self_state))
-        return merged
+        for self_state, other_state in zip(self.states, other.states):
+            composed.states.append(
+                composed.atype(source=other_state, target=self_state)
+            )
+        return composed
 
     async def map_atypes(self, other: AG) -> ATypeMapping:
         if self.verbose_agent:
