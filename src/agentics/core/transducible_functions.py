@@ -28,6 +28,33 @@ class Transduce:
     def __init__(self, object: BaseModel | list[BaseModel]):
         self.object = object
 
+    def __str__(self) -> str:
+        obj = self.object
+
+        # List case
+        if isinstance(obj, list):
+            return "\n".join(self._one_to_str(x) for x in obj)
+
+        # Single object
+        return self._one_to_str(obj)
+
+    def __repr__(self) -> str:
+        return f"Transduce(object={self._one_to_str(self.object)})"
+
+    @staticmethod
+    def _one_to_str(x: Any) -> str:
+        if isinstance(x, BaseModel):
+            return x.model_dump_json(indent=2)
+        if isinstance(x, (dict, list, tuple)):
+            # readable generic fallback
+            import json
+
+            try:
+                return json.dumps(x, indent=2, ensure_ascii=False, default=str)
+            except TypeError:
+                return str(x)
+        return str(x)
+
 
 class TransductionResult:
     def __init__(self, value, explanation):
@@ -107,6 +134,8 @@ def transducible(
     timeout: int = 300,
     post_processing_function: Optional[Callable[[BaseModel], BaseModel]] = None,
     persist_output: str = None,
+    transduce_fields: list[str] = None,
+    prompt_template: str = None,
 ):
     if tools is None:
         tools = []
@@ -141,12 +170,14 @@ def transducible(
             transduction_timeout=timeout,
             save_amap_batches_to_path=persist_output,
             provide_explanations=provide_explanation,
+            prompt_template=prompt_template,
         )
         source_ag_template = AG(
             atype=SourceModel,
             amap_batch_size=batch_size,
             transduction_timeout=timeout,
             save_amap_batches_to_path=persist_output,
+            transduce_fields=transduce_fields,
         )
 
         target_ag_template.instructions = f"""
@@ -199,7 +230,7 @@ INSTRUCTIONS:
                         if provide_explanation and len(target_ag.explanations) == 1:
                             return TransductionResult(out, target_ag.explanations[0])
 
-                        return out
+                        return TransductionResult(out, None)
 
                     raise RuntimeError("Transduction returned no output.")
 
@@ -516,8 +547,10 @@ from agentics import AG
 async def generate_prototypical_instances(
     type: Type[BaseModel], n_instances: int = 10, llm: Any = AG.get_llm_provider()
 ) -> list[BaseModel]:
+
     DynamicModel = create_model(
-        "ListOfObjectsOfGivenType", instances=(list[type], ...)  # REQUIRED field
+        "ListOfObjectsOfGivenType",
+        instances=(list[type] | None, None),  # REQUIRED field
     )
 
     target = AG(
