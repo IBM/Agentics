@@ -202,6 +202,50 @@ def infer_pydantic_type(dtype: Any, sample_values: pd.Series = None) -> Any:
 
 
 def pydantic_model_from_dict(dict) -> type[BaseModel]:
+    """
+    Create a dynamic Pydantic model class from a sample dictionary.
+
+    This utility inspects the provided mapping and generates a new `pydantic.BaseModel`
+    subclass whose fields correspond to the dictionary keys. For each key, the field
+    type is inferred from the sample value using `infer_pydantic_type(...)`, and the
+    resulting field is created with a default of `None` (i.e., optional-by-default in
+    practice, depending on the inferred type).
+
+    Field names are normalized via `sanitize_field_name(...)` to ensure they are valid
+    Python identifiers and compatible with Pydantic model field naming rules.
+
+    The model class name is synthesized as:
+        "AType#<key1>:<key2>:...:<keyN>"
+
+    Parameters
+    ----------
+    dict : Mapping[str, Any]
+        A representative dictionary whose keys define field names and whose values
+        are used to infer field types.
+
+    Returns
+    -------
+    type[BaseModel]
+        A newly created Pydantic model class (subclass of `BaseModel`) with fields
+        derived from the input dictionary.
+
+    Notes
+    -----
+    - This function uses only the *sample values* present in the input mapping to
+      infer types; it does not scan multiple rows/records unless you pass richer
+      `sample_values` to `infer_pydantic_type` yourself.
+    - All fields are created with `Field(default=None)`, which makes them effectively
+      nullable unless additional validation is enforced by the inferred type.
+    - If two different keys sanitize to the same field name, the latter will overwrite
+      the former in `new_fields`.
+
+    Examples
+    --------
+    >>> Sample = pydantic_model_from_dict({"reviewId": 123, "reviewText": "Great!"})
+    >>> obj = Sample(reviewId=1, reviewText="Nice movie")
+    >>> obj.model_dump()
+    {'reviewId': 1, 'reviewText': 'Nice movie'}
+    """
     model_name = "AType#" + ":".join(dict.keys())
     fields = {}
 
@@ -256,7 +300,7 @@ def create_pydantic_model(
     Dynamically create a Pydantic model from a list of field definitions.
 
     Args:
-        fields: A list of (field_name, type_name, description) tuples.
+        fields: A list of (field_name, type_name, description, required) tuples.
         name: Optional name of the model.
 
     Returns:
@@ -281,7 +325,6 @@ def create_pydantic_model(
         model_name = name
 
     field_definitions = {}
-    print(fields)
     for field_name, type_name, description, required in fields:
         ptype = type_mapping[type_name] if type_name in type_mapping else Any
         if required:
@@ -592,8 +635,8 @@ def compose_types(A, B, *, name=None):
 
     Composite = create_model(
         name,
-        left=(Optional[A], None),
-        right=(Optional[B], None),
+        target=(Optional[A], None),
+        source=(Optional[B], None),
         __base__=BaseModel,
     )
 
@@ -626,7 +669,7 @@ ModelMetaclass.__matmul__ = _istype_matmul
 def _instance_matmul(a: BaseModel, b: BaseModel):
     """
     INSTANCE composition:
-        a @ b → Composite(left=a, right=b)
+        a @ b → Composite(target=a, surce=b)
     """
     if not isinstance(b, BaseModel):
         raise TypeError(f"Cannot compose instance {a} with {b}")
@@ -637,7 +680,7 @@ def _instance_matmul(a: BaseModel, b: BaseModel):
     CompositeModel = A @ B
 
     # Build structural composite
-    return CompositeModel(left=a, right=b)
+    return CompositeModel(target=a, source=b)
 
 
 BaseModel.__matmul__ = _instance_matmul

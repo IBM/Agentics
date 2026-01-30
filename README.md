@@ -33,7 +33,7 @@ Install Agentics in your current env, set up your environment variable, and run 
 ```bash
 uv pip install agentics-py
 ```
-set up your .env using the required parameters for your LLM provider of choice. Use [.env_sample](.env_sample) as a reference. 
+set up your .env using the required parameters for your LLM provider of choice. Use [.env_sample](.env_sample) as a reference.
 
 Find out more
 👉 **Getting Started**: [docs/getting_started.md](docs/getting_started.md)
@@ -90,7 +90,7 @@ genre, explanation = await classify_genre(
 
 ## 📘 Documentation and Notebooks
 
-Complete documentation available [here](./docs/index.md) 
+Complete documentation available [here](./docs/index.md)
 
 | Notebook | Description |
 |---|---|
@@ -120,25 +120,25 @@ Apache 2.0
 
 ## 👥 Authors
 
-**Project Lead**  
+**Project Lead**
 - Alfio Massimiliano Gliozzo (IBM Research) — gliozzo@us.ibm.com
 
-**Core Contributors**  
-- Nahuel Defosse (IBM Research) — nahuel.defosse@ibm.com  
-- Junkyu Lee (IBM Research) — Junkyu.Lee@ibm.com  
-- Naweed Aghmad Khan (IBM Research) — naweed.khan@ibm.com  
-- Christodoulos Constantinides (IBM Watson) — Christodoulos.Constantinides@ibm.com  
-- Mustafa Eyceoz (Red Hat) — Mustafa.Eyceoz@partner.ibm.com  
+**Core Contributors**
+- Nahuel Defosse (IBM Research) — nahuel.defosse@ibm.com
+- Junkyu Lee (IBM Research) — Junkyu.Lee@ibm.com
+- Naweed Aghmad Khan (IBM Research) — naweed.khan@ibm.com
+- Christodoulos Constantinides (IBM Watson) — Christodoulos.Constantinides@ibm.com
+- Mustafa Eyceoz (Red Hat) — Mustafa.Eyceoz@partner.ibm.com
 
 ---
 
 
 ## 🧠 Conceptual Overview
 
-Most “agent frameworks” let untyped text flow through a pipeline. Agentics flips that: **types are the interface**.  
+Most “agent frameworks” let untyped text flow through a pipeline. Agentics flips that: **types are the interface**.
 Workflows are expressed as transformations between structured states, with predictable schemas and composable operators.
 
-Because every step is a typed transformation, you can **compose** workflows safely (merge and compose types/instances, chain transductions, and reuse `@transducible` functions) without losing semantic structure.  
+Because every step is a typed transformation, you can **compose** workflows safely (merge and compose types/instances, chain transductions, and reuse `@transducible` functions) without losing semantic structure.
 
 Agentics makes it natural to **scale out**: apply transformations over collections with async `amap`, and aggregate results with `areduce`.
 
@@ -158,8 +158,8 @@ Core operations:
 
 Agentics implements **Logical Transduction Algebra**, described in:
 
-- Alfio Gliozzo, Naweed Khan, Christodoulos Constantinides, Nandana Mihindukulasooriya, Nahuel Defosse, Junkyu Lee.  
-  *Transduction is All You Need for Structured Data Workflows* (August 2025).  
+- Alfio Gliozzo, Naweed Khan, Christodoulos Constantinides, Nandana Mihindukulasooriya, Nahuel Defosse, Junkyu Lee.
+  *Transduction is All You Need for Structured Data Workflows* (August 2025).
   arXiv:2508.15610 — https://arxiv.org/abs/2508.15610
 
 

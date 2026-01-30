@@ -373,7 +373,7 @@ class PydanticTransducerMellea(PydanticTransducer):
 
     async def _execute(self, input: str) -> BaseModel:
         instructions = f"""
-You are a Logical Transducer. Your goal is to generate a JSON object that strictly 
+You are a Logical Transducer. Your goal is to generate a JSON object that strictly
 conforms to the Output Pydantic schema below:
 
 {self.atype.model_json_schema()}
