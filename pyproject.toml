@@ -36,11 +36,10 @@ dependencies = [
     "numerize>=0.12",
     "hnswlib>=0.8.0",
     "jsonfinder",
-    "crewai[google-genai]",
     "litellm",
-    "jsonfinder",
     "mellea",
     "plotly>=6.5.0",
+    "rich>=13.0.0,<14.0.0",
     "duckdb>=1.4.3",
     "pandas>=2.3.3",
     "async-lru>=2.0.5",
@@ -68,6 +67,8 @@ packages = ["src/agentics"]
 [tool.hatch.build.targets.sdist]
 packages = ["src/agentics"]
 
+[project.scripts]
+show-llms = "agentics.scripts.show_llms:main"
 
 [dependency-groups]
 dev = [
@@ -82,6 +83,7 @@ dev = [
   "papermill>=2.6.0",
   "pytest-xdist>=3.8.0",
   "pytest-subtests>=0.15.0",
+  "hunter>=3.9.0",
 ]
 docling = [
   "langchain-docling >=0.2.0,<0.3.0"
@@ -90,6 +92,7 @@ docs = [
     "mkdocs>=1.6.1",
     "mkdocs-material>=9.6.18",
     "mkdocstrings>=0.30.0",
+    "pymdown-extensions",
 ]
 rhel = [
     "chromadb>=1.1.0",

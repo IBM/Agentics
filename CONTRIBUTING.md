@@ -30,15 +30,15 @@ Thank you for your interest in contributing to Agentics! This document provides 
    ```bash
    uv run pytest
    ```
-   
+
    Also, to ensure the  [version is correctly computed from Git tags](#versioning-scheme)
    try running:
-   
+
    ```bash
    uvx --with uv-dynamic-versioning hatchling version
    ```
-   
-   
+
+
 ## Pre-commit Hooks
 
 We use pre-commit hooks to ensure code quality and consistency. These hooks automatically run checks before each commit.
@@ -145,8 +145,8 @@ The test report will be saved as `report.html` in the project root for later ana
 
 ### Running Tests with Coverage
 
-**Code coverage** measures the percentage of your codebase that is exercised by tests. 
-It's an important metric that helps you understand how thoroughly your how much code 
+**Code coverage** measures the percentage of your codebase that is exercised by tests.
+It's an important metric that helps you understand how thoroughly your how much code
 is not exercised by your tests.
 
 

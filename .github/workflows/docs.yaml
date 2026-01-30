@@ -1,0 +1,47 @@
+name: Update Documentation on GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - '.github/workflows/docs.yaml'
+
+jobs:
+  docs:
+    name: Update GitHub Pages Documentation
+    runs-on: ubuntu-latest
+    # Only run if commit message contains [docs]
+    if: "contains(github.event.head_commit.message, '[docs]')"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install uv (curl method)
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Cache uv virtualenv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: uv-venv-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            uv-venv-${{ runner.os }}-
+
+      - name: Create virtualenv and install dependencies
+        run: |
+          uv sync --group docs
+
+      - name: Deploy docs to GitHub Pages
+        run: |
+          uv run --group docs mkdocs gh-deploy --force
+
+      - name: Log deployment
+        run: |
+          echo "Documentation deployed successfully for commit: ${{ github.event.head_commit.message }}"
