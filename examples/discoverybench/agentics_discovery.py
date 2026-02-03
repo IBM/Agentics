@@ -208,7 +208,7 @@ async def execute_all_datasets(output_path:str,
                         answer.to_jsonl(tmp_file, append=True)
                     except Exception as e:
                         logger.error(f"Error processing answer for question {question.question}: {e}")
-            else: 
+            elif Config.verbose: 
                 logger.warning(f"Skipping question {question.question}\nAlready Processed with non-null hypothesis")
         
         processed_datasets.append(dataset_name)
@@ -449,7 +449,7 @@ def validate_jsonl_files(output_path: Path) -> None:
 
     
 def rename_evaluation_files(output_path: Path) -> None:
-    existing_files = sorted(output_path.glob("evaluation*.json"), key=lambda p: p.name)
+    existing_files = sorted(output_path.glob("evaluation*.jsonl"), key=lambda p: p.name)
     
     if existing_files:   
         evaluation_file = output_path / "evaluation.jsonl"
@@ -479,7 +479,7 @@ def evaluate_all(system_output_path:str,
     
     for output in os.listdir(system_output_path):
         dataset_name = output.split(".")[0]
-        if not output.endswith(".jsonl") or output.endswith("_tmp.jsonl"):
+        if not output.endswith(".jsonl") or output.endswith("_tmp.jsonl") or output.startswith("evaluation"):
             continue
         answers = AG.from_jsonl(system_output_path/output, atype=Question)
         dataset_score, num_questions, num_missing_predictions, evaluation_results = evaluate_dataset(
@@ -545,6 +545,7 @@ class Config:
     output_folder = None
     mode = None
     use_short_answer = True
+    verbose = False
 
 
 def main():
@@ -583,6 +584,7 @@ def main():
         default=None,
         help="(Optional) Specify LLM provider to use (e.g., 'gemini', 'litellm_proxy_1', 'litellm_proxy_2', 'litellm_proxy_3')"
     )
+    parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging")
 
     args = parser.parse_args()
     
@@ -591,6 +593,7 @@ def main():
     Config.output_folder = args.output_folder
     Config.mode = args.mode
     Config.use_short_answer = args.use_short_answer
+    Config.verbose = args.verbose
 
     if Config.llm_provider:
         logger.info(f"Using LLM provider: {Config.llm_provider}")
