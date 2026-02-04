@@ -156,8 +156,10 @@ async def sem_filter(
         amap_batch_size=20,
         **kwargs,
     )
-
-    ag_source.prompt_template = predicate_template
+    if "{" in predicate_template:
+        ag_source.prompt_template = predicate_template
+    else:
+        target_ag.instructions += f"\n\nPredicate: {predicate_template}"
     map_out = await (target_ag << ag_source)
     target = ag_source.clone()
     target.states = []

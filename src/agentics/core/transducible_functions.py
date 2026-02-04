@@ -558,7 +558,7 @@ async def generate_prototypical_instances(
         instructions=f"""
               Generate list of {n_instances} random instances of the following type 
               {type.model_json_schema()}. 
-              Try to fill most of the attributed for each generated instance as possible
+              fill all attributed for each generated instance
               """,
         llm=llm,
     )
