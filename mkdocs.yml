@@ -2,25 +2,40 @@ site_name: Agentics Documentation
 theme:
   name: material
   palette:
-    scheme: slate 
+    scheme: slate
 
 plugins:
   - search
   - mkdocstrings
 
-
 nav:
   - 👋 Welcome to Agentics: index.md
   - Getting Started: getting_started.md
-  - What is Agentics?: background.md 
+  - What is Agentics?: background.md
   - Use Cases: use_cases.md
   - Agentics: agentics.md
   - Transduction: transduction.md
   - Memory: memory.md
-
 
 markdown_extensions:
   - pymdownx.tabbed
   - pymdownx.superfences
   - pymdownx.tabbed:
       alternate_style: true
+  - pymdownx.arithmatex:
+      generic: true
+
+extra_javascript:
+  - javascripts/katex.js
+  - https://unpkg.com/katex@0/dist/katex.min.js
+  - https://unpkg.com/katex@0/dist/contrib/auto-render.min.js
+#extra_javascript:
+# - javascripts/mathjax.js
+# - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+
+extra_css:
+  - https://unpkg.com/katex@0/dist/katex.min.css
+
+extra:
+  version:
+    provider: mike
