@@ -52,38 +52,40 @@ uv run python examples/hello_world.py
 ## 🧪 Example Usage
 
 ```python
-from typing import Optional
 from pydantic import BaseModel, Field
+from agentics.core.transducible_functions import transducible, Transduce
 
-from agentics.core.transducible_functions import Transduce, transducible
+class ProductDescription(BaseModel):
+    name: str
+    features: str
+    price: float
 
+class ViralTweet(BaseModel):
+    tweet: str = Field(..., description="Engaging tweet under 280 characters")
+    hashtags: list[str] = Field(..., description="3-5 relevant hashtags")
+    hook: str = Field(..., description="Attention-grabbing opening line")
 
-class Movie(BaseModel):
-    movie_name: Optional[str] = None
-    description: Optional[str] = None
-    year: Optional[int] = None
+@transducible()
+async def generate_viral_tweet(product: ProductDescription) -> ViralTweet:
+    """Transform boring product descriptions into viral social media content."""
+    return Transduce(product)
 
-
-class Genre(BaseModel):
-    genre: Optional[str] = Field(None, description="e.g., comedy, drama, action")
-
-
-@transducible(provide_explanation=True)
-async def classify_genre(state: Movie) -> Genre:
-    """Classify the genre of the source Movie."""
-    return Transduce(state)
-
-
-genre, explanation = await classify_genre(
-    Movie(
-        movie_name="The Godfather",
-        description=(
-            "The aging patriarch of an organized crime dynasty transfers control "
-            "of his clandestine empire to his reluctant son."
-        ),
-        year=1972,
-    )
+# Transform a product into viral content
+product = ProductDescription(
+    name="Agentics Framework",
+    features="Type-safe AI workflows with LLM-powered transductions",
+    price=0.0  # Open source!
 )
+
+tweet = await generate_viral_tweet(product)
+print(f"🔥 {tweet.tweet}")
+print(f"📱 {' '.join(tweet.hashtags)}")
+```
+
+**Output:**
+```
+🔥 Stop wrestling with unstructured LLM outputs! 🎯 Agentics gives you type-safe AI workflows that just work. Build production-ready agents in minutes, not weeks. And it's FREE! 🚀
+📱 #AI #OpenSource #Python #LLM #DevTools
 ```
 
 ---
@@ -124,12 +126,15 @@ Apache 2.0
 - Alfio Massimiliano Gliozzo (IBM Research) — gliozzo@us.ibm.com
 
 **Core Contributors**
-- Nahuel Defosse (IBM Research) — nahuel.defosse@ibm.com
 - Junkyu Lee (IBM Research) — Junkyu.Lee@ibm.com
+- Nahuel Defosse (IBM Research) — nahuel.defosse@ibm.com
 - Naweed Aghmad Khan (IBM Research) — naweed.khan@ibm.com
-- Christodoulos Constantinides (IBM Watson) — Christodoulos.Constantinides@ibm.com
-- Mustafa Eyceoz (Red Hat) — Mustafa.Eyceoz@partner.ibm.com
 
+**Additional Contributors**
+- Christodoulos Constantinides (IBM Watson) — Christodoulos.Constantinides@ibm.com
+- Nandana Mihindukulasooriya (IBM Research) — nandana@ibm.com
+- Mustafa Eyceoz (Red Hat) — Mustafa.Eyceoz@partner.ibm.com
+- Gaetano Rossiello (IBM Research) — gaetano.rossiello@ibm.com
 ---
 
 

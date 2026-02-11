@@ -10,12 +10,13 @@ plugins:
 
 nav:
   - 👋 Welcome to Agentics: index.md
-  - Getting Started: getting_started.md
-  - What is Agentics?: background.md
-  - Use Cases: use_cases.md
-  - Agentics: agentics.md
-  - Transduction: transduction.md
-  - Memory: memory.md
+  - 🚀 Getting Started: getting_started.md
+  - 🧠 Core Concepts: core_concepts.md
+  - ⚙️ Transducible Functions: transducible_functions.md
+  - 🔁 Map-Reduce Operations: map_reduce.md
+  - 🧬 Agentics (AG): agentics.md
+  - ⚡ Performance Optimization: optimization.md
+  - 🔌 Tool Integration: tool_integration.md
 
 markdown_extensions:
   - pymdownx.tabbed

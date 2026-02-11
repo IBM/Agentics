@@ -64,11 +64,11 @@ Example:
 from pydantic import BaseModel
 
 class Review(BaseModel):
-    text: str
+    text: Optional[str] = None
 
 class ReviewSummary(BaseModel):
-    sentiment: str
-    summary: str
+    sentiment: Optional[str] = None
+    summary: Optional[str] = None
 ```
 
 A transducible function might be:
@@ -92,14 +92,14 @@ You don’t call the LLM directly; you **call the transducible function**, which
 
 ---
 
-## 3. Typed State Containers (AGs): Working with Collections 🗂️
+## 3. Typed State Containers (AG): Working with Collections 🗂️
 
 Transformations rarely happen on a single object. You typically work with **collections** of items (rows, documents, events, etc.).
 
-Agentics introduces **typed state containers** (AG) to:
+Agentics introduces **typed state containers** (called **AG**, short for "Agentics") to:
 
-- Hold a collection of instances of a given Pydantic type  
-- Preserve that type information across operations  
+- Hold a collection of instances of a given Pydantic type
+- Preserve that type information across operations
 - Provide a uniform interface for Map–Reduce, filtering, joining, etc.
 
 
@@ -113,18 +113,24 @@ AG[Review]
   └─ row n: Review(text="…")
 ```
 
-Applying a transducible function `(Review) -> ReviewSummary` over an `AG[Review]` conceptually yields an `AG[ReviewSummary]`.
+Applying a transducible function `(Review) -> ReviewSummary` over an `AG` with atype `Review` conceptually yields an `AG` of type `ReviewSummary`. 
 
 Typed state containers give you:
 
-- **Clarity** – you always know what type you’re holding.  
-- **Safety** – operations can check types and schemas instead of guessing.  
+- **Clarity** – you always know what type you're holding.
+- **Safety** – operations can check types and schemas instead of guessing.
 - **Composability** – containers can flow between functions and stages.
 
-You can think of state containers as the **data plane** of Agentics.
+You can think of state containers (AGs) as the **data plane** of Agentics.
 
 
-Note: The name Agentics is derived as a legacy from the first version of Agentics, in which data models and transformations were blended into the same object. By introducing transducible functions as first class citizens, Agentics 2.0 uses AGs primarily as a data structure, although it is still possible to use them directly for transformations. See agentics v1.0 documentation to learn more. 
+```python
+from agentics import AG  # Recommended alias
+
+movies = AG(atype=Movie)  # Create a typed container
+```
+
+**Historical Note:** In Agentics 1.0, data models and transformations were blended into the same object. Agentics 2.0 separates concerns by introducing transducible functions as first-class citizens, while AG containers focus on data management. The v1.0 API is still supported for backward compatibility.
 
 
 ---
@@ -251,5 +257,5 @@ A typical workflow looks like this:
 From here, you can explore:
 
 - 👉 [Transducible Functions](transducible_functions.md) for concrete examples of defining and using transducible functions
-- 👉 `types_and_states.md` for data modeling patterns  
-- 👉 `mapreduce.md` to see how large-scale execution works in practice  
+- 👉 [Agentics (AG)](agentics.md) for data modeling patterns and typed state containers
+- 👉 [Map-Reduce Tutorial](../tutorials/map_reduce.ipynb) to see how large-scale execution works in practice

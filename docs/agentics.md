@@ -1,11 +1,20 @@
-# Agentics
+# AG (Agentics)
 
-Agentics objects are wrappers around list of objects having the same Pydantic Type.
+**AG** (short for "Agentics") objects are wrappers around lists of objects having the same Pydantic type.
 They are designed to enable async logical transduction among their instances.
-Agentics enable us to think about AI workflows in terms of structured data transformations rather than agent behaviours, knowledge and tasks. 
+AG containers enable us to think about AI workflows in terms of structured data transformations rather than agent behaviors, knowledge, and tasks.
 
-## The Agentics class
-Agentics is a Python class that wraps a list of Pydantic objects and enables structured, type-driven logical transduction between them.
+## The AG Class
+
+AG (Agentics) is a Python class that wraps a list of Pydantic objects and enables structured, type-driven logical transduction between them.
+
+**Import and Usage:**
+```python
+from agentics import AG  # Recommended: use AG alias
+
+# Create a typed container
+movies = AG(atype=Movie)
+```
 
 Internally, Agentics is implemented as a Pydantic model. It holds:
 	•	atype: a reference to the Pydantic class shared by all objects in the list.
@@ -109,11 +118,12 @@ You can also modify and rebind an exiting Agentic. Similarly can also remove att
 
 ```python
 movies = AG.from_csv("data/orders.csv")
+print(movies[0])
 movies.add_attribute("review",str)
 movies.add_attribute("quality_score",int,description="The quality of the movies in a scale 0 to 10")
 print(movies[0])
 movies.subset_atype("title","genre","description")
-print(movies[0]) ## note that movies[0] is equivalent to 
+print(movies[0]) ## note that movies[0] is a shorthand for movies.states[0]
 ```
 
 
@@ -149,9 +159,12 @@ asyncio.run(main())
 
 ## Reference code
 
-[explore this example](src/agentics/examples/agentics_basics.py)
+See the [examples directory](../examples/) for practical demonstrations of AG usage, including:
+- `hello_world.py` - Basic transduction example
+- `generate_tweets.py` - Content generation
+- `emotion_extractor.py` - Text analysis
 
 
-## See Next: Transduction
+## See Next: Transducible Functions
  
-Wrapping pydantic types into Agentics provides them with the ability to perform transduction, as described in the [next section](transduction.md)
+Wrapping pydantic types into Agentics provides them with the ability to perform transduction, as described in the [Transducible Functions](transducible_functions.md) documentation.

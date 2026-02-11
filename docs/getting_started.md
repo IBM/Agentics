@@ -19,7 +19,7 @@ Agentics is a lightweight, Python-native framework for building structured, agen
   curl -LsSf https://astral.sh/uv/install.sh | sh
   ```
 
-  Other installation options [here](curl -LsSf https://astral.sh/uv/install.sh | sh)
+  Other installation options [here](https://docs.astral.sh/uv/getting-started/installation/)
 
 * Install the dependencies
 
@@ -59,11 +59,11 @@ ollama pull ollama/deepseek-r1:latest
 - `MODEL`  - watsonx/meta-llama/llama-3-3-70b-instruct (or alternative supporting function call)
 
 
-#### Google Gemini (offer free API key) 
+#### Google Gemini (offers free API key)
 
-- `WATSONX_APIKEY` - WatsonX API key
+- `GEMINI_API_KEY` - Your Google Gemini API key (get it from [Google AI Studio](https://aistudio.google.com/))
 
-- `MODEL`  - watsonx/meta-llama/llama-3-3-70b-instruct (or alternative supporting function call)
+- `MODEL` - `gemini/gemini-1.5-pro` or `gemini/gemini-1.5-flash` (or other Gemini models supporting function calling)
 
 
 #### VLLM (Need dedicated GPU server):
@@ -87,27 +87,127 @@ python examples/agentics_web_search_report.py
 
 ## Hello World
 
+Transform boring product descriptions into viral tweets in just a few lines:
+
 ```python
-from typing import Optional
 from pydantic import BaseModel, Field
+from agentics.core.transducible_functions import transducible, Transduce
 
-from agentics.core.transducible_functions import Transduce, transducible
+from typing import Optional
 
+class ProductDescription(BaseModel):
+    name: Optional[str] = None
+    features: Optional[str] = None
+    price: Optional[float] = None
 
-class Movie(BaseModel):
-    movie_name: Optional[str] = None
-    description: Optional[str] = None
-    year: Optional[int] = None
+class ViralTweet(BaseModel):
+    tweet: Optional[str] = Field(None, description="Engaging tweet under 280 characters")
+    hashtags: Optional[list[str]] = Field(None, description="3-5 relevant hashtags")
+    hook: Optional[str] = Field(None, description="Attention-grabbing opening line")
 
+@transducible()
+async def generate_viral_tweet(product: ProductDescription) -> ViralTweet:
+    """Transform boring product descriptions into viral social media content."""
+    return Transduce(product)
 
-class Genre(BaseModel):
-    genre: Optional[str] = Field(None, description="e.g., comedy, drama, action")
+# Transform a product into viral content
+product = ProductDescription(
+    name="Agentics Framework",
+    features="Type-safe AI workflows with LLM-powered transductions",
+    price=0.0  # Open source!
+)
 
-movie = Movie(movie_name="The Godfather")
-
-genre = await (Genre << Movie)(movie)
-
+tweet = await generate_viral_tweet(product)
+print(f"🔥 {tweet.tweet}")
+print(f"📱 {' '.join(tweet.hashtags)}")
 ```
+
+**Output:**
+```
+🔥 Stop wrestling with unstructured LLM outputs! 🎯 Agentics gives you type-safe AI workflows that just work. Build production-ready agents in minutes, not weeks. And it's FREE! 🚀
+📱 #AI #OpenSource #Python #LLM #DevTools
+```
+
+### Alternative: Using the `<<` Operator
+
+For quick one-off transductions, use the `<<` operator:
+
+```python
+from pydantic import BaseModel
+
+from typing import Optional
+
+class Product(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+
+class Tweet(BaseModel):
+    content: Optional[str] = None
+
+# Create transduction on the fly
+make_tweet = Tweet << Product
+
+product = Product(
+    name="Agentics",
+    description="Type-safe AI framework for Python"
+)
+
+tweet = await make_tweet(product)
+print(tweet.content)
+```
+
+This concise syntax is perfect for exploratory work and rapid prototyping!
+
+### Batch Processing: Multiple Products
+
+Transducible functions automatically support batch processing. Process multiple products at once in parallel:
+
+```python
+
+products = [
+    ProductDescription(
+        name="Agentics Framework",
+        features="Type-safe AI workflows with LLM-powered transductions",
+        price=0.0
+    ),
+    ProductDescription(
+        name="Smart Coffee Maker",
+        features="AI-powered brewing with perfect temperature control",
+        price=299.99
+    ),
+    ProductDescription(
+        name="Wireless Earbuds Pro",
+        features="Active noise cancellation and 30-hour battery life",
+        price=149.99
+    ),
+]
+
+# Automatically processes all products in parallel
+tweets = await generate_viral_tweet(products)
+
+# Display results
+for product, tweet in zip(products, tweets):
+    print(f"\n📦 Product: {product.name}")
+    print(f"🔥 Tweet: {tweet.tweet}")
+    print(f"📱 Tags: {' '.join(tweet.hashtags)}")
+```
+
+**Output:**
+```
+📦 Product: Agentics Framework
+🔥 Tweet: Stop wrestling with unstructured LLM outputs! 🎯 Agentics gives you type-safe AI workflows that just work. Build production-ready agents in minutes, not weeks. And it's FREE! 🚀
+📱 Tags: #AI #OpenSource #Python #LLM #DevTools
+
+📦 Product: Smart Coffee Maker
+🔥 Tweet: Wake up to perfection! ☕ Our AI-powered coffee maker learns your taste and brews the perfect cup every time. Never settle for mediocre coffee again! 🤖
+📱 Tags: #SmartHome #Coffee #AI #Tech #MorningRoutine
+
+📦 Product: Wireless Earbuds Pro
+🔥 Tweet: Silence the world, amplify your music! 🎧 30 hours of pure audio bliss with active noise cancellation. Your commute just got an upgrade! 🔋
+📱 Tags: #Audio #Tech #Wireless #Music #Productivity
+```
+
+The same transducible function works seamlessly for both single items and batches—no code changes needed!
 
 ### Installation details
 
