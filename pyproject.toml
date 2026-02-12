@@ -20,7 +20,7 @@ dependencies = [
     "crewai-tools[mcp]",
     "crewai[google-genai]",
     "langchain-huggingface (>=0.2.0,<0.3.0)",
-    "openapi-python-client (>=0.24.3,<0.25.0)",
+    "openapi-python-client (>=0.28.2,<0.29.0)",
     "streamlit (>=1.45.1,<2.0.0)",
     "pyyaml (>=6.0.2,<7.0.0)",
     # "aiosqlite (>=0.21.0,<0.22.0)",
