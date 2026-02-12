@@ -114,7 +114,7 @@ print(movies.states[0])
 
 ```
 
-You can also modify and rebind an exiting Agentic. Similarly can also remove attributes. The following code is equivalent to the code before
+You can also modify and rebind an exiting Agentic. Similarly can also remove attributes. The following code is equivalent to the code before.
 
 ```python
 movies = AG.from_csv("data/orders.csv")
@@ -148,8 +148,7 @@ async def main():
         "What is the best F1 team in history?",
     ]
 
-    answers = await (AG(atype=Answer) \
-                     << input_questions)
+    answers = await (AG(atype=Answer) << input_questions)
 
     answers.pretty_print()
 
@@ -164,7 +163,5 @@ See the [examples directory](../examples/) for practical demonstrations of AG us
 - `generate_tweets.py` - Content generation
 - `emotion_extractor.py` - Text analysis
 
-
-## See Next: Transducible Functions
- 
-Wrapping pydantic types into Agentics provides them with the ability to perform transduction, as described in the [Transducible Functions](transducible_functions.md) documentation.
+## Go to Index
+- 👉 [Index](index.md)

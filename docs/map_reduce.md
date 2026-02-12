@@ -373,9 +373,7 @@ Map operations are automatically parallelized based on `batch_size`. For more co
 
 ---
 
-## See Also
+## Next
+- 👉 [Agentics (AG)](agentics.md) for data modeling patterns and typed state containers
+- 👉 [Map-Reduce Tutorial](../tutorials/map_reduce.ipynb) to see how large-scale execution works in practice
 
-- 👉 [Transducible Functions](transducible_functions.md) - Core concepts and basic usage
-- 👉 [Performance Optimization](optimization.md) - Batch processing and performance tuning
-- 👉 [Map-Reduce Tutorial](../tutorials/map_reduce.ipynb) - Interactive examples
-- 👉 [Core Concepts](core_concepts.md) - Understanding the theoretical foundation

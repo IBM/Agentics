@@ -6,7 +6,7 @@ Agentics is built around a small set of concepts that work together:
 - **Transducible functions** – LLM-powered, type-safe transformations  
 - **Typed state containers (AGs)** – collections of typed rows/documents  
 - **Logical Transduction Algebra (LTA)** – the formal backbone  
-- **Map–Reduce** – the execution pattern for large workloads  
+- **Map–Reduce** – the programming model used to execute large-scale workloads
 
 This page gives you the mental model you need before diving into code.
 
@@ -74,7 +74,7 @@ class ReviewSummary(BaseModel):
 A transducible function might be:
 
 ```python
-fn: (Review) -> ReviewSummary
+fn: Review -> ReviewSummary
 ```
 
 with instructions like:
@@ -105,7 +105,6 @@ Agentics introduces **typed state containers** (called **AG**, short for "Agenti
 
 Conceptually, you can think of an `AG[Source]` like a type-aware table:
  
-
 ```text
 AG[Review]
   ├─ row 0: Review(text="…")
@@ -113,7 +112,7 @@ AG[Review]
   └─ row n: Review(text="…")
 ```
 
-Applying a transducible function `(Review) -> ReviewSummary` over an `AG` with atype `Review` conceptually yields an `AG` of type `ReviewSummary`. 
+Applying a transducible function `Review -> ReviewSummary` over an `AG` with atype `Review` conceptually yields an `AG` of type `ReviewSummary`. 
 
 Typed state containers give you:
 
@@ -164,7 +163,7 @@ In short:
 
 Once you have:
 
-- Typed collections (`AG[Source]`), and  
+- Typed collections (`AG[Source]`) and  
 - Typed transformations (`Source -> Target`),
 
 you need a way to run these at scale. Agentics uses a familiar pattern: **Map–Reduce**.
@@ -254,8 +253,6 @@ A typical workflow looks like this:
 - **Logical Transduction Algebra (LTA)** explains why these transformations compose and remain interpretable.  
 - **Map–Reduce** provides the pattern for scaling these transductions to large datasets.
 
-From here, you can explore:
 
+## Next
 - 👉 [Transducible Functions](transducible_functions.md) for concrete examples of defining and using transducible functions
-- 👉 [Agentics (AG)](agentics.md) for data modeling patterns and typed state containers
-- 👉 [Map-Reduce Tutorial](../tutorials/map_reduce.ipynb) to see how large-scale execution works in practice

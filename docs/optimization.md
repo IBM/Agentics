@@ -321,3 +321,4 @@ async def process_with_error_handling(items):
 - 👉 [Transducible Functions](transducible_functions.md) - Core concepts and basic usage
 - 👉 [Tool Integration](tool_integration.md) - Using external tools
 - 👉 [Map-Reduce Tutorial](../tutorials/map_reduce.ipynb) - Large-scale execution patterns
+- 👉 [Index](index.md)

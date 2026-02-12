@@ -400,3 +400,4 @@ except TimeoutError:
 - 👉 [Transducible Functions](transducible_functions.md) - Core concepts and basic usage
 - 👉 [Optimization](optimization.md) - Performance tuning and batch processing
 - 👉 [Examples](../examples/mcp_server_example.py) - Complete MCP server example
+- 👉 [Index](index.md)

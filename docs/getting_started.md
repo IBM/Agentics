@@ -24,7 +24,6 @@ Agentics is a lightweight, Python-native framework for building structured, agen
 * Install the dependencies
 
   ```bash
-  
   uv sync
   # Source the environment (optional, you can skip this and prepend uv run to the later lines)
   source .venv/bin/activate # bash/zsh 🐚
@@ -32,21 +31,21 @@ Agentics is a lightweight, Python-native framework for building structured, agen
   ```
 
 
-### 🎯 Set Environment Variables
+### 🎯 Environment Variables
 
 Create a `.env` file in the root directory with your environment variables. See `.env.sample` for an example.
 
-Set Up LLM provider, Chose one of the following: 
+Set up LLM provider, chose one of the following: 
 
 #### OpenAI
 
 - Obtain API key from [OpenAI](https://platform.openai.com/)
 - `OPENAI_API_KEY` - Your OpenAI APIKey
-- `OPENAI_MODEL_ID` - Your favorute model, default to **openai/gpt-4**
+- `OPENAI_MODEL_ID` - Selected model, default to **openai/gpt-4**
 
 #### Ollama (local)
 - Download and install [Ollama](https://ollama.com/)
-- Download a Model. You should use a model that support reasoning and fit your GPU. So smaller are preferred. 
+- Download a model. You should use a model that support reasoning and fit your GPU. So smaller are preferred. 
 ```
 ollama pull ollama/deepseek-r1:latest
 ```
@@ -75,7 +74,7 @@ ollama pull ollama/deepseek-r1:latest
 
 ## Test Installation
 
-test hello world example (need to set up llm credentials first)
+Test hello world example (need to set up llm credentials first)
 
 ```bash
 python python examples/hello_world.py
@@ -128,9 +127,9 @@ print(f"📱 {' '.join(tweet.hashtags)}")
 📱 #AI #OpenSource #Python #LLM #DevTools
 ```
 
-### Alternative: Using the `<<` Operator
+### Alternative: Using  `<<` Operator
 
-For quick one-off transductions, use the `<<` operator:
+For quick one-off transductions, use `<<` operator:
 
 ```python
 from pydantic import BaseModel
@@ -211,7 +210,7 @@ The same transducible function works seamlessly for both single items and batche
 
 ### Installation details
 
-=== "Poetry"
+#### Poetry
 
     Install poetry (skip if available)
 
@@ -227,7 +226,7 @@ The same transducible function works seamlessly for both single items and batche
     source $(poetry env info --path)/bin/activate 
     ```
 
-=== "Python"
+#### Python
 
     > Ensure you have Python 3.11+ 🚨.
     >
@@ -243,17 +242,8 @@ The same transducible function works seamlessly for both single items and batche
 
     * Activate the virtual environment
 
-    ### Bash/Zsh
-
-    `source .venv/bin/activate`
-
-    ### Fish
-
-    `source .venv/bin/activate.fish`
-
-    ### VSCode 
-
-    Press `F1` key and start typing `> Select python` and select `Select Python Interpreter`
+    `source .venv/bin/activate`         # Bash/Zsh
+    `source .venv/bin/activate.fish`    # Fish
 
     * Install the package
         ```bash
@@ -261,7 +251,7 @@ The same transducible function works seamlessly for both single items and batche
         ```
     
 
-=== "uv"
+#### uv
 
     * Ensure `uv` is installed.
     ```bash
@@ -273,7 +263,7 @@ The same transducible function works seamlessly for both single items and batche
     * `uv pip install ./agentics` or `uv add ./agentics` (recommended)
   
 
-=== "uvx 🏃🏽"
+#### uvx 🏃🏽
 
     > This is a way to run agentics temporarily or quick tests
 
@@ -286,7 +276,7 @@ The same transducible function works seamlessly for both single items and batche
     * uvx --verbose --from ./agentics ipython
 
 
-=== "Conda"
+#### Conda
 
     1. Create a conda environment:
        ```bash
@@ -305,11 +295,5 @@ The same transducible function works seamlessly for both single items and batche
         pip install ./agentics
         ```
 
-## Documentation
-
-This documentation page is written using Mkdocs. 
-You can start the server to visualize this interactively.
-```bash
-mkdocs serve
-```
-After started, documentation will be available here [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
+## Next
+- 👉 [Core Concepts](core_concepts.md) - Understanding the theoretical foundation

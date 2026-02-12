@@ -4,7 +4,7 @@ Transducible functions are the *workhorse* of Agentics.
 They turn “call this LLM with a prompt” into:
 
 > **A typed, explainable transformation**  
-> `T: X → Y` with guarantees about how each output field was produced.
+> `T: X → Y` with explanation about how each output field was produced.
 
 This document explains what transducible functions are, how they work in Agentics, and how to use them in practice — including **dynamic generation** and **compositional patterns** using the `<<` operator.
 
@@ -12,18 +12,16 @@ This document explains what transducible functions are, how they work in Agentic
 
 ## 1. What Is a Transducible Function?
 
-Formally, a **transducible function** \(T : X \to Y\) is an *explainable* function that satisfies:
+Formally, a **transducible function** `T: X → Y` is an *explainable* function that satisfies:
 
 
 1. **Local Evidence**  
-   Each output slot \(y_i\) is computed only from its *evidence subset* \(\mathcal{E}_i(x)\).  
+   Each output slot **yᵢ*** is computed only from its *evidence subset* **Eᵢ(x)**.  
    > No field is generated “from nowhere”: if `subject` appears in the output, we know which inputs and instructions it depended on.
 
-2. **Slot-Level Provenance**  
-   The mapping between input and output slots is explicit:  
-   \[
-   \mathcal{T}(y_i) = \mathcal{E}_i
-   \]  
+2. **Slot-Level Provenance** 
+   The mapping between input and output slots is explicit: **T(yᵢ) = Eᵢ**
+
    This induces a bipartite graph between **input slots** and **output slots**, which acts as the *explainability trace* of the transduction.
 
 Intuitively:
@@ -58,7 +56,7 @@ class Email(BaseModel):
 
 > **Recommendation**  
 > In transduction scenarios, it is often useful to declare fields as `Optional[...] = None`.  
-> This gives the LLM the ability to say *“I don’t have enough evidence for this field”* by leaving it `null`, instead of hallucinating content.
+> This gives an LLM the ability to say *“I don’t have enough evidence for this field”* by leaving it `null`, instead of hallucinating content.
 
 The transducible function we will define next will transform exactly **one** `UserMessage` into **one** `Email` (and later, we’ll see how to scale to lists).
 
@@ -76,12 +74,12 @@ They can be defined in two main ways:
 1. Using the **`@transducible()` decorator** on an async Python function.
 2. **Dynamically generating** them from source and target types (e.g., via builders or the `<<` operator), with instructions and parameters.
 
-This section starts with the decorator pattern and then moves to dynamic generation and composition.
 
 ---
 
 ## 4. The `@transducible()` Decorator
 
+This section starts with the decorator pattern and then moves to dynamic generation and composition.
 The decorator turns an ordinary async function into a transducible function. When decorated with `@transducible()`, your function can return either:
 
 - A **concrete instance of the target type** `Y` (pure Python logic), or
@@ -243,7 +241,7 @@ Usage:
 
 ```python
 input_state = GenericInput(
-    content="Write a news story on Zoran Mandani winning the election in NYC and send it to Alfio"
+    content="Write a news story on the winner of Super Bowl in 2025 and send it to Alfio."
 )
 
 mail = await write_mail(input_state)
@@ -272,7 +270,7 @@ class Summary(BaseModel):
 
 ```python
 input_state = GenericInput(
-    content="Write news story on Zoran Mandani winning the election in NYC and send it to Alfio"
+    content="Write a news story on the winner of Super Bowl in 2025 and send it to Alfio."
 )
 
 write_mail = Email << GenericInput             # GenericInput → Email
@@ -343,7 +341,7 @@ summarize = Summary << With(
 )
 
 input_state = GenericInput(
-    content="Zoran Mandani won the election in NYC. Draft a message to the press list."
+    content="Philadelphia Eagles won Super Bowl 2025. Draft a message to the press list."
 )
 
 mail = await write_mail(input_state)
@@ -618,14 +616,5 @@ Good reasons to define a separate transducible function:
 
 ---
 
-## 11. Next Steps
-
-For advanced topics, see:
-
+## Next
 - 👉 **[Map-Reduce Operations](map_reduce.md)** - Scaling with map and reduce, batch processing patterns
-- 👉 **[Performance Optimization](optimization.md)** - Batch processing, performance tuning, error handling, and retries
-- 👉 **[Tool Integration](tool_integration.md)** - Using MCP tools, web search, databases, and custom tools
-- 👉 **[Map-Reduce Tutorial](../tutorials/map_reduce.ipynb)** - Interactive examples and patterns
-- 👉 **[Core Concepts](core_concepts.md)** - Understanding the theoretical foundation
-
----
