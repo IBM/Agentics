@@ -18,6 +18,9 @@ on:
       release-method:
         description: "How the release was triggered (commit-message or tag-based)"
         value: ${{ jobs.check-release.outputs.release-method }}
+      prerelease:
+        description: "Whether this is a prerelease"
+        value: ${{ jobs.check-release.outputs.prerelease }}
 
 jobs:
   check-release:
@@ -28,6 +31,7 @@ jobs:
       current-version: ${{ steps.version.outputs.current-version }}
       next-version: ${{ steps.version.outputs.next-version }}
       release-method: ${{ steps.check-commit.outputs.release-method || steps.check-tag.outputs.release-method }}
+      prerelease: "false"
 
     steps:
       - uses: actions/checkout@v4
@@ -148,18 +152,16 @@ jobs:
           git push origin "v${NEXT_VERSION}"
 
       - name: Create GitHub Release
-        uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ needs.check-release.outputs.next-version }}
-          release_name: Release v${{ needs.check-release.outputs.next-version }}
-          body: |
-            Automated release: ${{ needs.check-release.outputs.bump-type }} bump
+        run: |
+          gh release create v${{ needs.check-release.outputs.next-version }} \
+            --title "Release v${{ needs.check-release.outputs.next-version }}" \
+            --body "Automated release: ${{ needs.check-release.outputs.bump-type }} bump
 
-            Previous version: ${{ needs.check-release.outputs.current-version }}
-            New version: ${{ needs.check-release.outputs.next-version }}
+Previous version: ${{ needs.check-release.outputs.current-version }}
+New version: ${{ needs.check-release.outputs.next-version }}
 
-            Triggered via: ${{ needs.check-release.outputs.release-method }}
-          draft: false
-          prerelease: false
+Triggered via: ${{ needs.check-release.outputs.release-method }}" \
+            --draft=false \
+            --prerelease=false
