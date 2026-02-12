@@ -16,12 +16,6 @@ required-markers = [
     "platform_machine == 'x86_64' and sys_platform == 'linux'",
 ]
 
-[manifest]
-members = [
-    "agentics-py",
-    "polymarkets",
-]
-
 [[package]]
 name = "absl-py"
 version = "2.3.1"
@@ -124,7 +118,7 @@ requires-dist = [
     { name = "google", specifier = ">=3.0.0,<4.0.0" },
     { name = "hnswlib", specifier = ">=0.8.0" },
     { name = "ipywidgets", specifier = ">=8.1.7" },
-    { name = "json-schema-to-pydantic", specifier = ">=0.3.0,<0.4.0" },
+    { name = "json-schema-to-pydantic", specifier = ">=0.4.9,<0.5.0" },
     { name = "jsonfinder" },
     { name = "langchain-huggingface", specifier = ">=0.2.0,<0.3.0" },
     { name = "litellm" },
@@ -1901,14 +1895,14 @@ wheels = [
 
 [[package]]
 name = "json-schema-to-pydantic"
-version = "0.3.0"
+version = "0.4.9"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2b/74/3a754a7298c70c546137b31b9387621d98f0d693211dd0389be79c64e032/json_schema_to_pydantic-0.3.0.tar.gz", hash = "sha256:5505a015a832f13953d142c6a415fb2b00cb61d98e2457006c30c928fb50e402", size = 39754, upload-time = "2025-06-17T06:32:12.236Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/87/b8/90a3af11bcf9f8c76f1f7399705cd6c23c2271f1d70f882529bde2c1ad86/json_schema_to_pydantic-0.4.9.tar.gz", hash = "sha256:f71bc57c9016a6cecaf259392b4a3f35a34ad79da3934a64d21d73f526c6e28d", size = 53020, upload-time = "2026-02-01T20:47:47.29Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6d/ef/d375fdc1d6291831299d21ede27cab842418e1dbac7071e44fdd136549ec/json_schema_to_pydantic-0.3.0-py3-none-any.whl", hash = "sha256:0c44df2c07f2d5968caa2c716475892a2c0e088e95cfb6c4dd620757f3671e38", size = 12268, upload-time = "2025-06-17T06:32:10.859Z" },
+    { url = "https://files.pythonhosted.org/packages/ad/2e/58bada6e9195417baff0b06be34cd3b1a6c19153b4d08a4dea2e8b324cb5/json_schema_to_pydantic-0.4.9-py3-none-any.whl", hash = "sha256:7b1126aa70a482f8442866139d14e71a5f678ae5bece72b51db28374c4237cc9", size = 16351, upload-time = "2026-02-01T20:47:45.705Z" },
 ]
 
 [[package]]
@@ -3515,11 +3509,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/c9/3a/db522ea17e0e8d38f
 wheels = [
     { url = "https://files.pythonhosted.org/packages/94/7c/535646d75a1c510065169ea65693613c7a6bc64491bea13e7dad4f028ff3/polyfactory-3.1.0-py3-none-any.whl", hash = "sha256:78171232342c25906d542513c9f00ebf41eadec2c67b498490a577024dd7e867", size = 61836, upload-time = "2025-11-25T08:10:14.893Z" },
 ]
-
-[[package]]
-name = "polymarkets"
-version = "0.1.0"
-source = { virtual = "sandbox/polymarkets" }
 
 [[package]]
 name = "portalocker"
