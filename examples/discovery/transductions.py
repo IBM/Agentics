@@ -18,7 +18,6 @@ from agentics.core.transducible_functions import (
 
 @transducible()
 async def answer_question_from_data(state: Question) -> Question:
-
     if state.question:
         source_data = [AG.from_dataframe(DataFrame(db.df)) for db in state.dbs]
 
@@ -29,9 +28,9 @@ async def answer_question_from_data(state: Question) -> Question:
                 f"""
 ==================
 
-Name: {db.name} 
+Name: {db.name}
 Description:
-{db.dataset_description} 
+{db.dataset_description}
 Columns:
 {db.columns}
 
@@ -45,11 +44,11 @@ Columns:
                     transduction_type="areduce",
                     areduce_batch_size=10000,
                     instructions=f"""
-You have been provided with a CSV file which might contain relevant information to answer a given QUESTION. 
+You have been provided with a CSV file which might contain relevant information to answer a given QUESTION.
 QUESTION: {state.question}
 
-Your task is to collect intermediate evidence needed to answer the question from the provided data at a later stage 
-DATASET descriptions: 
+Your task is to collect intermediate evidence needed to answer the question from the provided data at a later stage
+DATASET descriptions:
 {"".join(dataset_descriptions)}
 DOMAIN_KNOWLEDGE: {state.domain_knowledge}
 QUESTION: {state.question}
@@ -65,8 +64,8 @@ QUESTION: {state.question}
                 atype=Answer,
                 instructions=f"""
 You previously collected intermediate evidence to answer a given QUESTION after inspecting several data sources.
-Your task is to proivide a single answer to the question taking into account the provided evidence. 
-DATASET descriptions: 
+Your task is to proivide a single answer to the question taking into account the provided evidence.
+DATASET descriptions:
 {"".join(dataset_descriptions)}
 DOMAIN_KNOWLEDGE: {state.domain_knowledge}
 QUESTION: {state.question}
