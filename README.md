@@ -122,19 +122,24 @@ Apache 2.0
 
 ## 👥 Authors
 
-**Project Lead**
+**Project Lead and Main Contributor**
 - Alfio Massimiliano Gliozzo (IBM Research) — gliozzo@us.ibm.com
 
 **Core Contributors**
-- Junkyu Lee (IBM Research) — Junkyu.Lee@ibm.com
-- Nahuel Defosse (IBM Research) — nahuel.defosse@ibm.com
-- Naweed Aghmad Khan (IBM Research) — naweed.khan@ibm.com
+- Junkyu Lee (IBM) — Junkyu.Lee@ibm.com
+- Nahuel Defosse (IBM) — nahuel.defosse@ibm.com
+- Naweed Aghmad Khan (IBM) — naweed.khan@ibm.com
 
-**Additional Contributors**
-- Christodoulos Constantinides (IBM Watson) — Christodoulos.Constantinides@ibm.com
-- Nandana Mihindukulasooriya (IBM Research) — nandana@ibm.com
+**Community Contributors**
+- Christodoulos Constantinides (IBM) — Christodoulos.Constantinides@ibm.com
+- Nandana Mihindukulasooriya (IBM) — nandana@ibm.com
 - Mustafa Eyceoz (Red Hat) — Mustafa.Eyceoz@partner.ibm.com
-- Gaetano Rossiello (IBM Research) — gaetano.rossiello@ibm.com
+- Gaetano Rossiello (IBM) — gaetano.rossiello@ibm.com
+- Agostino Capponi (Columbia University) — ac3827@columbia.edu
+- Chunghyun Han (Columbia University) — ch4005@columbia.edu
+- Abhinav Goel (Columbia University) ag5252@columbia.edu
+- Chaitya Shan (Columbia University) — cs4621@columbia.edu
+- Brian Zi Qi Zhu (Columbia University) — bzz2101@columbia.edu
 ---
 
 
