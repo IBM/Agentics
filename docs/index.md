@@ -21,6 +21,9 @@ Agentics is a lightweight, Python-native framework for building **structured and
 - **[Map-Reduce Operations](map_reduce.md)** 🔁
   Scaling transducible functions with map and reduce operations, batch processing patterns, and best practices.
 
+- **[Semantic Operators](semantic_operators.md)** 🔍
+  High-level declarative API for data transformations using natural language. Includes `sem_map`, `sem_filter`, `sem_agg`, and more LOTUS-style operations.
+
 - **[Agentics (AG)](agentics.md)** 🧬
   Working with `AG` typed state containers, loading data from JSON/CSV/DataFrames, and preserving type information across the pipeline.
 

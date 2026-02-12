@@ -14,6 +14,7 @@ nav:
   - 🧠 Core Concepts: core_concepts.md
   - ⚙️ Transducible Functions: transducible_functions.md
   - 🔁 Map-Reduce Operations: map_reduce.md
+  - 🔍 Semantic Operators: semantic_operators.md
   - 🧬 Agentics (AG): agentics.md
   - ⚡ Performance Optimization: optimization.md
   - 🔌 Tool Integration: tool_integration.md
