@@ -113,7 +113,7 @@ async def sem_filter(
     predicate. It is an agentic analogue of LOTUS-style semantic filtering.
 
     The `predicate_template` is a **LangChain-style template** (e.g., using `{field}`
-    placeholders) that is rendered against each source state’s fields. The rendered
+    placeholders) that is rendered against each source state's fields. The rendered
     text is then passed to an LLM-based logical classifier which produces a boolean
     decision (`condition_true`) for that state.
 
@@ -156,10 +156,12 @@ async def sem_filter(
         amap_batch_size=20,
         **kwargs,
     )
+    # Keep the more sophisticated version that handles both cases
     if "{" in predicate_template:
         ag_source.prompt_template = predicate_template
     else:
         target_ag.instructions += f"\n\nPredicate: {predicate_template}"
+
     map_out = await (target_ag << ag_source)
     target = ag_source.clone()
     target.states = []
@@ -200,3 +202,6 @@ async def sem_agg(
     if type(source) is pd.DataFrame:
         return output_ag.to_dataframe()
     return output_ag
+
+
+# Made with Bob
