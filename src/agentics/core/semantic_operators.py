@@ -177,7 +177,7 @@ async def sem_filter(
 async def sem_agg(
     source: AG | pd.DataFrame,
     target_type: Type[BaseModel] | str,
-    instructions: str = None,
+    instructions: str | None = None,
     # merge_output: bool = True,  ## Target, Merged
     **kwargs,
 ) -> AG | pd.DataFrame:
