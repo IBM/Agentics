@@ -617,6 +617,7 @@ Good reasons to define a separate transducible function:
 ---
 
 ## Next
+- 👉 **[Transducible Functions Tutorial](../tutorials/transducible_functions.ipynb)** to see how transducible functions works in practice
 - 👉 **[Map-Reduce Operations](map_reduce.md)** - Scaling with map and reduce, batch processing patterns
 
 ## Go to Index
