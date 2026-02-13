@@ -86,10 +86,9 @@ async def sem_map(
             if isinstance(target_type, str)
             else target_type
         ),
+        instructions=instructions,
         **kwargs,
     )
-
-    ag_source.prompt_template = instructions
 
     map_out = await (target_ag << ag_source)
     output_ag = None
@@ -192,11 +191,10 @@ async def sem_agg(
             if isinstance(target_type, str)
             else target_type
         ),
+        instructions=instructions,
+        transduction_type="areduce",
         **kwargs,
     )
-
-    ag_source.prompt_template = instructions
-    ag_source.transduction_type = "areduce"
 
     output_ag = await (target_ag << ag_source)
     if type(source) is pd.DataFrame:

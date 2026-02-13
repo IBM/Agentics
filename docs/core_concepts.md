@@ -20,12 +20,13 @@ You describe your data using **Pydantic models**:
 
 ```python
 from pydantic import BaseModel
+fromp typing import Optional
 
 class Product(BaseModel):
-    id: str | None = None
-    title: str | None = None
-    description: str | None = None
-    price: float | None = None
+    id: Optional[str] = None
+    title: Optional[str] = None
+    description: Optional[str] = None
+    price: Optional[float] = None
 ```
 
 These models serve three roles:
@@ -256,3 +257,6 @@ A typical workflow looks like this:
 
 ## Next
 - 👉 [Transducible Functions](transducible_functions.md) for concrete examples of defining and using transducible functions
+
+## Go to Index
+- 👉 [Index](index.md)

@@ -1,6 +1,6 @@
 # 🔍 Semantic Operators
 
-Semantic operators provide a high-level, declarative API for performing common data transformation tasks using natural language instructions. Inspired by LOTUS-style semantic operations, these operators enable you to work with structured and unstructured data using LLM-powered transformations.
+Semantic operators provide a high-level, declarative API for performing common data transformation tasks using natural language. Inspired by [LOTUS](https://lotus-data.github.io/)-style semantic operations, these operators enable you to work with structured and unstructured data using LLM-powered transformations.
 
 ---
 
@@ -12,12 +12,9 @@ Agentics semantic operators bridge the gap between traditional data manipulation
 
 | Operator | Description |
 |----------|-------------|
-| `sem_map` | Map each record using a natural language projection |
+| `sem_map` | Map each record using a natural language instruction |
 | `sem_filter` | Keep records that match a natural language predicate |
-| `sem_extract` | Extract one or more attributes from each row |
 | `sem_agg` | Aggregate across all records (e.g., for summarization) |
-| `sem_topk` | Order records by natural language sorting criteria |
-| `sem_join` | Join two datasets based on a natural language predicate |
 
 ---
 
@@ -51,7 +48,7 @@ async def sem_map(
 
 ### Returns
 
-- **`AG | pd.DataFrame`**: Transformed data in the same format as input
+- **`AG | pd.DataFrame`**: `AG` or `DataFrame` that contains the transformed data following `target_type`
 
 ### Example: Basic Mapping
 
@@ -71,18 +68,21 @@ df = pd.DataFrame({
 
 # Define target schema
 class Sentiment(BaseModel):
-    sentiment: str
-    confidence: float
+    sentiment: Optional[str] = Field(None, description="The sentiment of the review (e.g., positive, negative, neutral)")
+    confidence: Optional[float] = Field(None, description="Confidence score of the sentiment analysis btw 0 and 1")
 
 # Map reviews to sentiment
 result = await sem_map(
     source=df,
     target_type=Sentiment,
-    instructions="Analyze the sentiment of the review and provide a confidence score (0-1)"
+    instructions="Analyze the sentiment of the review and provide a confidence score between 0 and 1."
 )
 
-print(result)
 # Output includes original 'review' column plus 'sentiment' and 'confidence' columns
+                                         review  sentiment  confidence
+ 0  This product is amazing! Best purchase ever.  positive        0.85
+ 1        Terrible quality, broke after one day.  negative        0.99
+ 2               It works okay, nothing special.   neutral        0.85
 ```
 
 ### Example: String-based Target Type
@@ -94,24 +94,6 @@ result = await sem_map(
     target_type="category",
     instructions="Classify the review into one of: positive, negative, neutral"
 )
-
-print(result)
-# Output includes original columns plus a 'category' column
-```
-
-### Example: Extract Without Merge
-
-```python
-# Get only the mapped output without original data
-result = await sem_map(
-    source=df,
-    target_type=Sentiment,
-    instructions="Analyze sentiment",
-    merge_output=False
-)
-
-print(result)
-# Output contains only 'sentiment' and 'confidence' columns
 ```
 
 ---
@@ -164,7 +146,10 @@ result = await sem_filter(
 )
 
 print(result)
-# Returns only Laptop, Tablet, and Monitor
+   product                                       description
+0   Laptop  High-performance gaming laptop with RGB keyboard
+1   Tablet                Premium tablet with stylus support
+2  Monitor                  4K monitor for professional work
 ```
 
 ### Example: Template-based Filtering
@@ -175,9 +160,6 @@ result = await sem_filter(
     source=df,
     predicate_template="The {product} described as '{description}' is suitable for gaming"
 )
-
-print(result)
-# Returns only the gaming laptop
 ```
 
 ---
@@ -354,37 +336,11 @@ mapped = await sem_map(filtered, CustomerProfile, "Extract profile details")
 summary = await sem_agg(mapped, Summary, "Summarize customer segments")
 ```
 
-### Using with AG
-
-```python
-from agentics import AG
-
-# Load data into AG
-ag = AG.from_dataframe(df)
-
-# Apply semantic operators
-filtered_ag = await sem_filter(ag, "Important records")
-mapped_ag = await sem_map(filtered_ag, OutputType, "Transform data")
-
-# Continue with AG operations
-result = await (target_ag << mapped_ag)
-```
-
 ---
 
+## Next
+- 👉 [Semantic Operators Tutorial](../tutorials/semantic_operators.ipynb) - Code examples
+- 👉 [Agentics (AG)](agentics.md) for data modeling patterns and typed state containers
 
-## Coming Soon
-
-The following operators are planned for future releases:
-
-- **`sem_topk`**: Order and select top-k records by semantic criteria
-- **`sem_join`**: Join datasets based on semantic similarity or conditions
-
----
-
-## See Also
-
-- [Core Concepts](core_concepts.md) - Understanding Agentics fundamentals
-- [Transducible Functions](transducible_functions.md) - Lower-level transformation API
-- [Map-Reduce Operations](map_reduce.md) - Scaling transformations
-- [Agentics (AG)](agentics.md) - Working with typed state containers
+## Go to Index
+- 👉 [Index](index.md)
