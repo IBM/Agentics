@@ -86,10 +86,9 @@ async def sem_map(
             if isinstance(target_type, str)
             else target_type
         ),
+        instructions=instructions,
         **kwargs,
     )
-
-    ag_source.prompt_template = instructions
 
     map_out = await (target_ag << ag_source)
     output_ag = None
@@ -103,7 +102,9 @@ async def sem_map(
 
 
 async def sem_filter(
-    source: AG | pd.DataFrame, predicate_template: str, **kwargs
+    source: AG | pd.DataFrame, 
+    predicate_template: str, 
+    **kwargs
 ) -> AG | pd.DataFrame:
     """
     Agentics-native semantic filter over an `AG` using a LangChain-style condition template.
@@ -160,6 +161,7 @@ async def sem_filter(
         ag_source.prompt_template = predicate_template
     else:
         target_ag.instructions += f"\n\nPredicate: {predicate_template}"
+        
     map_out = await (target_ag << ag_source)
     target = ag_source.clone()
     target.states = []
@@ -190,11 +192,10 @@ async def sem_agg(
             if isinstance(target_type, str)
             else target_type
         ),
+        instructions=instructions,
+        transduction_type="areduce",
         **kwargs,
     )
-
-    ag_source.prompt_template = instructions
-    ag_source.transduction_type = "areduce"
 
     output_ag = await (target_ag << ag_source)
     if type(source) is pd.DataFrame:

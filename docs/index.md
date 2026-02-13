@@ -47,7 +47,9 @@ Agentics is a lightweight, Python-native framework for building **structured and
   End-to-end examples: text-to-SQL, data extraction and enrichment, classification, document workflows, evaluation pipelines, and more.
 
 
-
+## How to Cite Agentics
+- **[References](references.md)** 📚
+  Academic papers and research that form the foundation of Agentics, including transduction algebra, agentic AI, and applications.
 
 ---
 
@@ -92,6 +94,7 @@ The subset of input fields that contributed to generating a specific output fiel
 **Slot**  
 A field in a Pydantic model. "Slot-level provenance" means tracking which input slots contributed to each output slot.
 
+---
 
 ## Documentation
 

@@ -256,3 +256,6 @@ A typical workflow looks like this:
 
 ## Next
 - 👉 [Transducible Functions](transducible_functions.md) for concrete examples of defining and using transducible functions
+
+## Go to Index
+- 👉 [Index](index.md)

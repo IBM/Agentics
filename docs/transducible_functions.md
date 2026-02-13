@@ -618,3 +618,6 @@ Good reasons to define a separate transducible function:
 
 ## Next
 - 👉 **[Map-Reduce Operations](map_reduce.md)** - Scaling with map and reduce, batch processing patterns
+
+## Go to Index
+- 👉 [Index](index.md)

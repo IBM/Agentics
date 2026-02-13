@@ -297,3 +297,6 @@ The same transducible function works seamlessly for both single items and batche
 
 ## Next
 - 👉 [Core Concepts](core_concepts.md) - Understanding the theoretical foundation
+
+## Go to Index
+- 👉 [Index](index.md)

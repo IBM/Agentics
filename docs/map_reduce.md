@@ -374,6 +374,8 @@ Map operations are automatically parallelized based on `batch_size`. For more co
 ---
 
 ## Next
-- 👉 [Agentics (AG)](agentics.md) for data modeling patterns and typed state containers
 - 👉 [Map-Reduce Tutorial](../tutorials/map_reduce.ipynb) to see how large-scale execution works in practice
+- 👉 [Semantic Operators](semantic_operators.md) for performing data transformation tasks using natural language.
 
+## Go to Index
+- 👉 [Index](index.md)
