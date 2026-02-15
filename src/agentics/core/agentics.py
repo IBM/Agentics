@@ -180,22 +180,21 @@ class AG(BaseModel, Generic[T]):
     def create_crewai_llm(**kwargs):
         return LLM(**kwargs)
 
-    async def generate_atype(
-        self, description: str, retry: int = 3
-    ) -> Tuple[str, Type[BaseModel]] | None:
+    async def generate_atype(self, description: str, retry: int = 3):
         class GeneratedAtype(BaseModel):
             python_code: Optional[str] = Field(
                 None, description="Python Code for the described Pydantic type"
             )
-            methods: list[str] = Field(None, description="Methods for the class above")
+            # methods: list[str] = Field(None, description="Methods for the class above")
 
         i = 0
         while i < retry:
             generated_atype_ag = await (
                 AG(
                     atype=GeneratedAtype,
-                    instructions="""Generate python code for the input nl type specs.
-                Make all fields Optional. Use only primitive types for the fields, avoiding nested.
+                    instructions="""Generate Python code for the pydantic type following the input specs.
+                Make all fields Optional.
+                Use only primitive types for the fields, avoiding nested.
                 Provide descriptions for the class and all its fields, using Field(None,description= "...")
                 If the input nl type spec is a question, generate a pydantic type that can be used to
                 represent the answer to that question.

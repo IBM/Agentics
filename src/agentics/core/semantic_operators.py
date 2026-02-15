@@ -102,7 +102,10 @@ async def sem_map(
 
 
 async def sem_filter(
-    source: AG | pd.DataFrame, predicate_template: str, **kwargs
+    source: AG | pd.DataFrame,
+    predicate_template: str,
+    sensitivity: float = 0.8,
+    **kwargs,
 ) -> AG | pd.DataFrame:
     """
     Agentics-native semantic filter over an `AG` using a LangChain-style condition template.
@@ -148,10 +151,24 @@ async def sem_filter(
 
     target_ag = AG(
         atype=create_pydantic_model(
-            [("condition_true", "bool", """Condition is True""", False)], name="filter"
+            [
+                (
+                    "sentence_is_true",
+                    "bool",
+                    """Provide True if you think the input sentence is True, False otherwise""",
+                    False,
+                ),
+                (
+                    "truth_score",
+                    "float",
+                    """Provide a number from 0 to 1 to assess the degree to which the input Sentence is True. If you are uncertain, provide a number in the range (0,1)""",
+                    False,
+                ),
+            ],
+            name="filter",
         ),
-        instructions="""You are a Logical Classifier. You have been given an input sentence.
-            Read the input text and return true if the predicate is positive, false otherwise""",
+        instructions="""You have been given an input sentence.
+            Read the input text and return True if the sentence is true, False otherwise""",
         amap_batch_size=20,
         **kwargs,
     )
@@ -164,9 +181,10 @@ async def sem_filter(
     map_out = await (target_ag << ag_source)
     target = ag_source.clone()
     target.states = []
-    for i in range(len(map_out.states)):
-        if map_out[i].condition_true:
-            target.append(ag_source[i])
+
+    for map_out_c, source_c in zip(map_out.states, ag_source.states):
+        if map_out_c.truth_score and map_out_c.truth_score >= sensitivity:
+            target.append(source_c)
 
     if type(source) is pd.DataFrame:
         return target.to_dataframe()
