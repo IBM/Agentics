@@ -11,6 +11,12 @@
   Build AI-powered pipelines as <b>typed data transformations</b>—combining Pydantic schemas, LLM-powered transduction, and async execution.
 </p>
 
+---
+
+## ✨ Why Agentics
+
+Most "agent frameworks" let untyped text flow through a pipeline. Agentics flips that: **types are the interface**.
+Workflows are expressed as transformations between structured states, with predictable schemas and composable operators.
 
 ---
 

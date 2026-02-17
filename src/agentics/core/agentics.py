@@ -982,7 +982,7 @@ class AG(BaseModel, Generic[T]):
         Returns:
             DataFrame: A pandas DataFrame representing the current states.
         """
-        data = [state.model_dump() for state in self.states]
+        data = [state.model_dump(mode="json") for state in self.states]
         return pd.DataFrame(data)
 
     ########################################

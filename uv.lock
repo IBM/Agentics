@@ -134,7 +134,7 @@ requires-dist = [
     { name = "numerize", specifier = ">=0.12" },
     { name = "openai", specifier = ">=1.88.0,<2.0.0" },
     { name = "openapi-python-client", specifier = ">=0.24.3,<0.25.0" },
-    { name = "pandas", specifier = ">=2.3.3" },
+    { name = "pandas", specifier = ">=2" },
     { name = "plotly", specifier = ">=6.5.0" },
     { name = "pydantic" },
     { name = "pyyaml", specifier = ">=6.0.2,<7.0.0" },

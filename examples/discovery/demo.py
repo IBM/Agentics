@@ -65,7 +65,7 @@ with st.sidebar:
     if st.session_state.databases:
         for db in st.session_state.databases:
             st.markdown(
-                f"""### {db.name if db.name else ''} 
+                f"""### {db.name if db.name else ''}
 N rows: {len(DataFrame(db.df))  if db.df else ''}
 
 """
@@ -131,15 +131,15 @@ if execute_query_button:
         answer = asyncio.run(answer_question_from_data(question))
         st.markdown(
             f"""
-#### Short Answer: 
+#### Short Answer:
 
 {question.full_answer.short_answer}
 
-#### Full Answer 
+#### Full Answer
 
 {question.full_answer.full_answer}
 
-##### evidence 
+##### evidence
 """
         )
     if question.full_answer.selected_evidence:
