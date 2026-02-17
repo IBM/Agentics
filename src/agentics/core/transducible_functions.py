@@ -545,21 +545,27 @@ from agentics import AG
 
 
 async def generate_prototypical_instances(
-    type: Type[BaseModel], n_instances: int = 10, llm: Any = AG.get_llm_provider()
+    type: Type[BaseModel],
+    n_instances: int = 10,
+    llm: Any = AG.get_llm_provider(),
+    instructions: str = None,
 ) -> list[BaseModel]:
 
     DynamicModel = create_model(
         "ListOfObjectsOfGivenType",
         instances=(list[type] | None, None),  # REQUIRED field
     )
+    full_instructions = f"""
+              Generate list of {n_instances} random instances of the following type
+              {type.model_json_schema()}.
+              fill all attributed for each generated instance
+              """
+    if instructions:
+        full_instructions += "Adhere to the following instructions \n" + instructions
 
     target = AG(
         atype=DynamicModel,
-        instructions=f"""
-              Generate list of {n_instances} random instances of the following type
-              {type.model_json_schema()}.
-              Try to fill most of the attributed for each generated instance as possible
-              """,
+        instructions=full_instructions,
         llm=llm,
     )
     generated = await (target << "   ")

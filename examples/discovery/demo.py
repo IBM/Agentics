@@ -65,8 +65,8 @@ with st.sidebar:
     if st.session_state.databases:
         for db in st.session_state.databases:
             st.markdown(
-                f"""### {db.name if db.name else ""}
-N rows: {len(DataFrame(db.df)) if db.df else ""}
+                f"""### {db.name if db.name else ''}
+N rows: {len(DataFrame(db.df))  if db.df else ''}
 
 """
             )
@@ -86,6 +86,7 @@ N rows: {len(DataFrame(db.df)) if db.df else ""}
         st.success(f"{len(uploaded_files)} file(s) uploaded successfully.")
         st.session_state.databases = []
         for file in uploaded_files:
+
             try:
                 db = AgenticDB()
                 df = db.import_db_from_csv(file)  # ✅ pass the buffer
@@ -121,6 +122,7 @@ if execute_query_button:
     with st.spinner(
         "Agentics is reading your documents and generating intermediate evidence before answering your question. This might take some time ..."
     ):
+
         question = Question(
             question=question,
             dbs=st.session_state.databases,

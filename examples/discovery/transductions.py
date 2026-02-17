@@ -18,6 +18,7 @@ from agentics.core.transducible_functions import (
 
 @transducible()
 async def answer_question_from_data(state: Question) -> Question:
+
     if state.question:
         source_data = [AG.from_dataframe(DataFrame(db.df)) for db in state.dbs]
 

@@ -4,7 +4,7 @@ Transducible functions are the *workhorse* of Agentics.
 They turn “call this LLM with a prompt” into:
 
 > **A typed, explainable transformation**  
-> `T: X → Y` with guarantees about how each output field was produced.
+> `T: X → Y` with explanation about how each output field was produced.
 
 This document explains what transducible functions are, how they work in Agentics, and how to use them in practice — including **dynamic generation** and **compositional patterns** using the `<<` operator.
 
@@ -12,21 +12,16 @@ This document explains what transducible functions are, how they work in Agentic
 
 ## 1. What Is a Transducible Function?
 
-Formally, a **transducible function** \(T : X \to Y\) is an *explainable* function that satisfies:
+Formally, a **transducible function** `T: X → Y` is an *explainable* function that satisfies:
 
-1. **Totality**  
-   For every valid input \(x \in \llbracket X \rrbracket\), the function produces a valid output of type \(Y\).  
-   > No silent failures: the function always returns some well-typed `Y`.
 
-2. **Local Evidence**  
-   Each output slot \(y_i\) is computed only from its *evidence subset* \(\mathcal{E}_i(x)\).  
+1. **Local Evidence**  
+   Each output slot **yᵢ*** is computed only from its *evidence subset* **Eᵢ(x)**.  
    > No field is generated “from nowhere”: if `subject` appears in the output, we know which inputs and instructions it depended on.
 
-3. **Slot-Level Provenance**  
-   The mapping between input and output slots is explicit:  
-   \[
-   \mathcal{T}(y_i) = \mathcal{E}_i
-   \]  
+2. **Slot-Level Provenance** 
+   The mapping between input and output slots is explicit: **T(yᵢ) = Eᵢ**
+
    This induces a bipartite graph between **input slots** and **output slots**, which acts as the *explainability trace* of the transduction.
 
 Intuitively:
@@ -38,7 +33,7 @@ Transducible functions extend normal functions with **structural transparency at
 
 ---
 
-## 2. Source and Target Types (X and Y) 📐
+## 2. Source and Target Types 📐
 
 Agentics uses **Pydantic models** to represent the input type `X` and the output type `Y`.
 
@@ -61,7 +56,7 @@ class Email(BaseModel):
 
 > **Recommendation**  
 > In transduction scenarios, it is often useful to declare fields as `Optional[...] = None`.  
-> This gives the LLM the ability to say *“I don’t have enough evidence for this field”* by leaving it `null`, instead of hallucinating content.
+> This gives an LLM the ability to say *“I don’t have enough evidence for this field”* by leaving it `null`, instead of hallucinating content.
 
 The transducible function we will define next will transform exactly **one** `UserMessage` into **one** `Email` (and later, we’ll see how to scale to lists).
 
@@ -79,12 +74,12 @@ They can be defined in two main ways:
 1. Using the **`@transducible()` decorator** on an async Python function.
 2. **Dynamically generating** them from source and target types (e.g., via builders or the `<<` operator), with instructions and parameters.
 
-This section starts with the decorator pattern and then moves to dynamic generation and composition.
 
 ---
 
 ## 4. The `@transducible()` Decorator
 
+This section starts with the decorator pattern and then moves to dynamic generation and composition.
 The decorator turns an ordinary async function into a transducible function. When decorated with `@transducible()`, your function can return either:
 
 - A **concrete instance of the target type** `Y` (pure Python logic), or
@@ -246,7 +241,7 @@ Usage:
 
 ```python
 input_state = GenericInput(
-    content="Write a news story on Zoran Mandani winning the election in NYC and send it to Alfio"
+    content="Write a news story on the winner of Super Bowl in 2025 and send it to Alfio."
 )
 
 mail = await write_mail(input_state)
@@ -275,7 +270,7 @@ class Summary(BaseModel):
 
 ```python
 input_state = GenericInput(
-    content="Write news story on Zoran Mandani winning the election in NYC and send it to Alfio"
+    content="Write a news story on the winner of Super Bowl in 2025 and send it to Alfio."
 )
 
 write_mail = Email << GenericInput             # GenericInput → Email
@@ -346,7 +341,7 @@ summarize = Summary << With(
 )
 
 input_state = GenericInput(
-    content="Zoran Mandani won the election in NYC. Draft a message to the press list."
+    content="Philadelphia Eagles won Super Bowl 2025. Draft a message to the press list."
 )
 
 mail = await write_mail(input_state)
@@ -393,29 +388,177 @@ This pattern generalizes:
 - `With(..., provide_explanation=True)` can be used with other source/target pairs.
 - Explanations can be logged, inspected, or surfaced in UI as **transparent justification** for the model’s decision.
 
+### 6.5 `With()` Function Reference
+
+The `With()` function creates a `TransductionConfig` object that wraps a source model with configuration parameters. It's used with the `<<` operator to create configured transducible functions dynamically.
+
+**Signature:**
+```python
+def With(model: Type[BaseModel], **kwargs) -> TransductionConfig
+```
+
+**Parameters:**
+
+All parameters from the `@transducible()` decorator are supported:
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `instructions` | `str` | `""` | Custom instructions for the LLM on how to perform the transduction |
+| `tools` | `list[Any]` | `[]` | List of tools (MCP, CrewAI, or LangChain) available during transduction |
+| `enforce_output_type` | `bool` | `False` | If `True`, raises `TypeError` if output doesn't match target type |
+| `llm` | `Any` | `AG.get_llm_provider()` | LLM provider to use (OpenAI, WatsonX, Ollama, etc.) |
+| `reasoning` | `bool` | `False` | Enable reasoning mode for complex transductions |
+| `max_iter` | `int` | `10` | Maximum iterations for agentic reasoning loops |
+| `verbose_transduction` | `bool` | `True` | Print detailed transduction logs |
+| `verbose_agent` | `bool` | `False` | Print agent-level execution logs |
+| `batch_size` | `int` | `10` | Number of items to process in parallel batches |
+| `provide_explanation` | `bool` | `False` | Return explanation alongside result (see Section 6.6) |
+| `timeout` | `int` | `300` | Timeout in seconds for each transduction |
+| `post_processing_function` | `Callable` | `None` | Function to apply to outputs after transduction |
+| `persist_output` | `str` | `None` | Path to save intermediate batch results |
+| `transduce_fields` | `list[str]` | `None` | Specific fields to use for transduction |
+| `prompt_template` | `str` | `None` | Custom prompt template for the LLM |
+| `areduce` | `bool` | `False` | Use reduce mode instead of map (for aggregations) |
+
+**Usage Patterns:**
+
+```python
+# Basic usage with instructions
+classify = Genre << With(Movie, instructions="Classify the movie genre")
+
+# Multiple parameters
+enrich = EnrichedData << With(
+    RawData,
+    instructions="Enrich with external data",
+    tools=[web_search_tool],
+    batch_size=20,
+    timeout=600,
+    provide_explanation=True
+)
+
+# Comparison: With() vs @transducible()
+# These are equivalent:
+
+# Using With()
+fn1 = TargetType << With(SourceType, instructions="Transform data")
+
+# Using decorator
+@transducible(instructions="Transform data")
+async def fn2(state: SourceType) -> TargetType:
+    return Transduce(state)
+```
+
+**When to use `With()` vs `@transducible()`:**
+
+- Use `With()` for **dynamic, one-off transductions** where you don't need a named function
+- Use `@transducible()` for **reusable functions** that you'll call multiple times or compose into larger workflows
+- `With()` is ideal for **exploratory work** and **inline transformations**
+- `@transducible()` is better for **production code** with clear function names and documentation
+
 ---
 
-## 7. Map–Reduce: Scaling Transducible Functions 🚀
+### 6.6 Result Unpacking with `TransductionResult`
 
-When wrapped by `@transducible()` **or** created dynamically with `<<`, transducible functions are overloaded to accept **lists** of `X` as well. When called this way, they return a corresponding list of `Y`:
+When you set `provide_explanation=True` (either in `@transducible()` or `With()`), the transduction returns a `TransductionResult` object that supports automatic unpacking.
+
+**The `TransductionResult` Class:**
+
+```python
+class TransductionResult:
+    def __init__(self, value, explanation):
+        self.value = value          # The actual transduced output
+        self.explanation = explanation  # Explanation of how it was derived
+    
+    def __iter__(self):
+        yield self.value
+        yield self.explanation
+```
+
+**Automatic Unpacking Behavior:**
+
+The framework automatically detects how you assign the result:
+
+```python
+# Single assignment - get only the value
+result = await classify_genre(movie)
+print(result.genre)  # Access the Genre object directly
+
+# Tuple unpacking - get both value and explanation
+genre, explanation = await classify_genre(movie)
+print(genre.genre)  # The Genre object
+print(explanation.reasoning)  # The explanation object
+```
+
+**Example with Decorator:**
+
+```python
+@transducible(provide_explanation=True)
+async def classify_genre(state: Movie) -> Genre:
+    """Classify the genre of the source Movie."""
+    return Transduce(state)
+
+movie = Movie(
+    movie_name="The Godfather",
+    description="Crime family drama",
+    year=1972
+)
+
+# Get both result and explanation
+genre, explanation = await classify_genre(movie)
+
+print(f"Genre: {genre.genre}")
+print(f"Reasoning: {explanation.reasoning}")
+print(f"Confidence: {explanation.confidence}")
+```
+
+**Example with `With()`:**
+
+```python
+classify_genre = Genre << With(
+    Movie,
+    provide_explanation=True,
+    instructions="Classify based on plot and themes"
+)
+
+# Tuple unpacking works the same way
+genre, explanation = await classify_genre(movie)
+```
+
+**Batch Processing with Explanations:**
+
+When processing lists, each item gets its own explanation:
+
+```python
+movies = [movie1, movie2, movie3]
+
+# Returns list of values and list of explanations
+genres, explanations = await classify_genre(movies)
+
+for genre, explanation in zip(genres, explanations):
+    print(f"{genre.genre}: {explanation.reasoning}")
+```
+
+**Note:** If you don't need explanations, simply omit `provide_explanation=True` and the function returns only the transduced value(s).
+
+---
+
+---
+
+## 7. Batch Processing with Lists
+
+Transducible functions automatically support batch processing. When you pass a list of items, they are processed efficiently:
 
 ```python
 messages = [
     UserMessage(content="Hi John, I made great progress with Agentics."),
-    UserMessage(content="Hi , I fixed the last blocking bug in the pipeline."),
+    UserMessage(content="Hi, I fixed the last blocking bug in the pipeline."),
 ]
 
+# Automatically processes all messages
 emails = await write_email_with_llm(messages)
 ```
 
-Under the hood, Agentics uses an **asynchronous Map** operation:
-
-- Conceptually:  
-  `amap(write_email_with_llm, messages) -> list[Email]`
-- Each element is processed independently, enabling concurrency and parallelism.
-- This pattern scales to **batch inference, dataset scans, and large evidence extraction tasks**.
-
-Later, you can combine this with **Reduce** operations (e.g., summarizing all emails into a single report), forming full Map–Reduce pipelines over typed states.
+For detailed information on Map-Reduce operations, scaling to large datasets, and aggregation patterns, see the dedicated [Map-Reduce](map_reduce.md) documentation.
 
 ---
 
@@ -423,8 +566,7 @@ Later, you can combine this with **Reduce** operations (e.g., summarizing all em
 
 Because transducible functions are defined over explicit types and carry evidence subsets, Agentics can:
 
-- Track which input fields contributed to each output field.
-- Represent this as a **bipartite graph** between input and output slots.
+- Track which input fields contributed to the output.
 - Attach this trace as **metadata** to your states (depending on your Agentics configuration).
 
 For example, in the email examples:
@@ -435,25 +577,24 @@ For example, in the email examples:
 
 This is critical when you:
 
-- Need **auditable** LLM behavior.  
-- Want to debug why a particular field was generated.  
-- Need to enforce *“no hallucination from outside these inputs”* policies.
+- Need **auditable** LLM behavior.
+- Want to debug why a particular field was generated.
+- Need to enforce *"no hallucination from outside these inputs"* policies.
 
 ---
 
 ## 9. When to Create a New Transducible Function
 
-In a real system, you’ll typically end up with many small, focused transducible functions instead of one giant one.
+In a real system, you'll typically end up with many small, focused transducible functions instead of one giant one.
 
 Good reasons to define a separate transducible function:
 
-- You’re doing a logically distinct step:
+- You're doing a logically distinct step:
   - e.g., *extract entities*, *normalize names*, *classify intent*, *summarize conversation*.
 - You want to **test** and **benchmark** that step independently.
 - You expect to **reuse** it across pipelines.
 - You need different **instructions, constraints, or safety properties** for that stage.
 
-Think of transducible functions as the **operators** of your Logical Transduction Algebra.
 
 ---
 
@@ -473,8 +614,11 @@ Think of transducible functions as the **operators** of your Logical Transductio
   - Expose structured explainability traces for each output field.
   - Compose into robust, interpretable, large-scale reasoning pipelines.
 
-From here you can explore:
+---
 
-- `core_concepts.md` – the broader mental model (types, states, LTA, Map–Reduce).  
-- `mapreduce.md` – how Agentics orchestrates large-scale transductions over typed state containers.  
-- `types_and_states.md` – how to design good schemas and manage collections of states.
+## Next
+- 👉 **[Transducible Functions Tutorial](../tutorials/transducible_functions.ipynb)** to see how transducible functions works in practice
+- 👉 **[Map-Reduce Operations](map_reduce.md)** - Scaling with map and reduce, batch processing patterns
+
+## Go to Index
+- 👉 [Index](index.md)

@@ -19,12 +19,11 @@ Agentics is a lightweight, Python-native framework for building structured, agen
   curl -LsSf https://astral.sh/uv/install.sh | sh
   ```
 
-  Other installation options [here](curl -LsSf https://astral.sh/uv/install.sh | sh)
+  Other installation options [here](https://docs.astral.sh/uv/getting-started/installation/)
 
 * Install the dependencies
 
   ```bash
-  
   uv sync
   # Source the environment (optional, you can skip this and prepend uv run to the later lines)
   source .venv/bin/activate # bash/zsh 🐚
@@ -32,21 +31,21 @@ Agentics is a lightweight, Python-native framework for building structured, agen
   ```
 
 
-### 🎯 Set Environment Variables
+### 🎯 Environment Variables
 
 Create a `.env` file in the root directory with your environment variables. See `.env.sample` for an example.
 
-Set Up LLM provider, Chose one of the following: 
+Set up LLM provider, chose one of the following: 
 
 #### OpenAI
 
 - Obtain API key from [OpenAI](https://platform.openai.com/)
 - `OPENAI_API_KEY` - Your OpenAI APIKey
-- `OPENAI_MODEL_ID` - Your favorute model, default to **openai/gpt-4**
+- `OPENAI_MODEL_ID` - Selected model, default to **openai/gpt-4**
 
 #### Ollama (local)
 - Download and install [Ollama](https://ollama.com/)
-- Download a Model. You should use a model that support reasoning and fit your GPU. So smaller are preferred. 
+- Download a model. You should use a model that support reasoning and fit your GPU. So smaller are preferred. 
 ```
 ollama pull ollama/deepseek-r1:latest
 ```
@@ -59,11 +58,11 @@ ollama pull ollama/deepseek-r1:latest
 - `MODEL`  - watsonx/meta-llama/llama-3-3-70b-instruct (or alternative supporting function call)
 
 
-#### Google Gemini (offer free API key) 
+#### Google Gemini (offers free API key)
 
-- `WATSONX_APIKEY` - WatsonX API key
+- `GEMINI_API_KEY` - Your Google Gemini API key (get it from [Google AI Studio](https://aistudio.google.com/))
 
-- `MODEL`  - watsonx/meta-llama/llama-3-3-70b-instruct (or alternative supporting function call)
+- `MODEL` - `gemini/gemini-1.5-pro` or `gemini/gemini-1.5-flash` (or other Gemini models supporting function calling)
 
 
 #### VLLM (Need dedicated GPU server):
@@ -72,209 +71,146 @@ ollama pull ollama/deepseek-r1:latest
 - `VLLM_URL` - <http://base_url:PORT/v1>
 - `VLLM_MODEL_ID` - Your model id (e.g. "hosted_vllm/meta-llama/Llama-3.3-70B-Instruct" )
 
-#### LiteLLM (100+ providers via single interface)
-
-LiteLLM provides a unified interface to access 100+ LLM providers. You can use models from OpenAI, Anthropic, Google, Cohere, Azure, Hugging Face, and more.
-
-**Basic Setup (Local LiteLLM)**:
-
-- `LITELLM_MODEL` - Model in format `provider/model-name` (e.g., `openai/gpt-4`, `claude/claude-opus-4-5-20251101`, `gemini/gemini-2.0-flash`)
-- The required API key for your provider should be in environment variables (e.g., `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, etc.)
-- Optional: `LITELLM_TEMPERATURE` - Set temperature (default: varies by provider)
-- Optional: `LITELLM_TOP_P` - Set top-p sampling (default: varies by provider)
-
-**Examples**:
-
-OpenAI via LiteLLM:
-```bash
-export LITELLM_MODEL="openai/gpt-4"
-export OPENAI_API_KEY="sk-..."
-```
-
-Anthropic Claude via LiteLLM:
-```bash
-export LITELLM_MODEL="claude/claude-opus-4-5-20251101"
-export ANTHROPIC_API_KEY="sk-ant-..."
-```
-
-Google Gemini via LiteLLM:
-```bash
-export LITELLM_MODEL="gemini/gemini-2.0-flash"
-export GOOGLE_API_KEY="..."
-```
-
-**LiteLLM Proxy Server**
-
-If you have a self-hosted LiteLLM proxy server:
-
-- `LITELLM_PROXY_URL` - Base URL of your LiteLLM proxy (e.g., `http://localhost:8000`)
-- `LITELLM_PROXY_API_KEY` - API key for the proxy
-- `LITELLM_PROXY_MODEL` - Model name in format `litellm_proxy/<model-name>` (e.g., `litellm_proxy/gpt-4`)
-- Optional: `LITELLM_PROXY_TEMPERATURE` - Set temperature
-- Optional: `LITELLM_PROXY_TOP_P` - Set top-p sampling
-
-**Example**:
-```bash
-export LITELLM_PROXY_URL="http://localhost:8000"
-export LITELLM_PROXY_API_KEY="sk-proxy-key-123"
-export LITELLM_PROXY_MODEL="litellm_proxy/my-model"
-```
-
-Also you can use the provided script for configuration in the git repo (⚠️not available
-through `pip install`)
-
-```bash
-uv run tasks.py setup
-```
-
-**Checking LiteLLM Status**
-
-After configuration, you can check if your LiteLLM setup is working:
-
-```bash
-show-llms
-```
-
-This will display a table showing the authentication status of all configured LLMs, including LiteLLM.
-
 
 ## Test Installation
 
-test hello world example (need to set up llm credentials first)
+Test hello world example (need to set up llm credentials first)
 
 ```bash
-uv run examples/hello_world.py
-uv run examples/self_transduction.py
-uv run examples/agentics_web_search_report.py
+python python examples/hello_world.py
+python examples/self_transduction.py
+python examples/agentics_web_search_report.py
 
 ```
 
 
 ## Hello World
 
+Transform boring product descriptions into viral tweets in just a few lines:
+
 ```python
-from typing import Optional
 from pydantic import BaseModel, Field
+from agentics.core.transducible_functions import transducible, Transduce
 
-from agentics.core.transducible_functions import Transduce, transducible
+from typing import Optional
 
+class ProductDescription(BaseModel):
+    name: Optional[str] = None
+    features: Optional[str] = None
+    price: Optional[float] = None
 
-class Movie(BaseModel):
-    movie_name: Optional[str] = None
+class ViralTweet(BaseModel):
+    tweet: Optional[str] = Field(None, description="Engaging tweet under 280 characters")
+    hashtags: Optional[list[str]] = Field(None, description="3-5 relevant hashtags")
+    hook: Optional[str] = Field(None, description="Attention-grabbing opening line")
+
+@transducible()
+async def generate_viral_tweet(product: ProductDescription) -> ViralTweet:
+    """Transform boring product descriptions into viral social media content."""
+    return Transduce(product)
+
+# Transform a product into viral content
+product = ProductDescription(
+    name="Agentics Framework",
+    features="Type-safe AI workflows with LLM-powered transductions",
+    price=0.0  # Open source!
+)
+
+tweet = await generate_viral_tweet(product)
+print(f"🔥 {tweet.tweet}")
+print(f"📱 {' '.join(tweet.hashtags)}")
+```
+
+**Output:**
+```
+🔥 Stop wrestling with unstructured LLM outputs! 🎯 Agentics gives you type-safe AI workflows that just work. Build production-ready agents in minutes, not weeks. And it's FREE! 🚀
+📱 #AI #OpenSource #Python #LLM #DevTools
+```
+
+### Alternative: Using  `<<` Operator
+
+For quick one-off transductions, use `<<` operator:
+
+```python
+from pydantic import BaseModel
+
+from typing import Optional
+
+class Product(BaseModel):
+    name: Optional[str] = None
     description: Optional[str] = None
-    year: Optional[int] = None
 
+class Tweet(BaseModel):
+    content: Optional[str] = None
 
-class Genre(BaseModel):
-    genre: Optional[str] = Field(None, description="e.g., comedy, drama, action")
+# Create transduction on the fly
+make_tweet = Tweet << Product
 
-movie = Movie(movie_name="The Godfather")
+product = Product(
+    name="Agentics",
+    description="Type-safe AI framework for Python"
+)
 
-genre = await (Genre << Movie)(movie)
-
+tweet = await make_tweet(product)
+print(tweet.content)
 ```
 
-### Installation details
+This concise syntax is perfect for exploratory work and rapid prototyping!
 
-=== "Poetry"
+### Batch Processing: Multiple Products
 
-    Install poetry (skip if available)
+Transducible functions automatically support batch processing. Process multiple products at once in parallel:
 
-    ```bash
-    curl -sSL https://install.python-poetry.org | python3 -
-    ```
+```python
 
-    Clone and install agentics
+products = [
+    ProductDescription(
+        name="Agentics Framework",
+        features="Type-safe AI workflows with LLM-powered transductions",
+        price=0.0
+    ),
+    ProductDescription(
+        name="Smart Coffee Maker",
+        features="AI-powered brewing with perfect temperature control",
+        price=299.99
+    ),
+    ProductDescription(
+        name="Wireless Earbuds Pro",
+        features="Active noise cancellation and 30-hour battery life",
+        price=149.99
+    ),
+]
 
-    ```bash
-    
-    poetry install
-    source $(poetry env info --path)/bin/activate 
-    ```
+# Automatically processes all products in parallel
+tweets = await generate_viral_tweet(products)
 
-=== "Python"
-
-    > Ensure you have Python 3.11+ 🚨.
-    >
-    > ```shell
-    > python --version
-    > ```
-
-    * Create a virtual environment with Python's built in `venv` module. In linux, this 
-    package may be required to be installed with the Operating System package manager.
-        ```shell
-        python -m venv .venv
-        ```
-
-    * Activate the virtual environment
-
-    ### Bash/Zsh
-
-    `source .venv/bin/activate`
-
-    ### Fish
-
-    `source .venv/bin/activate.fish`
-
-    ### VSCode 
-
-    Press `F1` key and start typing `> Select python` and select `Select Python Interpreter`
-
-    * Install the package
-        ```bash
-        python -m pip install ./agentics
-        ```
-    
-
-=== "uv"
-
-    * Ensure `uv` is installed.
-    ```bash
-    command -v uv >/dev/null &&  curl -LsSf https://astral.sh/uv/install.sh | sh
-    # It's recommended to restart the shell afterwards
-    exec $SHELL
-    ```
-    * `uv venv --python 3.11`
-    * `uv pip install ./agentics` or `uv add ./agentics` (recommended)
-  
-
-=== "uvx 🏃🏽"
-
-    > This is a way to run agentics temporarily or quick tests
-
-    * Ensure `uv` is installed.
-    ```bash
-    command -v uv >/dev/null &&  curl -LsSf https://astral.sh/uv/install.sh | sh
-    # It's recommended to restart the shell afterwards
-    exec $SHELL
-    ```
-    * uvx --verbose --from ./agentics ipython
-
-
-=== "Conda"
-
-    1. Create a conda environment:
-       ```bash
-       conda create -n agentics python=3.11
-       ```
-       In this example the name of the environment is `agetnics` but you can change
-       it to your personal preference.
-
-
-    2. Activate the environment
-        ```bash
-        conda activate agentics
-        ```
-    3. Install `agentics` from a folder or git reference
-        ```bash
-        pip install ./agentics
-        ```
-
-## Documentation
-
-This documentation page is written using Mkdocs. 
-You can start the server to visualize this interactively.
-```bash
-mkdocs serve
+# Display results
+for product, tweet in zip(products, tweets):
+    print(f"\n📦 Product: {product.name}")
+    print(f"🔥 Tweet: {tweet.tweet}")
+    print(f"📱 Tags: {' '.join(tweet.hashtags)}")
 ```
-After started, documentation will be available here [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
+
+**Output:**
+```
+📦 Product: Agentics Framework
+🔥 Tweet: Stop wrestling with unstructured LLM outputs! 🎯 Agentics gives you type-safe AI workflows that just work. Build production-ready agents in minutes, not weeks. And it's FREE! 🚀
+📱 Tags: #AI #OpenSource #Python #LLM #DevTools
+
+📦 Product: Smart Coffee Maker
+🔥 Tweet: Wake up to perfection! ☕ Our AI-powered coffee maker learns your taste and brews the perfect cup every time. Never settle for mediocre coffee again! 🤖
+📱 Tags: #SmartHome #Coffee #AI #Tech #MorningRoutine
+
+📦 Product: Wireless Earbuds Pro
+🔥 Tweet: Silence the world, amplify your music! 🎧 30 hours of pure audio bliss with active noise cancellation. Your commute just got an upgrade! 🔋
+📱 Tags: #Audio #Tech #Wireless #Music #Productivity
+```
+
+The same transducible function works seamlessly for both single items and batches—no code changes needed!
+
+
+## Next
+- 👉 [Core Concepts](core_concepts.md) - Understanding the theoretical foundation
+
+## Go to Index
+- 👉 [Index](index.md)

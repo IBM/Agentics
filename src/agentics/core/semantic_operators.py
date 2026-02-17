@@ -86,10 +86,9 @@ async def sem_map(
             if isinstance(target_type, str)
             else target_type
         ),
+        instructions=instructions,
         **kwargs,
     )
-
-    ag_source.prompt_template = instructions
 
     map_out = await (target_ag << ag_source)
     output_ag = None
@@ -103,7 +102,10 @@ async def sem_map(
 
 
 async def sem_filter(
-    source: AG | pd.DataFrame, predicate_template: str, **kwargs
+    source: AG | pd.DataFrame,
+    predicate_template: str,
+    sensitivity: float = 0.8,
+    **kwargs,
 ) -> AG | pd.DataFrame:
     """
     Agentics-native semantic filter over an `AG` using a LangChain-style condition template.
@@ -113,7 +115,7 @@ async def sem_filter(
     predicate. It is an agentic analogue of LOTUS-style semantic filtering.
 
     The `predicate_template` is a **LangChain-style template** (e.g., using `{field}`
-    placeholders) that is rendered against each source state’s fields. The rendered
+    placeholders) that is rendered against each source state's fields. The rendered
     text is then passed to an LLM-based logical classifier which produces a boolean
     decision (`condition_true`) for that state.
 
@@ -149,21 +151,40 @@ async def sem_filter(
 
     target_ag = AG(
         atype=create_pydantic_model(
-            [("condition_true", "bool", """Condition is True""", False)], name="filter"
+            [
+                (
+                    "sentence_is_true",
+                    "bool",
+                    """Provide True if you think the input sentence is True, False otherwise""",
+                    False,
+                ),
+                (
+                    "truth_score",
+                    "float",
+                    """Provide a number from 0 to 1 to assess the degree to which the input Sentence is True. If you are uncertain, provide a number in the range (0,1)""",
+                    False,
+                ),
+            ],
+            name="filter",
         ),
-        instructions="""You are a Logical Classifier. You have been given an input sentence.
-            Read the input text and return true if the predicate is positive, false otherwise""",
+        instructions="""You have been given an input sentence.
+            Read the input text and return True if the sentence is true, False otherwise""",
         amap_batch_size=20,
         **kwargs,
     )
+    # Keep the more sophisticated version that handles both cases
+    if "{" in predicate_template:
+        ag_source.prompt_template = predicate_template
+    else:
+        target_ag.instructions += f"\n\nPredicate: {predicate_template}"
 
-    ag_source.prompt_template = predicate_template
     map_out = await (target_ag << ag_source)
     target = ag_source.clone()
     target.states = []
-    for i in range(len(map_out.states)):
-        if map_out[i].condition_true:
-            target.append(ag_source[i])
+
+    for map_out_c, source_c in zip(map_out.states, ag_source.states):
+        if map_out_c.truth_score and map_out_c.truth_score >= sensitivity:
+            target.append(source_c)
 
     if type(source) is pd.DataFrame:
         return target.to_dataframe()
@@ -174,7 +195,7 @@ async def sem_filter(
 async def sem_agg(
     source: AG | pd.DataFrame,
     target_type: Type[BaseModel] | str,
-    instructions: str = None,
+    instructions: str | None = None,
     # merge_output: bool = True,  ## Target, Merged
     **kwargs,
 ) -> AG | pd.DataFrame:
@@ -188,13 +209,15 @@ async def sem_agg(
             if isinstance(target_type, str)
             else target_type
         ),
+        instructions=instructions,
+        transduction_type="areduce",
         **kwargs,
     )
-
-    ag_source.prompt_template = instructions
-    ag_source.transduction_type = "areduce"
 
     output_ag = await (target_ag << ag_source)
     if type(source) is pd.DataFrame:
         return output_ag.to_dataframe()
     return output_ag
+
+
+# Made with Bob
