@@ -16,12 +16,6 @@ required-markers = [
     "platform_machine == 'x86_64' and sys_platform == 'linux'",
 ]
 
-[manifest]
-members = [
-    "agentics-py",
-    "polymarkets",
-]
-
 [[package]]
 name = "absl-py"
 version = "2.3.1"
@@ -133,7 +127,7 @@ requires-dist = [
     { name = "mellea" },
     { name = "numerize", specifier = ">=0.12" },
     { name = "openai", specifier = ">=1.88.0,<2.0.0" },
-    { name = "openapi-python-client", specifier = ">=0.24.3,<0.25.0" },
+    { name = "openapi-python-client", specifier = ">=0.28.2,<0.29.0" },
     { name = "pandas", specifier = ">=2" },
     { name = "plotly", specifier = ">=6.5.0" },
     { name = "pydantic" },
@@ -3102,7 +3096,7 @@ wheels = [
 
 [[package]]
 name = "openapi-python-client"
-version = "0.24.3"
+version = "0.28.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "attrs" },
@@ -3115,11 +3109,10 @@ dependencies = [
     { name = "ruff" },
     { name = "shellingham" },
     { name = "typer" },
-    { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/93/1b/1eabe23bf58bdd1a8c67c490202230999403172e99ccdd75adb39931e103/openapi_python_client-0.24.3.tar.gz", hash = "sha256:472d6f4a55dea35e471b08879fc72c4823c1b693cb11ea09eaae742aa1ec170d", size = 124384, upload-time = "2025-03-31T22:44:28.373Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/60/78/3ecdf2a6fc49cabb09c75c20df2cfa8756d360409093f7f9f8ee5c23984d/openapi_python_client-0.28.2.tar.gz", hash = "sha256:3699a7138fae3d89ce7f27922a985562e88fe790171db5626bfc7b4ae4cd4c31", size = 125955, upload-time = "2026-02-12T01:22:51.583Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c2/9a/943e90d88cbb303a1ceadffd058cec40dfbee75aa3bbf8e7fe982ec8575b/openapi_python_client-0.24.3-py3-none-any.whl", hash = "sha256:1a5580c05a3cb4e0e58101b4d05ce1680f9c51d41a68ce220611e848b80c2ba9", size = 180947, upload-time = "2025-03-31T22:44:26.359Z" },
+    { url = "https://files.pythonhosted.org/packages/df/1b/10f47043498f16c4f6a0492d2d309c2b42599f6cd7440adab7e88b1c0d3a/openapi_python_client-0.28.2-py3-none-any.whl", hash = "sha256:0b6b84114af49ca672a57ae4421db9b2b09f55304a525731b91cf9d80e9313e5", size = 183194, upload-time = "2026-02-12T01:22:49.629Z" },
 ]
 
 [[package]]
@@ -3515,11 +3508,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/c9/3a/db522ea17e0e8d38f
 wheels = [
     { url = "https://files.pythonhosted.org/packages/94/7c/535646d75a1c510065169ea65693613c7a6bc64491bea13e7dad4f028ff3/polyfactory-3.1.0-py3-none-any.whl", hash = "sha256:78171232342c25906d542513c9f00ebf41eadec2c67b498490a577024dd7e867", size = 61836, upload-time = "2025-11-25T08:10:14.893Z" },
 ]
-
-[[package]]
-name = "polymarkets"
-version = "0.1.0"
-source = { virtual = "sandbox/polymarkets" }
 
 [[package]]
 name = "portalocker"
@@ -5336,7 +5324,7 @@ wheels = [
 
 [[package]]
 name = "typer"
-version = "0.15.4"
+version = "0.19.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -5344,9 +5332,9 @@ dependencies = [
     { name = "shellingham" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6c/89/c527e6c848739be8ceb5c44eb8208c52ea3515c6cf6406aa61932887bf58/typer-0.15.4.tar.gz", hash = "sha256:89507b104f9b6a0730354f27c39fae5b63ccd0c95b1ce1f1a6ba0cfd329997c3", size = 101559, upload-time = "2025-05-14T16:34:57.704Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/21/ca/950278884e2ca20547ff3eb109478c6baf6b8cf219318e6bc4f666fad8e8/typer-0.19.2.tar.gz", hash = "sha256:9ad824308ded0ad06cc716434705f691d4ee0bfd0fb081839d2e426860e7fdca", size = 104755, upload-time = "2025-09-23T09:47:48.256Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c9/62/d4ba7afe2096d5659ec3db8b15d8665bdcb92a3c6ff0b95e99895b335a9c/typer-0.15.4-py3-none-any.whl", hash = "sha256:eb0651654dcdea706780c466cf06d8f174405a659ffff8f163cfbfee98c0e173", size = 45258, upload-time = "2025-05-14T16:34:55.583Z" },
+    { url = "https://files.pythonhosted.org/packages/00/22/35617eee79080a5d071d0f14ad698d325ee6b3bf824fc0467c03b30e7fa8/typer-0.19.2-py3-none-any.whl", hash = "sha256:755e7e19670ffad8283db353267cb81ef252f595aa6834a0d1ca9312d9326cb9", size = 46748, upload-time = "2025-09-23T09:47:46.777Z" },
 ]
 
 [[package]]
