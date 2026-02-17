@@ -10,6 +10,9 @@ load_dotenv()
 # Track which environment variables are used for each LLM
 _llms_env_vars: dict[str, list[str]] = {}
 
+# Cache for available LLMs (computed once at first use)
+_available_llms_cache: dict[str, LLM | AsyncOpenAI] | None = None
+
 
 def get_llm_provider(provider_name: str | None = None) -> LLM | AsyncOpenAI | None:
     """
@@ -48,6 +51,30 @@ def get_llm_provider(provider_name: str | None = None) -> LLM | AsyncOpenAI | No
 def _check_env(*var_names: str) -> bool:
     """Check if all given environment variables are non-empty."""
     return all(os.getenv(var) for var in var_names)
+
+
+def get_cached_available_llms() -> dict[str, LLM | AsyncOpenAI]:
+    """
+    Get cached LLMs or compute and cache them on first call.
+
+    This avoids repeatedly scanning environment variables on every access.
+    Call refresh_llm_cache() if you need to reload the configuration.
+    """
+    global _available_llms_cache
+    if _available_llms_cache is None:
+        _available_llms_cache = get_available_llms()
+    return _available_llms_cache
+
+
+def refresh_llm_cache() -> dict[str, LLM | AsyncOpenAI]:
+    """
+    Force refresh the LLM cache.
+
+    Call this if environment variables change at runtime.
+    """
+    global _available_llms_cache
+    _available_llms_cache = None
+    return get_cached_available_llms()
 
 
 def _get_llm_params(model: str) -> dict:
@@ -108,23 +135,6 @@ def get_available_llms() -> dict[str, LLM | AsyncOpenAI]:
         )
         _llms_env_vars["ollama_llm"] = ["OLLAMA_MODEL_ID"]
 
-    # OpenAI LLM
-    if _check_env("OPENAI_API_KEY"):
-        openai_llm = LLM(
-            model=os.getenv("OPENAI_MODEL_ID", "openai/gpt-4"),
-            server_url=os.getenv("OPENAI_BASE_URL"),
-            temperature=0.8,
-            top_p=0.9,
-            stop=["END"],
-            api_key=os.getenv("OPENAI_API_KEY"),
-            seed=42,
-        )
-        llms["openai_llm"] = openai_llm
-        llms["openai"] = openai_llm
-        env_vars = ["OPENAI_API_KEY", "OPENAI_MODEL_ID"]
-        _llms_env_vars["openai_llm"] = env_vars
-        _llms_env_vars["openai"] = env_vars
-
     # OpenAI Compatible LLM
     if _check_env(
         "OPENAI_COMPATIBLE_API_KEY",
@@ -148,23 +158,6 @@ def get_available_llms() -> dict[str, LLM | AsyncOpenAI]:
         ]
         _llms_env_vars["openai_compatible_llm"] = env_vars
         _llms_env_vars["openai_compatible"] = env_vars
-
-    # WatsonX LLM
-    if _check_env("WATSONX_APIKEY", "WATSONX_URL", "WATSONX_PROJECTID", "MODEL_ID"):
-        watsonx_llm = LLM(
-            model=os.getenv("MODEL_ID"),
-            base_url=os.getenv("WATSONX_URL"),
-            project_id=os.getenv("WATSONX_PROJECTID"),
-            api_key=os.getenv("WATSONX_APIKEY"),
-            temperature=0,
-            max_tokens=4000,
-            max_input_tokens=100000,
-        )
-        llms["watsonx_llm"] = watsonx_llm
-        llms["watsonx"] = watsonx_llm
-        env_vars = ["WATSONX_APIKEY", "WATSONX_URL", "WATSONX_PROJECTID", "MODEL_ID"]
-        _llms_env_vars["watsonx_llm"] = env_vars
-        _llms_env_vars["watsonx"] = env_vars
 
     # VLLM (AsyncOpenAI)
     if _check_env("VLLM_URL"):
@@ -255,6 +248,23 @@ def get_available_llms() -> dict[str, LLM | AsyncOpenAI]:
             _llms_env_vars["litellm_proxy_llm"] = env_vars
             _llms_env_vars["litellm_proxy"] = env_vars
 
+    # OpenAI LLM
+    if _check_env("OPENAI_API_KEY"):
+        openai_llm = LLM(
+            model=os.getenv("OPENAI_MODEL_ID", "openai/gpt-4"),
+            base_url=os.getenv("OPENAI_BASE_URL"),
+            temperature=0.8,
+            top_p=0.9,
+            stop=["END"],
+            api_key=os.getenv("OPENAI_API_KEY"),
+            seed=42,
+        )
+        llms["openai_llm"] = openai_llm
+        llms["openai"] = openai_llm
+        env_vars = ["OPENAI_API_KEY", "OPENAI_MODEL_ID"]
+        _llms_env_vars["openai_llm"] = env_vars
+        _llms_env_vars["openai"] = env_vars
+
     return llms
 
 
@@ -265,9 +275,11 @@ def __getattr__(name: str) -> dict[str, LLM | AsyncOpenAI] | LLM | AsyncOpenAI |
     Allows accessing 'available_llms' and individual LLM variables dynamically.
     """
     if name == "available_llms":
-        return get_available_llms()
+        # return get_available_llms()
+        return get_cached_available_llms()
 
-    llms = get_available_llms()
+    # llms = get_available_llms()
+    llms = get_cached_available_llms()
     if name in llms:
         return llms[name]
 
