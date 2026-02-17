@@ -56,7 +56,7 @@ def _check_env(*var_names: str) -> bool:
 def get_cached_available_llms() -> dict[str, LLM | AsyncOpenAI]:
     """
     Get cached LLMs or compute and cache them on first call.
-    
+
     This avoids repeatedly scanning environment variables on every access.
     Call refresh_llm_cache() if you need to reload the configuration.
     """
@@ -69,7 +69,7 @@ def get_cached_available_llms() -> dict[str, LLM | AsyncOpenAI]:
 def refresh_llm_cache() -> dict[str, LLM | AsyncOpenAI]:
     """
     Force refresh the LLM cache.
-    
+
     Call this if environment variables change at runtime.
     """
     global _available_llms_cache
@@ -158,8 +158,6 @@ def get_available_llms() -> dict[str, LLM | AsyncOpenAI]:
         ]
         _llms_env_vars["openai_compatible_llm"] = env_vars
         _llms_env_vars["openai_compatible"] = env_vars
-
-
 
     # VLLM (AsyncOpenAI)
     if _check_env("VLLM_URL"):
@@ -278,7 +276,7 @@ def __getattr__(name: str) -> dict[str, LLM | AsyncOpenAI] | LLM | AsyncOpenAI |
     """
     if name == "available_llms":
         # return get_available_llms()
-        return get_cached_available_llms()    
+        return get_cached_available_llms()
 
     # llms = get_available_llms()
     llms = get_cached_available_llms()
