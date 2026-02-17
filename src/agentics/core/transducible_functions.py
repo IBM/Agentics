@@ -587,6 +587,7 @@ class TransducibleFn(Protocol):
 async def estimateLogicalProximity(func, llm=AG.get_llm_provider()):
     sources = await generate_prototypical_instances(func.input_model, llm=llm)
     targets = await func(sources)
+    targets, explanations = _unpack_if_needed(targets)
     total_lp = 0
     if len(targets) > 0:
         for target, source in zip(targets, sources):
