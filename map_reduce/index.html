@@ -1,0 +1,1539 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../transducible_functions/">
+      
+      
+        <link rel="next" href="../semantic_operators/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
+    
+    
+      
+        <title>🔁 Map-Reduce Operations - Agentics Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.618322db.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="https://unpkg.com/katex@0/dist/katex.min.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#map-reduce-operations" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Agentics Documentation" class="md-header__button md-logo" aria-label="Agentics Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Agentics Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              🔁 Map-Reduce Operations
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Agentics Documentation" class="md-nav__button md-logo" aria-label="Agentics Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Agentics Documentation
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    👋 Welcome to Agentics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting_started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    🚀 Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../core_concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    🧠 Core Concepts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../transducible_functions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ⚙️ Transducible Functions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    🔁 Map-Reduce Operations
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    🔁 Map-Reduce Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-map-operation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Map Operation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Map Operation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-map-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How Map Works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#map-characteristics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Map Characteristics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#map-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Map Examples
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-reduce-operation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Reduce Operation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Reduce Operation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#using-transduction_typeareduce" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using transduction_type="areduce"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reduce-characteristics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reduce Characteristics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#common-reduce-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common Reduce Patterns
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dynamic-map-reduce-with-operator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dynamic Map-Reduce with &lt;&lt; Operator
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Dynamic Map-Reduce with &lt;&lt; Operator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dynamic-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dynamic Map
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dynamic-reduce" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dynamic Reduce
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#combining-map-and-reduce" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Combining Map and Reduce
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Combining Map and Reduce">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#multi-stage-pipeline-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-Stage Pipeline Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best Practices
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Best Practices">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#for-map-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        For Map Operations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#for-reduce-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        For Reduce Operations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#general-best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        General Best Practices
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance Considerations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Performance Considerations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#batch-size-tuning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Batch Size Tuning
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#parallel-execution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parallel Execution
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#go-to-index" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Go to Index
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../semantic_operators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    🔍 Semantic Operators
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agentics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    🧬 Agentics (AG)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../optimization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ⚡ Performance Optimization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tool_integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    🔌 Tool Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-map-operation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Map Operation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Map Operation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-map-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How Map Works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#map-characteristics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Map Characteristics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#map-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Map Examples
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-reduce-operation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Reduce Operation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Reduce Operation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#using-transduction_typeareduce" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using transduction_type="areduce"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reduce-characteristics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reduce Characteristics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#common-reduce-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common Reduce Patterns
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dynamic-map-reduce-with-operator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dynamic Map-Reduce with &lt;&lt; Operator
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Dynamic Map-Reduce with &lt;&lt; Operator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dynamic-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dynamic Map
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dynamic-reduce" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dynamic Reduce
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#combining-map-and-reduce" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Combining Map and Reduce
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Combining Map and Reduce">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#multi-stage-pipeline-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-Stage Pipeline Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best Practices
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Best Practices">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#for-map-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        For Map Operations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#for-reduce-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        For Reduce Operations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#general-best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        General Best Practices
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance Considerations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Performance Considerations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#batch-size-tuning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Batch Size Tuning
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#parallel-execution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parallel Execution
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#go-to-index" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Go to Index
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="map-reduce-operations">🔁 Map-Reduce Operations</h1>
+<p>Map-Reduce is the execution pattern for scaling transducible functions to large datasets. Agentics provides built-in support for both <strong>map</strong> (parallel transformation) and <strong>reduce</strong> (aggregation) operations over typed collections.</p>
+<hr />
+<h2 id="overview">Overview</h2>
+<p>When you define a transducible function, it automatically supports both single-item and batch processing:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">UserMessage</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">content</span><span class="p">:</span> <span class="nb">str</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Email</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">to</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">subject</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">body</span><span class="p">:</span> <span class="nb">str</span>
+
+<span class="nd">@transducible</span><span class="p">()</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">write_email</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="n">UserMessage</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Email</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert a message into a professional email.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Transduce</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+
+<span class="c1"># Single item</span>
+<span class="n">email</span> <span class="o">=</span> <span class="k">await</span> <span class="n">write_email</span><span class="p">(</span><span class="n">UserMessage</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="s2">&quot;Hi John, great progress!&quot;</span><span class="p">))</span>
+
+<span class="c1"># Batch processing (automatic map)</span>
+<span class="n">messages</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">UserMessage</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="s2">&quot;Hi John, I made great progress with Agentics.&quot;</span><span class="p">),</span>
+    <span class="n">UserMessage</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="s2">&quot;Hi, I fixed the last blocking bug in the pipeline.&quot;</span><span class="p">),</span>
+<span class="p">]</span>
+<span class="n">emails</span> <span class="o">=</span> <span class="k">await</span> <span class="n">write_email</span><span class="p">(</span><span class="n">messages</span><span class="p">)</span>  <span class="c1"># Returns list[Email]</span>
+</code></pre></div>
+<hr />
+<h2 id="the-map-operation">The Map Operation</h2>
+<p>The <strong>map</strong> operation applies a transducible function to each element independently, enabling concurrency and parallelism.</p>
+<h3 id="how-map-works">How Map Works</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Conceptually:</span>
+<span class="c1"># amap(write_email, messages) -&gt; list[Email]</span>
+
+<span class="c1"># Each element is processed independently</span>
+<span class="c1"># Results maintain the same order as inputs</span>
+</code></pre></div>
+<h3 id="map-characteristics">Map Characteristics</h3>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Input</strong></td>
+<td>Single item or list of items</td>
+</tr>
+<tr>
+<td><strong>Output</strong></td>
+<td>List of transformed items (one per input)</td>
+</tr>
+<tr>
+<td><strong>Operation</strong></td>
+<td>Independent transformation of each element</td>
+</tr>
+<tr>
+<td><strong>Parallelization</strong></td>
+<td>Fully parallel - elements processed concurrently</td>
+</tr>
+<tr>
+<td><strong>Use Cases</strong></td>
+<td>Enrichment, extraction, classification, normalization</td>
+</tr>
+</tbody>
+</table>
+<h3 id="map-examples">Map Examples</h3>
+<p><strong>Example 1: Data Enrichment</strong></p>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Product</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">category</span><span class="p">:</span> <span class="nb">str</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">EnrichedProduct</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">category</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">description</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">keywords</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+
+<span class="nd">@transducible</span><span class="p">()</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">enrich_product</span><span class="p">(</span><span class="n">product</span><span class="p">:</span> <span class="n">Product</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">EnrichedProduct</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Add description and keywords to product.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Transduce</span><span class="p">(</span><span class="n">product</span><span class="p">)</span>
+
+<span class="c1"># Process entire catalog</span>
+<span class="n">products</span> <span class="o">=</span> <span class="n">load_products</span><span class="p">()</span>  <span class="c1"># list[Product]</span>
+<span class="n">enriched</span> <span class="o">=</span> <span class="k">await</span> <span class="n">enrich_product</span><span class="p">(</span><span class="n">products</span><span class="p">)</span>  <span class="c1"># Parallel processing</span>
+</code></pre></div>
+<p><strong>Example 2: Text Classification</strong></p>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Document</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">text</span><span class="p">:</span> <span class="nb">str</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ClassifiedDocument</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">text</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">category</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">confidence</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">tags</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+
+<span class="nd">@transducible</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">classify_document</span><span class="p">(</span><span class="n">doc</span><span class="p">:</span> <span class="n">Document</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ClassifiedDocument</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Classify document into categories.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Transduce</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
+
+<span class="n">documents</span> <span class="o">=</span> <span class="n">load_documents</span><span class="p">(</span><span class="mi">1000</span><span class="p">)</span>
+<span class="n">classified</span> <span class="o">=</span> <span class="k">await</span> <span class="n">classify_document</span><span class="p">(</span><span class="n">documents</span><span class="p">)</span>  <span class="c1"># Processes in batches of 20</span>
+</code></pre></div>
+<hr />
+<h2 id="the-reduce-operation">The Reduce Operation</h2>
+<p>The <strong>reduce</strong> operation aggregates a collection of items into a single summary or consolidated result.</p>
+<h3 id="using-transduction_typeareduce">Using <code>transduction_type="areduce"</code></h3>
+<p>Specify the transduction type to create a reduce operation:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Review</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">text</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">rating</span><span class="p">:</span> <span class="nb">int</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ReviewSummary</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">overall_sentiment</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">average_rating</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">key_themes</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">total_reviews</span><span class="p">:</span> <span class="nb">int</span>
+
+<span class="nd">@transducible</span><span class="p">(</span><span class="n">transduction_type</span><span class="o">=</span><span class="s2">&quot;areduce&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">summarize_reviews</span><span class="p">(</span><span class="n">reviews</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Review</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">ReviewSummary</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Aggregate multiple reviews into a single summary.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Transduce</span><span class="p">(</span><span class="n">reviews</span><span class="p">)</span>
+
+<span class="c1"># Use it</span>
+<span class="n">reviews</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">Review</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Great product!&quot;</span><span class="p">,</span> <span class="n">rating</span><span class="o">=</span><span class="mi">5</span><span class="p">),</span>
+    <span class="n">Review</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Good value for money&quot;</span><span class="p">,</span> <span class="n">rating</span><span class="o">=</span><span class="mi">4</span><span class="p">),</span>
+    <span class="n">Review</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Not bad, could be better&quot;</span><span class="p">,</span> <span class="n">rating</span><span class="o">=</span><span class="mi">3</span><span class="p">),</span>
+<span class="p">]</span>
+
+<span class="n">summary</span> <span class="o">=</span> <span class="k">await</span> <span class="n">summarize_reviews</span><span class="p">(</span><span class="n">reviews</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Overall: </span><span class="si">{</span><span class="n">summary</span><span class="o">.</span><span class="n">overall_sentiment</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Average: </span><span class="si">{</span><span class="n">summary</span><span class="o">.</span><span class="n">average_rating</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="reduce-characteristics">Reduce Characteristics</h3>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Input</strong></td>
+<td>List of items</td>
+</tr>
+<tr>
+<td><strong>Output</strong></td>
+<td>Single aggregated result</td>
+</tr>
+<tr>
+<td><strong>Operation</strong></td>
+<td>Aggregation across all elements</td>
+</tr>
+<tr>
+<td><strong>Parallelization</strong></td>
+<td>Sequential or hierarchical</td>
+</tr>
+<tr>
+<td><strong>Use Cases</strong></td>
+<td>Summarization, statistics, consolidation, consensus</td>
+</tr>
+</tbody>
+</table>
+<h3 id="common-reduce-patterns">Common Reduce Patterns</h3>
+<p><strong>Pattern 1: Summarization</strong></p>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Document</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">content</span><span class="p">:</span> <span class="nb">str</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ExecutiveSummary</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">main_points</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">conclusion</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">word_count</span><span class="p">:</span> <span class="nb">int</span>
+
+<span class="nd">@transducible</span><span class="p">(</span><span class="n">transduction_type</span><span class="o">=</span><span class="s2">&quot;areduce&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_executive_summary</span><span class="p">(</span><span class="n">docs</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Document</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">ExecutiveSummary</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Summarize multiple documents into key insights.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Transduce</span><span class="p">(</span><span class="n">docs</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>Pattern 2: Statistical Aggregation</strong></p>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DataPoint</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">value</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">category</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">timestamp</span><span class="p">:</span> <span class="nb">str</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Statistics</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">mean</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">median</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">categories</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">trend</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># &quot;increasing&quot;, &quot;decreasing&quot;, &quot;stable&quot;</span>
+
+<span class="nd">@transducible</span><span class="p">(</span><span class="n">transduction_type</span><span class="o">=</span><span class="s2">&quot;areduce&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">analyze_data</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">DataPoint</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Statistics</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute statistics and identify trends.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Transduce</span><span class="p">(</span><span class="n">points</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>Pattern 3: Consensus Building</strong></p>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Opinion</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">author</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">stance</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">reasoning</span><span class="p">:</span> <span class="nb">str</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Consensus</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">majority_view</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">key_arguments</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">dissenting_views</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">confidence</span><span class="p">:</span> <span class="nb">float</span>
+
+<span class="nd">@transducible</span><span class="p">(</span><span class="n">transduction_type</span><span class="o">=</span><span class="s2">&quot;areduce&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">build_consensus</span><span class="p">(</span><span class="n">opinions</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Opinion</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Consensus</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Find consensus across multiple opinions.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Transduce</span><span class="p">(</span><span class="n">opinions</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="dynamic-map-reduce-with-operator">Dynamic Map-Reduce with <code>&lt;&lt;</code> Operator</h2>
+<p>Create map and reduce operations on the fly:</p>
+<h3 id="dynamic-map">Dynamic Map</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Create a map function dynamically</span>
+<span class="n">enrich</span> <span class="o">=</span> <span class="n">EnrichedProduct</span> <span class="o">&lt;&lt;</span> <span class="n">Product</span>
+
+<span class="n">products</span> <span class="o">=</span> <span class="p">[</span><span class="n">Product</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;Widget&quot;</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="s2">&quot;Tools&quot;</span><span class="p">),</span> <span class="o">...</span><span class="p">]</span>
+<span class="n">enriched</span> <span class="o">=</span> <span class="k">await</span> <span class="n">enrich</span><span class="p">(</span><span class="n">products</span><span class="p">)</span>  <span class="c1"># Automatic map</span>
+</code></pre></div>
+<h3 id="dynamic-reduce">Dynamic Reduce</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">agentics</span><span class="w"> </span><span class="kn">import</span> <span class="n">With</span>
+
+<span class="c1"># Create a reduce function on the fly</span>
+<span class="n">summarize</span> <span class="o">=</span> <span class="n">ReviewSummary</span> <span class="o">&lt;&lt;</span> <span class="n">With</span><span class="p">(</span>
+    <span class="n">List</span><span class="p">[</span><span class="n">Review</span><span class="p">],</span>
+    <span class="n">transduction_type</span><span class="o">=</span><span class="s2">&quot;areduce&quot;</span><span class="p">,</span>
+    <span class="n">instructions</span><span class="o">=</span><span class="s2">&quot;Analyze all reviews and provide comprehensive summary&quot;</span>
+<span class="p">)</span>
+
+<span class="n">summary</span> <span class="o">=</span> <span class="k">await</span> <span class="n">summarize</span><span class="p">(</span><span class="n">reviews</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="combining-map-and-reduce">Combining Map and Reduce</h2>
+<p>Build complete Map-Reduce pipelines by chaining operations:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Step 1: Map - Extract insights from each document</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Document</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">text</span><span class="p">:</span> <span class="nb">str</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Insight</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">key_point</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">importance</span><span class="p">:</span> <span class="nb">int</span>
+
+<span class="nd">@transducible</span><span class="p">()</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">extract_insight</span><span class="p">(</span><span class="n">doc</span><span class="p">:</span> <span class="n">Document</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Insight</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract key insight from a document.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Transduce</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
+
+<span class="c1"># Step 2: Reduce - Consolidate all insights</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Report</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">top_insights</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">overall_theme</span><span class="p">:</span> <span class="nb">str</span>
+
+<span class="nd">@transducible</span><span class="p">(</span><span class="n">transduction_type</span><span class="o">=</span><span class="s2">&quot;areduce&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">consolidate_insights</span><span class="p">(</span><span class="n">insights</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Insight</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Report</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Consolidate insights into a final report.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Transduce</span><span class="p">(</span><span class="n">insights</span><span class="p">)</span>
+
+<span class="c1"># Execute the pipeline</span>
+<span class="n">documents</span> <span class="o">=</span> <span class="p">[</span><span class="n">Document</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;...&quot;</span><span class="p">),</span> <span class="n">Document</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;...&quot;</span><span class="p">),</span> <span class="o">...</span><span class="p">]</span>
+<span class="n">insights</span> <span class="o">=</span> <span class="k">await</span> <span class="n">extract_insight</span><span class="p">(</span><span class="n">documents</span><span class="p">)</span>  <span class="c1"># Map phase</span>
+<span class="n">report</span> <span class="o">=</span> <span class="k">await</span> <span class="n">consolidate_insights</span><span class="p">(</span><span class="n">insights</span><span class="p">)</span>  <span class="c1"># Reduce phase</span>
+</code></pre></div>
+<h3 id="multi-stage-pipeline-example">Multi-Stage Pipeline Example</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Stage 1: Map - Clean and normalize</span>
+<span class="nd">@transducible</span><span class="p">()</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">clean_data</span><span class="p">(</span><span class="n">raw</span><span class="p">:</span> <span class="n">RawData</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CleanData</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">Transduce</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span>
+
+<span class="c1"># Stage 2: Map - Extract features</span>
+<span class="nd">@transducible</span><span class="p">()</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">extract_features</span><span class="p">(</span><span class="n">clean</span><span class="p">:</span> <span class="n">CleanData</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Features</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">Transduce</span><span class="p">(</span><span class="n">clean</span><span class="p">)</span>
+
+<span class="c1"># Stage 3: Reduce - Aggregate statistics</span>
+<span class="nd">@transducible</span><span class="p">(</span><span class="n">transduction_type</span><span class="o">=</span><span class="s2">&quot;areduce&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">compute_stats</span><span class="p">(</span><span class="n">features</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Features</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Statistics</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">Transduce</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
+
+<span class="c1"># Execute pipeline</span>
+<span class="n">raw_data</span> <span class="o">=</span> <span class="n">load_raw_data</span><span class="p">()</span>
+<span class="n">clean</span> <span class="o">=</span> <span class="k">await</span> <span class="n">clean_data</span><span class="p">(</span><span class="n">raw_data</span><span class="p">)</span>
+<span class="n">features</span> <span class="o">=</span> <span class="k">await</span> <span class="n">extract_features</span><span class="p">(</span><span class="n">clean</span><span class="p">)</span>
+<span class="n">stats</span> <span class="o">=</span> <span class="k">await</span> <span class="n">compute_stats</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="best-practices">Best Practices</h2>
+<h3 id="for-map-operations">For Map Operations</h3>
+<ol>
+<li><strong>Use appropriate batch sizes</strong> - Balance throughput and memory (see <a href="../optimization/">Optimization</a>)</li>
+<li><strong>Handle failures gracefully</strong> - Individual items can fail without stopping the batch</li>
+<li><strong>Monitor progress</strong> - Use <code>verbose_transduction=True</code> for long-running operations</li>
+<li><strong>Consider rate limits</strong> - Adjust batch size for API rate limits</li>
+</ol>
+<h3 id="for-reduce-operations">For Reduce Operations</h3>
+<ol>
+<li><strong>Keep reduce operations focused</strong> - Each reduce should have a clear aggregation goal</li>
+<li><strong>Handle empty lists</strong> - Consider what happens when the input list is empty</li>
+<li><strong>Use hierarchical reduction</strong> - For very large collections, reduce in stages</li>
+<li><strong>Provide clear instructions</strong> - Help the LLM understand the aggregation logic</li>
+<li><strong>Consider token limits</strong> - Large collections may exceed context windows</li>
+<li><strong>Test with representative data</strong> - Ensure reduce logic works across different input sizes</li>
+</ol>
+<h3 id="general-best-practices">General Best Practices</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Good: Clear separation of concerns</span>
+<span class="nd">@transducible</span><span class="p">()</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">extract</span><span class="p">(</span><span class="n">item</span><span class="p">:</span> <span class="n">Raw</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Processed</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Map: Extract and normalize.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Transduce</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+
+<span class="nd">@transducible</span><span class="p">(</span><span class="n">transduction_type</span><span class="o">=</span><span class="s2">&quot;areduce&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">summarize</span><span class="p">(</span><span class="n">items</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Processed</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Summary</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Reduce: Aggregate results.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Transduce</span><span class="p">(</span><span class="n">items</span><span class="p">)</span>
+
+<span class="c1"># Execute</span>
+<span class="n">processed</span> <span class="o">=</span> <span class="k">await</span> <span class="n">extract</span><span class="p">(</span><span class="n">raw_items</span><span class="p">)</span>
+<span class="n">summary</span> <span class="o">=</span> <span class="k">await</span> <span class="n">summarize</span><span class="p">(</span><span class="n">processed</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="performance-considerations">Performance Considerations</h2>
+<h3 id="batch-size-tuning">Batch Size Tuning</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Small batches for complex operations</span>
+<span class="nd">@transducible</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">complex_analysis</span><span class="p">(</span><span class="n">item</span><span class="p">:</span> <span class="n">Data</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Analysis</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">Transduce</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+
+<span class="c1"># Large batches for simple operations</span>
+<span class="nd">@transducible</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">simple_extraction</span><span class="p">(</span><span class="n">item</span><span class="p">:</span> <span class="n">Data</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Extract</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">Transduce</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="parallel-execution">Parallel Execution</h3>
+<p>Map operations are automatically parallelized based on <code>batch_size</code>. For more control, see <a href="../optimization/">Optimization</a>.</p>
+<hr />
+<h2 id="next">Next</h2>
+<ul>
+<li>👉 <a href="../tutorials/map_reduce.ipynb">Map-Reduce Tutorial</a> to see how large-scale execution works in practice</li>
+<li>👉 <a href="../semantic_operators/">Semantic Operators</a> for performing data transformation tasks using natural language.</li>
+</ul>
+<h2 id="go-to-index">Go to Index</h2>
+<ul>
+<li>👉 <a href="../">Index</a></li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": [], "search": "../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      
+        <script src="../javascripts/katex.js"></script>
+      
+        <script src="https://unpkg.com/katex@0/dist/katex.min.js"></script>
+      
+        <script src="https://unpkg.com/katex@0/dist/contrib/auto-render.min.js"></script>
+      
+    
+  </body>
+</html>

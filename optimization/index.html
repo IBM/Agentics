@@ -1,0 +1,1440 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../agentics/">
+      
+      
+        <link rel="next" href="../tool_integration/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
+    
+    
+      
+        <title>⚡ Performance Optimization - Agentics Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.618322db.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="https://unpkg.com/katex@0/dist/katex.min.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#performance-optimization" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Agentics Documentation" class="md-header__button md-logo" aria-label="Agentics Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Agentics Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              ⚡ Performance Optimization
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Agentics Documentation" class="md-nav__button md-logo" aria-label="Agentics Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Agentics Documentation
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    👋 Welcome to Agentics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting_started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    🚀 Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../core_concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    🧠 Core Concepts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../transducible_functions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ⚙️ Transducible Functions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../map_reduce/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    🔁 Map-Reduce Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../semantic_operators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    🔍 Semantic Operators
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agentics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    🧬 Agentics (AG)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ⚡ Performance Optimization
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ⚡ Performance Optimization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#understanding-batch-size" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Understanding Batch Size
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Understanding Batch Size">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#choosing-the-right-batch-size" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Choosing the Right Batch Size
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#persisting-intermediate-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Persisting Intermediate Results
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Persisting Intermediate Results">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#file-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        File Structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#monitoring-progress" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Monitoring Progress
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-optimization-strategies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance Optimization Strategies
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Performance Optimization Strategies">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-adaptive-batch-sizing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Adaptive Batch Sizing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-field-specific-transduction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Field-Specific Transduction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-reduce-token-usage-with-prompt-templates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Reduce Token Usage with Prompt Templates
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-parallel-processing-with-multiple-workers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Parallel Processing with Multiple Workers
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-benchmarking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance Benchmarking
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Performance Benchmarking">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#profiling-memory-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Profiling Memory Usage
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#error-handling-retries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error Handling &amp; Retries
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Error Handling &amp; Retries">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#automatic-retries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Automatic Retries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graceful-degradation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Graceful Degradation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#batch-level-error-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Batch-Level Error Handling
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best Practices
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#common-performance-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common Performance Issues
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Common Performance Issues">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#issue-high-memory-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Issue: High Memory Usage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#issue-slow-throughput" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Issue: Slow Throughput
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#issue-frequent-timeouts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Issue: Frequent Timeouts
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See Also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tool_integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    🔌 Tool Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#understanding-batch-size" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Understanding Batch Size
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Understanding Batch Size">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#choosing-the-right-batch-size" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Choosing the Right Batch Size
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#persisting-intermediate-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Persisting Intermediate Results
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Persisting Intermediate Results">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#file-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        File Structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#monitoring-progress" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Monitoring Progress
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-optimization-strategies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance Optimization Strategies
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Performance Optimization Strategies">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-adaptive-batch-sizing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Adaptive Batch Sizing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-field-specific-transduction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Field-Specific Transduction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-reduce-token-usage-with-prompt-templates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Reduce Token Usage with Prompt Templates
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-parallel-processing-with-multiple-workers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Parallel Processing with Multiple Workers
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-benchmarking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance Benchmarking
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Performance Benchmarking">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#profiling-memory-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Profiling Memory Usage
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#error-handling-retries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error Handling &amp; Retries
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Error Handling &amp; Retries">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#automatic-retries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Automatic Retries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graceful-degradation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Graceful Degradation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#batch-level-error-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Batch-Level Error Handling
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best Practices
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#common-performance-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common Performance Issues
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Common Performance Issues">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#issue-high-memory-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Issue: High Memory Usage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#issue-slow-throughput" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Issue: Slow Throughput
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#issue-frequent-timeouts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Issue: Frequent Timeouts
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See Also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="performance-optimization">⚡ Performance Optimization</h1>
+<p>Efficient batch processing and performance optimization are crucial for large-scale transductions. This guide covers strategies to maximize throughput, manage resources, and handle large datasets effectively.</p>
+<hr />
+<h2 id="understanding-batch-size">Understanding Batch Size</h2>
+<p>The <code>batch_size</code> parameter controls how many items are processed concurrently. Choosing the right batch size is critical for balancing throughput, memory usage, and reliability.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Small batches - lower memory, more overhead</span>
+<span class="nd">@transducible</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">conservative_process</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">Item</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Result</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">Transduce</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+
+<span class="c1"># Large batches - higher throughput, more memory</span>
+<span class="nd">@transducible</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="mi">25</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">aggressive_process</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">Item</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Result</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">Transduce</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="choosing-the-right-batch-size">Choosing the Right Batch Size</h3>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Recommended Batch Size</th>
+<th>Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Simple transformations (&lt; 1s each)</td>
+<td>20-30</td>
+<td>Maximize throughput</td>
+</tr>
+<tr>
+<td>Complex reasoning (&gt; 5s each)</td>
+<td>5-10</td>
+<td>Avoid timeout issues</td>
+</tr>
+<tr>
+<td>Large input/output objects</td>
+<td>10-15</td>
+<td>Manage memory usage</td>
+</tr>
+<tr>
+<td>Rate-limited APIs</td>
+<td>5-15</td>
+<td>Stay within limits</td>
+</tr>
+<tr>
+<td>Local LLM (Ollama)</td>
+<td>1-5</td>
+<td>Limited by GPU memory</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="persisting-intermediate-results">Persisting Intermediate Results</h2>
+<p>Use <code>persist_output</code> to save results incrementally, enabling recovery from failures:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@transducible</span><span class="p">(</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+    <span class="n">persist_output</span><span class="o">=</span><span class="s2">&quot;./output/processed_batches&quot;</span>
+<span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">process_large_dataset</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">DataItem</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ProcessedItem</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Results saved after each batch completes.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Transduce</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+
+<span class="c1"># Process 10,000 items</span>
+<span class="n">large_dataset</span> <span class="o">=</span> <span class="n">load_items</span><span class="p">(</span><span class="mi">10000</span><span class="p">)</span>
+<span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">process_large_dataset</span><span class="p">(</span><span class="n">large_dataset</span><span class="p">)</span>
+
+<span class="c1"># If interrupted, previously completed batches are saved</span>
+<span class="c1"># Resume by loading saved batches and processing remaining items</span>
+</code></pre></div>
+<h3 id="file-structure">File Structure</h3>
+<div class="highlight"><pre><span></span><code>output/processed_batches/
+├── batch_0000.jsonl  # First 20 items
+├── batch_0001.jsonl  # Next 20 items
+├── batch_0002.jsonl  # And so on...
+└── ...
+</code></pre></div>
+<hr />
+<h2 id="monitoring-progress">Monitoring Progress</h2>
+<p>Enable verbose logging to track batch processing:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@transducible</span><span class="p">(</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="mi">25</span><span class="p">,</span>
+    <span class="n">verbose_transduction</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="c1"># Show progress</span>
+    <span class="n">verbose_agent</span><span class="o">=</span><span class="kc">False</span>  <span class="c1"># Hide detailed agent logs</span>
+<span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">monitored_process</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">Item</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Result</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">Transduce</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+
+<span class="c1"># Output shows:</span>
+<span class="c1"># Processing batch 1/40 (25 items)...</span>
+<span class="c1"># Processing batch 2/40 (25 items)...</span>
+<span class="c1"># ...</span>
+</code></pre></div>
+<hr />
+<h2 id="performance-optimization-strategies">Performance Optimization Strategies</h2>
+<h3 id="1-adaptive-batch-sizing">1. Adaptive Batch Sizing</h3>
+<p>Tune batch size based on item complexity:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Adaptive batching based on input size</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_batch_size</span><span class="p">(</span><span class="n">items</span><span class="p">):</span>
+    <span class="n">avg_size</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">item</span><span class="p">))</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">items</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">items</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">avg_size</span> <span class="o">&lt;</span> <span class="mi">500</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">25</span>  <span class="c1"># Small items</span>
+    <span class="k">elif</span> <span class="n">avg_size</span> <span class="o">&lt;</span> <span class="mi">2000</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">15</span>  <span class="c1"># Medium items</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">5</span>  <span class="c1"># Large items</span>
+
+<span class="n">batch_size</span> <span class="o">=</span> <span class="n">get_batch_size</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+<span class="n">process_fn</span> <span class="o">=</span> <span class="n">Result</span> <span class="o">&lt;&lt;</span> <span class="n">With</span><span class="p">(</span><span class="n">Item</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="2-field-specific-transduction">2. Field-Specific Transduction</h3>
+<p>Only transduce the fields you need:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@transducible</span><span class="p">(</span>
+    <span class="n">transduce_fields</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;summary&quot;</span><span class="p">,</span> <span class="s2">&quot;category&quot;</span><span class="p">],</span>  <span class="c1"># Only these fields</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="mi">30</span>
+<span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">focused_transform</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">FullData</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PartialResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Faster by ignoring unnecessary fields.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Transduce</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="3-reduce-token-usage-with-prompt-templates">3. Reduce Token Usage with Prompt Templates</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Custom template to reduce token count</span>
+<span class="n">compact_template</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">Input: </span><span class="si">{input_data}</span>
+<span class="s2">Task: </span><span class="si">{instructions}</span>
+<span class="s2">Output format: </span><span class="si">{output_schema}</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+<span class="nd">@transducible</span><span class="p">(</span>
+    <span class="n">prompt_template</span><span class="o">=</span><span class="n">compact_template</span><span class="p">,</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="mi">40</span>
+<span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">efficient_transform</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">Item</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Result</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">Transduce</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="4-parallel-processing-with-multiple-workers">4. Parallel Processing with Multiple Workers</h3>
+<p>For extremely large datasets, consider splitting work across multiple processes:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">concurrent.futures</span><span class="w"> </span><span class="kn">import</span> <span class="n">ProcessPoolExecutor</span>
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">process_chunk</span><span class="p">(</span><span class="n">chunk</span><span class="p">,</span> <span class="n">process_fn</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Process a chunk of data.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="k">await</span> <span class="n">process_fn</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">parallel_process</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">process_fn</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="mi">4</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Split dataset across multiple workers.&quot;&quot;&quot;</span>
+    <span class="n">chunk_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span> <span class="o">//</span> <span class="n">num_workers</span>
+    <span class="n">chunks</span> <span class="o">=</span> <span class="p">[</span><span class="n">dataset</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span><span class="o">+</span><span class="n">chunk_size</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">),</span> <span class="n">chunk_size</span><span class="p">)]</span>
+
+    <span class="n">tasks</span> <span class="o">=</span> <span class="p">[</span><span class="n">process_chunk</span><span class="p">(</span><span class="n">chunk</span><span class="p">,</span> <span class="n">process_fn</span><span class="p">)</span> <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">chunks</span><span class="p">]</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="o">*</span><span class="n">tasks</span><span class="p">)</span>
+
+    <span class="c1"># Flatten results</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">item</span> <span class="k">for</span> <span class="n">chunk_result</span> <span class="ow">in</span> <span class="n">results</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">chunk_result</span><span class="p">]</span>
+</code></pre></div>
+<hr />
+<h2 id="performance-benchmarking">Performance Benchmarking</h2>
+<p>Measure throughput for your specific use case:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">benchmark_transduction</span><span class="p">():</span>
+    <span class="n">test_items</span> <span class="o">=</span> <span class="n">generate_test_data</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
+
+    <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">process_fn</span><span class="p">(</span><span class="n">test_items</span><span class="p">)</span>
+    <span class="n">elapsed</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Processed </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">)</span><span class="si">}</span><span class="s2"> items in </span><span class="si">{</span><span class="n">elapsed</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Throughput: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">)</span><span class="o">/</span><span class="n">elapsed</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> items/sec&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Average time per item: </span><span class="si">{</span><span class="n">elapsed</span><span class="o">/</span><span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">)</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
+
+<span class="k">await</span> <span class="n">benchmark_transduction</span><span class="p">()</span>
+</code></pre></div>
+<h3 id="profiling-memory-usage">Profiling Memory Usage</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">tracemalloc</span>
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">profile_memory</span><span class="p">():</span>
+    <span class="n">tracemalloc</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+    <span class="c1"># Your transduction</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">process_fn</span><span class="p">(</span><span class="n">large_dataset</span><span class="p">)</span>
+
+    <span class="n">current</span><span class="p">,</span> <span class="n">peak</span> <span class="o">=</span> <span class="n">tracemalloc</span><span class="o">.</span><span class="n">get_traced_memory</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Current memory: </span><span class="si">{</span><span class="n">current</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">1024</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">1024</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> MB&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Peak memory: </span><span class="si">{</span><span class="n">peak</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">1024</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">1024</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> MB&quot;</span><span class="p">)</span>
+
+    <span class="n">tracemalloc</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+</code></pre></div>
+<hr />
+<h2 id="error-handling-retries">Error Handling &amp; Retries</h2>
+<h3 id="automatic-retries">Automatic Retries</h3>
+<p>Configure retry behavior for transient failures:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@transducible</span><span class="p">(</span>
+    <span class="n">max_retries</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>  <span class="c1"># Retry up to 3 times</span>
+    <span class="n">retry_delay</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span>  <span class="c1"># Wait 2 seconds between retries</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="mi">20</span>
+<span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">resilient_process</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">Item</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Result</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">Transduce</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="graceful-degradation">Graceful Degradation</h3>
+<p>Use optional fields to handle partial failures:</p>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">RobustResult</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">required_field</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">optional_field</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># May be None if extraction fails</span>
+    <span class="n">confidence</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+<span class="nd">@transducible</span><span class="p">(</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="mi">25</span><span class="p">,</span>
+    <span class="n">allow_partial</span><span class="o">=</span><span class="kc">True</span>  <span class="c1"># Continue even if some fields fail</span>
+<span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">robust_transform</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">Item</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RobustResult</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">Transduce</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="batch-level-error-handling">Batch-Level Error Handling</h3>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">process_with_error_handling</span><span class="p">(</span><span class="n">items</span><span class="p">):</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">failed</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">batch</span> <span class="ow">in</span> <span class="n">chunk_items</span><span class="p">(</span><span class="n">items</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">20</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">batch_results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">process_fn</span><span class="p">(</span><span class="n">batch</span><span class="p">)</span>
+            <span class="n">results</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">batch_results</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Batch failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">failed</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">batch</span><span class="p">)</span>
+
+    <span class="c1"># Retry failed items with smaller batch size</span>
+    <span class="k">if</span> <span class="n">failed</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Retrying </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">failed</span><span class="p">)</span><span class="si">}</span><span class="s2"> failed items...&quot;</span><span class="p">)</span>
+        <span class="n">retry_fn</span> <span class="o">=</span> <span class="n">Result</span> <span class="o">&lt;&lt;</span> <span class="n">With</span><span class="p">(</span><span class="n">Item</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+        <span class="n">retry_results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">retry_fn</span><span class="p">(</span><span class="n">failed</span><span class="p">)</span>
+        <span class="n">results</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">retry_results</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">results</span>
+</code></pre></div>
+<hr />
+<h2 id="best-practices">Best Practices</h2>
+<ol>
+<li><strong>Start with conservative batch sizes</strong> - Increase gradually based on benchmarks</li>
+<li><strong>Monitor memory usage</strong> - Especially with large input/output objects</li>
+<li><strong>Use persist_output for long-running jobs</strong> - Protect against interruptions</li>
+<li><strong>Profile before optimizing</strong> - Measure to identify actual bottlenecks</li>
+<li><strong>Consider API rate limits</strong> - Adjust batch size and concurrency accordingly</li>
+<li><strong>Test with representative data</strong> - Performance varies with input complexity</li>
+<li><strong>Use field-specific transduction</strong> - Only process what you need</li>
+<li><strong>Enable progress monitoring</strong> - Track long-running operations</li>
+</ol>
+<hr />
+<h2 id="common-performance-issues">Common Performance Issues</h2>
+<h3 id="issue-high-memory-usage">Issue: High Memory Usage</h3>
+<p><strong>Symptoms:</strong> Process crashes or slows down with large datasets</p>
+<p><strong>Solutions:</strong>
+- Reduce batch size
+- Use field-specific transduction
+- Process in chunks with persistence
+- Stream results instead of loading all at once</p>
+<h3 id="issue-slow-throughput">Issue: Slow Throughput</h3>
+<p><strong>Symptoms:</strong> Processing takes much longer than expected</p>
+<p><strong>Solutions:</strong>
+- Increase batch size (if memory allows)
+- Reduce prompt complexity
+- Use faster LLM models
+- Optimize prompt templates
+- Consider parallel processing</p>
+<h3 id="issue-frequent-timeouts">Issue: Frequent Timeouts</h3>
+<p><strong>Symptoms:</strong> Many requests timeout or fail</p>
+<p><strong>Solutions:</strong>
+- Reduce batch size
+- Increase timeout value
+- Simplify the transduction task
+- Use faster models
+- Check network connectivity</p>
+<hr />
+<h2 id="see-also">See Also</h2>
+<ul>
+<li>👉 <a href="../transducible_functions/">Transducible Functions</a> - Core concepts and basic usage</li>
+<li>👉 <a href="../tool_integration/">Tool Integration</a> - Using external tools</li>
+<li>👉 <a href="../tutorials/map_reduce.ipynb">Map-Reduce Tutorial</a> - Large-scale execution patterns</li>
+<li>👉 <a href="../">Index</a></li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": [], "search": "../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      
+        <script src="../javascripts/katex.js"></script>
+      
+        <script src="https://unpkg.com/katex@0/dist/katex.min.js"></script>
+      
+        <script src="https://unpkg.com/katex@0/dist/contrib/auto-render.min.js"></script>
+      
+    
+  </body>
+</html>

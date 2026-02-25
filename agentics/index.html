@@ -9,8 +9,10 @@
       
       
       
-        <link rel="prev" href="../getting_started/">
+        <link rel="prev" href="../semantic_operators/">
       
+      
+        <link rel="next" href="../optimization/">
       
       
         
@@ -21,7 +23,7 @@
     
     
       
-        <title>Agentics - Agentics Documentation</title>
+        <title>🧬 Agentics (AG) - Agentics Documentation</title>
       
     
     
@@ -74,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#agentics" class="md-skip">
+        <a href="#ag-agentics" class="md-skip">
           Skip to content
         </a>
       
@@ -114,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Agentics
+              🧬 Agentics (AG)
             
           </span>
         </div>
@@ -244,7 +246,7 @@
   <span class="md-ellipsis">
     
   
-    Getting Started
+    🚀 Getting Started
   
 
     
@@ -264,14 +266,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../background.md" class="md-nav__link">
+      <a href="../core_concepts/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    What is Agentics?
+    🧠 Core Concepts
   
 
     
@@ -291,14 +293,68 @@
   
   
     <li class="md-nav__item">
-      <a href="../use_cases.md" class="md-nav__link">
+      <a href="../transducible_functions/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Use Cases
+    ⚙️ Transducible Functions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../map_reduce/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    🔁 Map-Reduce Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../semantic_operators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    🔍 Semantic Operators
   
 
     
@@ -334,7 +390,7 @@
   <span class="md-ellipsis">
     
   
-    Agentics
+    🧬 Agentics (AG)
   
 
     
@@ -352,7 +408,7 @@
   <span class="md-ellipsis">
     
   
-    Agentics
+    🧬 Agentics (AG)
   
 
     
@@ -378,10 +434,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#the-agentics-class" class="md-nav__link">
+  <a href="#the-ag-class" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The Agentics class
+        The AG Class
       
     </span>
   </a>
@@ -444,10 +500,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#see-next-transduction" class="md-nav__link">
+  <a href="#go-to-index" class="md-nav__link">
     <span class="md-ellipsis">
       
-        See Next: Transduction
+        Go to Index
       
     </span>
   </a>
@@ -469,14 +525,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../transduction.md" class="md-nav__link">
+      <a href="../optimization/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Transduction
+    ⚡ Performance Optimization
   
 
     
@@ -496,14 +552,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../memory.md" class="md-nav__link">
+      <a href="../tool_integration/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Memory
+    🔌 Tool Integration
   
 
     
@@ -543,10 +599,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#the-agentics-class" class="md-nav__link">
+  <a href="#the-ag-class" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The Agentics class
+        The AG Class
       
     </span>
   </a>
@@ -609,10 +665,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#see-next-transduction" class="md-nav__link">
+  <a href="#go-to-index" class="md-nav__link">
     <span class="md-ellipsis">
       
-        See Next: Transduction
+        Go to Index
       
     </span>
   </a>
@@ -636,12 +692,18 @@
 
 
 
-<h1 id="agentics">Agentics</h1>
-<p>Agentics objects are wrappers around list of objects having the same Pydantic Type.
+<h1 id="ag-agentics">AG (Agentics)</h1>
+<p><strong>AG</strong> (short for "Agentics") objects are wrappers around lists of objects having the same Pydantic type.
 They are designed to enable async logical transduction among their instances.
-Agentics enable us to think about AI workflows in terms of structured data transformations rather than agent behaviours, knowledge and tasks. </p>
-<h2 id="the-agentics-class">The Agentics class</h2>
-<p>Agentics is a Python class that wraps a list of Pydantic objects and enables structured, type-driven logical transduction between them.</p>
+AG containers enable us to think about AI workflows in terms of structured data transformations rather than agent behaviors, knowledge, and tasks.</p>
+<h2 id="the-ag-class">The AG Class</h2>
+<p>AG (Agentics) is a Python class that wraps a list of Pydantic objects and enables structured, type-driven logical transduction between them.</p>
+<p><strong>Import and Usage:</strong>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">agentics</span><span class="w"> </span><span class="kn">import</span> <span class="n">AG</span>  <span class="c1"># Recommended: use AG alias</span>
+
+<span class="c1"># Create a typed container</span>
+<span class="n">movies</span> <span class="o">=</span> <span class="n">AG</span><span class="p">(</span><span class="n">atype</span><span class="o">=</span><span class="n">Movie</span><span class="p">)</span>
+</code></pre></div></p>
 <p>Internally, Agentics is implemented as a Pydantic model. It holds:
     •   atype: a reference to the Pydantic class shared by all objects in the list.
     •   states: a list of Pydantic instances, each validated to be of type atype.
@@ -717,13 +779,14 @@ Agentics enable us to think about AI workflows in terms of structured data trans
 <span class="n">movies</span><span class="o">.</span><span class="n">rebind_atype</span><span class="p">(</span><span class="n">MovieReview</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">movies</span><span class="o">.</span><span class="n">states</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
 </code></pre></div>
-<p>You can also modify and rebind an exiting Agentic. Similarly can also remove attributes. The following code is equivalent to the code before</p>
+<p>You can also modify and rebind an exiting Agentic. Similarly can also remove attributes. The following code is equivalent to the code before.</p>
 <div class="highlight"><pre><span></span><code><span class="n">movies</span> <span class="o">=</span> <span class="n">AG</span><span class="o">.</span><span class="n">from_csv</span><span class="p">(</span><span class="s2">&quot;data/orders.csv&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">movies</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
 <span class="n">movies</span><span class="o">.</span><span class="n">add_attribute</span><span class="p">(</span><span class="s2">&quot;review&quot;</span><span class="p">,</span><span class="nb">str</span><span class="p">)</span>
 <span class="n">movies</span><span class="o">.</span><span class="n">add_attribute</span><span class="p">(</span><span class="s2">&quot;quality_score&quot;</span><span class="p">,</span><span class="nb">int</span><span class="p">,</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;The quality of the movies in a scale 0 to 10&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">movies</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
 <span class="n">movies</span><span class="o">.</span><span class="n">subset_atype</span><span class="p">(</span><span class="s2">&quot;title&quot;</span><span class="p">,</span><span class="s2">&quot;genre&quot;</span><span class="p">,</span><span class="s2">&quot;description&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">movies</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="c1">## note that movies[0] is equivalent to </span>
+<span class="nb">print</span><span class="p">(</span><span class="n">movies</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="c1">## note that movies[0] is a shorthand for movies.states[0]</span>
 </code></pre></div>
 <h2 id="transduction-between-agentics">🎯 Transduction between Agentics</h2>
 <p>In addition to Transducible Functions syntax, AGs enables built in transduction. This was the preferred syntax for AG 1.0 and it is still supported by Agentics 2.0.</p>
@@ -743,17 +806,21 @@ Agentics enable us to think about AI workflows in terms of structured data trans
         <span class="s2">&quot;What is the best F1 team in history?&quot;</span><span class="p">,</span>
     <span class="p">]</span>
 
-    <span class="n">answers</span> <span class="o">=</span> <span class="k">await</span> <span class="p">(</span><span class="n">AG</span><span class="p">(</span><span class="n">atype</span><span class="o">=</span><span class="n">Answer</span><span class="p">)</span> \
-                     <span class="o">&lt;&lt;</span> <span class="n">input_questions</span><span class="p">)</span>
+    <span class="n">answers</span> <span class="o">=</span> <span class="k">await</span> <span class="p">(</span><span class="n">AG</span><span class="p">(</span><span class="n">atype</span><span class="o">=</span><span class="n">Answer</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="n">input_questions</span><span class="p">)</span>
 
     <span class="n">answers</span><span class="o">.</span><span class="n">pretty_print</span><span class="p">()</span>
 
 <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
 </code></pre></div>
 <h2 id="reference-code">Reference code</h2>
-<p><a href="src/agentics/examples/agentics_basics.py">explore this example</a></p>
-<h2 id="see-next-transduction">See Next: Transduction</h2>
-<p>Wrapping pydantic types into Agentics provides them with the ability to perform transduction, as described in the <a href="transduction.md">next section</a></p>
+<p>See the <a href="../examples/">examples directory</a> for practical demonstrations of AG usage, including:
+- <code>hello_world.py</code> - Basic transduction example
+- <code>generate_tweets.py</code> - Content generation
+- <code>emotion_extractor.py</code> - Text analysis</p>
+<h2 id="go-to-index">Go to Index</h2>
+<ul>
+<li>👉 <a href="../">Index</a></li>
+</ul>
 
 
 

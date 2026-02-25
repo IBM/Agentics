@@ -1,0 +1,1395 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../optimization/">
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
+    
+    
+      
+        <title>🔌 Tool Integration - Agentics Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.618322db.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="https://unpkg.com/katex@0/dist/katex.min.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#tool-integration" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Agentics Documentation" class="md-header__button md-logo" aria-label="Agentics Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Agentics Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              🔌 Tool Integration
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Agentics Documentation" class="md-nav__button md-logo" aria-label="Agentics Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Agentics Documentation
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    👋 Welcome to Agentics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting_started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    🚀 Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../core_concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    🧠 Core Concepts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../transducible_functions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ⚙️ Transducible Functions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../map_reduce/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    🔁 Map-Reduce Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../semantic_operators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    🔍 Semantic Operators
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agentics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    🧬 Agentics (AG)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../optimization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ⚡ Performance Optimization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    🔌 Tool Integration
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    🔌 Tool Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-are-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Are Tools?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#using-mcp-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using MCP Tools
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Using MCP Tools">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#defining-an-mcp-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Defining an MCP Server
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#using-tools-in-transductions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using Tools in Transductions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Using Tools in Transductions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#option-1-connect-to-remoteexternal-mcp-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 1: Connect to Remote/External MCP Server
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-2-use-crewai-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 2: Use CrewAI Tools
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-3-launch-mcp-server-as-subprocess" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 3: Launch MCP Server as Subprocess
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tool-usage-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tool Usage Patterns
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tool Usage Patterns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pattern-1-information-retrieval" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pattern 1: Information Retrieval
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pattern-2-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pattern 2: Verification
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pattern-3-multi-step-reasoning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pattern 3: Multi-Step Reasoning
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#creating-custom-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Creating Custom Tools
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tool-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tool Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tool Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#limiting-tool-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Limiting Tool Usage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verbose-tool-logging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verbose Tool Logging
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best Practices
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Best Practices">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-robust-tool-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: Robust Tool Usage
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See Also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-are-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Are Tools?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#using-mcp-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using MCP Tools
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Using MCP Tools">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#defining-an-mcp-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Defining an MCP Server
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#using-tools-in-transductions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using Tools in Transductions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Using Tools in Transductions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#option-1-connect-to-remoteexternal-mcp-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 1: Connect to Remote/External MCP Server
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-2-use-crewai-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 2: Use CrewAI Tools
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-3-launch-mcp-server-as-subprocess" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 3: Launch MCP Server as Subprocess
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tool-usage-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tool Usage Patterns
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tool Usage Patterns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pattern-1-information-retrieval" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pattern 1: Information Retrieval
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pattern-2-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pattern 2: Verification
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pattern-3-multi-step-reasoning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pattern 3: Multi-Step Reasoning
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#creating-custom-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Creating Custom Tools
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tool-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tool Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tool Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#limiting-tool-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Limiting Tool Usage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verbose-tool-logging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verbose Tool Logging
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best Practices
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Best Practices">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-robust-tool-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: Robust Tool Usage
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See Also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="tool-integration">🔌 Tool Integration</h1>
+<p>Transducible functions can use external tools to enhance their capabilities through the Model Context Protocol (MCP). This enables LLM-powered workflows to access real-time data, execute code, query databases, and interact with external services.</p>
+<hr />
+<h2 id="what-are-tools">What Are Tools?</h2>
+<p>Tools extend transducible functions with external capabilities:</p>
+<ul>
+<li><strong>Web search</strong> - Retrieve real-time information from the internet</li>
+<li><strong>Database queries</strong> - Access structured data from SQL/NoSQL databases</li>
+<li><strong>API calls</strong> - Integrate with external services and APIs</li>
+<li><strong>Code execution</strong> - Run computations and scripts</li>
+<li><strong>File operations</strong> - Read/write files and process documents</li>
+<li><strong>Custom functions</strong> - Any Python function you define</li>
+</ul>
+<hr />
+<h2 id="using-mcp-tools">Using MCP Tools</h2>
+<p>MCP (Model Context Protocol) provides a standard way to expose tools to LLMs, making them discoverable and callable during transductions.</p>
+<h3 id="defining-an-mcp-server">Defining an MCP Server</h3>
+<p>First, create an MCP server with your tools (see <code>examples/mcp_server_example.py</code>):</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">ddgs</span><span class="w"> </span><span class="kn">import</span> <span class="n">DDGS</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mcp.server.fastmcp</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastMCP</span>
+
+<span class="n">mcp</span> <span class="o">=</span> <span class="n">FastMCP</span><span class="p">(</span><span class="s2">&quot;Search&quot;</span><span class="p">)</span>
+
+<span class="nd">@mcp</span><span class="o">.</span><span class="n">tool</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">web_search</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">max_results</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Search the web using DuckDuckGo.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        query: Search query with optional operators</span>
+<span class="sd">        max_results: Number of results to return (5-20)</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        List of search result snippets with titles and URLs</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">DDGS</span><span class="p">()</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">max_results</span><span class="o">=</span><span class="n">max_results</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">r</span><span class="p">[</span><span class="s1">&#39;title&#39;</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="si">{</span><span class="n">r</span><span class="p">[</span><span class="s1">&#39;body&#39;</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="si">{</span><span class="n">r</span><span class="p">[</span><span class="s1">&#39;href&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">results</span><span class="p">]</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">mcp</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">transport</span><span class="o">=</span><span class="s2">&quot;stdio&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="using-tools-in-transductions">Using Tools in Transductions</h3>
+<p>There are several ways to import and use MCP tools in your transductions:</p>
+<h4 id="option-1-connect-to-remoteexternal-mcp-server">Option 1: Connect to Remote/External MCP Server</h4>
+<p>Use <code>MCPServerAdapter</code> from <code>crewai_tools</code> to connect to a remote or external MCP server (e.g., a server provided by a third party or running on another machine):</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mcp</span><span class="w"> </span><span class="kn">import</span> <span class="n">StdioServerParameters</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">crewai_tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">MCPServerAdapter</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">agentics.core.transducible_functions</span><span class="w"> </span><span class="kn">import</span> <span class="n">transducible</span><span class="p">,</span> <span class="n">Transduce</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ResearchQuery</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">topic</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">focus_area</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ResearchReport</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">summary</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">key_findings</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">sources</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+
+<span class="c1"># Configure connection to remote MCP server</span>
+<span class="c1"># The server could be:</span>
+<span class="c1"># - A third-party MCP server (e.g., from a service provider)</span>
+<span class="c1"># - An MCP server running on another machine</span>
+<span class="c1"># - A pre-existing MCP server script</span>
+<span class="n">server_params</span> <span class="o">=</span> <span class="n">StdioServerParameters</span><span class="p">(</span>
+    <span class="n">command</span><span class="o">=</span><span class="s2">&quot;python3&quot;</span><span class="p">,</span>
+    <span class="n">args</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;path/to/remote/mcp_server.py&quot;</span><span class="p">],</span>  <span class="c1"># Path to the MCP server</span>
+    <span class="n">env</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;UV_PYTHON&quot;</span><span class="p">:</span> <span class="s2">&quot;3.12&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">},</span>
+<span class="p">)</span>
+
+<span class="c1"># Connect to the remote MCP server</span>
+<span class="k">with</span> <span class="n">MCPServerAdapter</span><span class="p">(</span><span class="n">server_params</span><span class="p">)</span> <span class="k">as</span> <span class="n">server_tools</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Available tools from remote server: </span><span class="si">{</span><span class="p">[</span><span class="n">tool</span><span class="o">.</span><span class="n">name</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">tool</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">server_tools</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="nd">@transducible</span><span class="p">(</span>
+        <span class="n">tools</span><span class="o">=</span><span class="n">server_tools</span><span class="p">,</span>  <span class="c1"># Use tools from remote MCP server</span>
+        <span class="n">reasoning</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">max_iter</span><span class="o">=</span><span class="mi">5</span>
+    <span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">research_topic</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">ResearchQuery</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResearchReport</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Research a topic using tools from remote MCP server.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">Transduce</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+
+    <span class="c1"># Execute</span>
+    <span class="n">query</span> <span class="o">=</span> <span class="n">ResearchQuery</span><span class="p">(</span>
+        <span class="n">topic</span><span class="o">=</span><span class="s2">&quot;Agentics framework&quot;</span><span class="p">,</span>
+        <span class="n">focus_area</span><span class="o">=</span><span class="s2">&quot;practical applications&quot;</span>
+    <span class="p">)</span>
+    <span class="n">report</span> <span class="o">=</span> <span class="k">await</span> <span class="n">research_topic</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>Example: Connecting to a Third-Party MCP Server</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Example: Connect to a hypothetical weather MCP server</span>
+<span class="n">weather_server_params</span> <span class="o">=</span> <span class="n">StdioServerParameters</span><span class="p">(</span>
+    <span class="n">command</span><span class="o">=</span><span class="s2">&quot;npx&quot;</span><span class="p">,</span>  <span class="c1"># MCP servers can be in any language</span>
+    <span class="n">args</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;-y&quot;</span><span class="p">,</span> <span class="s2">&quot;@weather/mcp-server&quot;</span><span class="p">],</span>  <span class="c1"># npm package</span>
+<span class="p">)</span>
+
+<span class="k">with</span> <span class="n">MCPServerAdapter</span><span class="p">(</span><span class="n">weather_server_params</span><span class="p">)</span> <span class="k">as</span> <span class="n">weather_tools</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Weather tools: </span><span class="si">{</span><span class="p">[</span><span class="n">tool</span><span class="o">.</span><span class="n">name</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">tool</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">weather_tools</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="nd">@transducible</span><span class="p">(</span><span class="n">tools</span><span class="o">=</span><span class="n">weather_tools</span><span class="p">,</span> <span class="n">reasoning</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_weather_report</span><span class="p">(</span><span class="n">location</span><span class="p">:</span> <span class="n">Location</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">WeatherReport</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">Transduce</span><span class="p">(</span><span class="n">location</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>Note:</strong> The <code>MCPServerAdapter</code> handles the connection lifecycle - it starts the server process when entering the context and stops it when exiting. You don't manage the server manually.</p>
+<h4 id="option-2-use-crewai-tools">Option 2: Use CrewAI Tools</h4>
+<p>Agentics supports CrewAI tools, which provide a standardized interface for tool integration:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">agentics.core.transducible_functions</span><span class="w"> </span><span class="kn">import</span> <span class="n">transducible</span><span class="p">,</span> <span class="n">Transduce</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">crewai_tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">tool</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ResearchQuery</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">topic</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">focus_area</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ResearchReport</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">summary</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">key_findings</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">sources</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+
+<span class="c1"># Define CrewAI tool</span>
+<span class="nd">@tool</span><span class="p">(</span><span class="s2">&quot;Web Search Tool&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">web_search</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">max_results</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Search the web using DuckDuckGo.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        query: Search query</span>
+<span class="sd">        max_results: Number of results to return</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        List of search results with title, snippet, and URL</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">ddgs</span><span class="w"> </span><span class="kn">import</span> <span class="n">DDGS</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">DDGS</span><span class="p">()</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">max_results</span><span class="o">=</span><span class="n">max_results</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">r</span><span class="p">[</span><span class="s1">&#39;title&#39;</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="si">{</span><span class="n">r</span><span class="p">[</span><span class="s1">&#39;body&#39;</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="si">{</span><span class="n">r</span><span class="p">[</span><span class="s1">&#39;href&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">results</span><span class="p">]</span>
+
+<span class="nd">@transducible</span><span class="p">(</span>
+    <span class="n">tools</span><span class="o">=</span><span class="p">[</span><span class="n">web_search</span><span class="p">],</span>  <span class="c1"># Pass CrewAI tool</span>
+    <span class="n">reasoning</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">max_iter</span><span class="o">=</span><span class="mi">5</span>
+<span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">research_topic</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">ResearchQuery</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResearchReport</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Research a topic using web search and synthesize findings.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Transduce</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+
+<span class="c1"># Use it</span>
+<span class="n">query</span> <span class="o">=</span> <span class="n">ResearchQuery</span><span class="p">(</span>
+    <span class="n">topic</span><span class="o">=</span><span class="s2">&quot;Agentics framework&quot;</span><span class="p">,</span>
+    <span class="n">focus_area</span><span class="o">=</span><span class="s2">&quot;practical applications&quot;</span>
+<span class="p">)</span>
+<span class="n">report</span> <span class="o">=</span> <span class="k">await</span> <span class="n">research_topic</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+</code></pre></div>
+<p>You can also use pre-built CrewAI tools:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">crewai_tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">SerperDevTool</span><span class="p">,</span> <span class="n">WebsiteSearchTool</span>
+
+<span class="c1"># Use existing CrewAI tools</span>
+<span class="n">search_tool</span> <span class="o">=</span> <span class="n">SerperDevTool</span><span class="p">()</span>
+<span class="n">website_tool</span> <span class="o">=</span> <span class="n">WebsiteSearchTool</span><span class="p">()</span>
+
+<span class="nd">@transducible</span><span class="p">(</span>
+    <span class="n">tools</span><span class="o">=</span><span class="p">[</span><span class="n">search_tool</span><span class="p">,</span> <span class="n">website_tool</span><span class="p">],</span>
+    <span class="n">reasoning</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">max_iter</span><span class="o">=</span><span class="mi">5</span>
+<span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">research_with_multiple_tools</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">ResearchQuery</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResearchReport</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Research using multiple CrewAI tools.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Transduce</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+</code></pre></div>
+<h4 id="option-3-launch-mcp-server-as-subprocess">Option 3: Launch MCP Server as Subprocess</h4>
+<p>You can launch the MCP server as a separate subprocess and connect to it. This approach starts the server automatically when needed:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">mcp</span><span class="w"> </span><span class="kn">import</span> <span class="n">ClientSession</span><span class="p">,</span> <span class="n">StdioServerParameters</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mcp.client.stdio</span><span class="w"> </span><span class="kn">import</span> <span class="n">stdio_client</span>
+
+<span class="c1"># Launch MCP server as subprocess</span>
+<span class="c1"># The server_params specify how to start the server process</span>
+<span class="n">server_params</span> <span class="o">=</span> <span class="n">StdioServerParameters</span><span class="p">(</span>
+    <span class="n">command</span><span class="o">=</span><span class="s2">&quot;python&quot;</span><span class="p">,</span>  <span class="c1"># Command to run</span>
+    <span class="n">args</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;mcp_server.py&quot;</span><span class="p">],</span>  <span class="c1"># Server script to execute</span>
+<span class="p">)</span>
+
+<span class="c1"># stdio_client launches the server and manages the connection</span>
+<span class="k">async</span> <span class="k">with</span> <span class="n">stdio_client</span><span class="p">(</span><span class="n">server_params</span><span class="p">)</span> <span class="k">as</span> <span class="p">(</span><span class="n">read</span><span class="p">,</span> <span class="n">write</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">with</span> <span class="n">ClientSession</span><span class="p">(</span><span class="n">read</span><span class="p">,</span> <span class="n">write</span><span class="p">)</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
+        <span class="c1"># Initialize connection and discover available tools</span>
+        <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">initialize</span><span class="p">()</span>
+        <span class="n">tools</span> <span class="o">=</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">list_tools</span><span class="p">()</span>
+
+        <span class="c1"># Use tools in transduction</span>
+        <span class="nd">@transducible</span><span class="p">(</span>
+            <span class="n">tools</span><span class="o">=</span><span class="n">tools</span><span class="p">,</span>
+            <span class="n">reasoning</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">max_iter</span><span class="o">=</span><span class="mi">5</span>
+        <span class="p">)</span>
+        <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">research_topic</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">ResearchQuery</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResearchReport</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">Transduce</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+
+        <span class="c1"># Execute</span>
+        <span class="n">query</span> <span class="o">=</span> <span class="n">ResearchQuery</span><span class="p">(</span><span class="n">topic</span><span class="o">=</span><span class="s2">&quot;Agentics framework&quot;</span><span class="p">)</span>
+        <span class="n">report</span> <span class="o">=</span> <span class="k">await</span> <span class="n">research_topic</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+
+<span class="c1"># Server process is automatically terminated when exiting the context</span>
+</code></pre></div>
+<p><strong>When to use each option:</strong>
+- <strong>Option 1</strong> (Remote MCP Server): Best for connecting to third-party or external MCP servers; use when you want to leverage existing MCP services or servers running elsewhere
+- <strong>Option 2</strong> (CrewAI tools): Best for leveraging the CrewAI ecosystem and pre-built tools; simplest for getting started with existing tools
+- <strong>Option 3</strong> (MCP subprocess with ClientSession): Lower-level approach for advanced use cases; gives more control over server lifecycle and communication; use for custom server management</p>
+<hr />
+<h2 id="tool-usage-patterns">Tool Usage Patterns</h2>
+<h3 id="pattern-1-information-retrieval">Pattern 1: Information Retrieval</h3>
+<p>Enrich data with external sources:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@transducible</span><span class="p">(</span><span class="n">tools</span><span class="o">=</span><span class="p">[</span><span class="n">web_search</span><span class="p">,</span> <span class="n">database_query</span><span class="p">])</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">enrich_data</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">BasicInfo</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">EnrichedInfo</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Enrich basic info with external data sources.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Transduce</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="pattern-2-verification">Pattern 2: Verification</h3>
+<p>Verify claims against external sources:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@transducible</span><span class="p">(</span><span class="n">tools</span><span class="o">=</span><span class="p">[</span><span class="n">fact_checker</span><span class="p">,</span> <span class="n">web_search</span><span class="p">])</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">verify_claims</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">Claims</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">VerifiedClaims</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Verify claims against external sources.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Transduce</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="pattern-3-multi-step-reasoning">Pattern 3: Multi-Step Reasoning</h3>
+<p>Solve complex problems requiring multiple tools:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@transducible</span><span class="p">(</span>
+    <span class="n">tools</span><span class="o">=</span><span class="p">[</span><span class="n">web_search</span><span class="p">,</span> <span class="n">calculator</span><span class="p">,</span> <span class="n">code_executor</span><span class="p">],</span>
+    <span class="n">reasoning</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">max_iter</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+    <span class="n">verbose_agent</span><span class="o">=</span><span class="kc">True</span>  <span class="c1"># See tool calls</span>
+<span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">solve_complex_problem</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">Problem</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Solution</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Solve problems requiring multiple tools and reasoning steps.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Transduce</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="creating-custom-tools">Creating Custom Tools</h2>
+<p>Define your own tools following the MCP pattern:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">mcp.server.fastmcp</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastMCP</span>
+
+<span class="n">mcp</span> <span class="o">=</span> <span class="n">FastMCP</span><span class="p">(</span><span class="s2">&quot;CustomTools&quot;</span><span class="p">)</span>
+
+<span class="nd">@mcp</span><span class="o">.</span><span class="n">tool</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">calculate_metrics</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate statistical metrics from data.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        data: Dictionary with numeric values</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Dictionary with mean, median, std, etc.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">statistics</span>
+    <span class="n">values</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;mean&quot;</span><span class="p">:</span> <span class="n">statistics</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">values</span><span class="p">),</span>
+        <span class="s2">&quot;median&quot;</span><span class="p">:</span> <span class="n">statistics</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">values</span><span class="p">),</span>
+        <span class="s2">&quot;stdev&quot;</span><span class="p">:</span> <span class="n">statistics</span><span class="o">.</span><span class="n">stdev</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="mi">0</span>
+    <span class="p">}</span>
+
+<span class="nd">@mcp</span><span class="o">.</span><span class="n">tool</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">fetch_database_record</span><span class="p">(</span><span class="n">record_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fetch a record from the database.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        record_id: Unique identifier for the record</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Record data as dictionary</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Your database logic here</span>
+    <span class="k">return</span> <span class="n">db</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">record_id</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="tool-configuration">Tool Configuration</h2>
+<p>Control how tools are used in your transductions:</p>
+<h3 id="limiting-tool-usage">Limiting Tool Usage</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Limit tool usage</span>
+<span class="nd">@transducible</span><span class="p">(</span>
+    <span class="n">tools</span><span class="o">=</span><span class="p">[</span><span class="n">expensive_api_tool</span><span class="p">],</span>
+    <span class="n">max_iter</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>  <span class="c1"># Maximum 3 tool calls</span>
+    <span class="n">timeout</span><span class="o">=</span><span class="mi">120</span>  <span class="c1"># 2 minute timeout including tool calls</span>
+<span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">controlled_tool_usage</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">Input</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Output</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">Transduce</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="verbose-tool-logging">Verbose Tool Logging</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Verbose tool logging</span>
+<span class="nd">@transducible</span><span class="p">(</span>
+    <span class="n">tools</span><span class="o">=</span><span class="p">[</span><span class="n">web_search</span><span class="p">],</span>
+    <span class="n">verbose_agent</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="c1"># Log each tool call</span>
+    <span class="n">provide_explanation</span><span class="o">=</span><span class="kc">True</span>  <span class="c1"># Include tool usage in explanation</span>
+<span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">logged_tool_usage</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">Input</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Output</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">Transduce</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+
+<span class="n">result</span><span class="p">,</span> <span class="n">explanation</span> <span class="o">=</span> <span class="k">await</span> <span class="n">logged_tool_usage</span><span class="p">(</span><span class="n">input_data</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Tools used: </span><span class="si">{</span><span class="n">explanation</span><span class="o">.</span><span class="n">tools_called</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="best-practices">Best Practices</h2>
+<ol>
+<li><strong>Provide clear tool descriptions</strong> - Help the LLM understand when to use each tool</li>
+<li><strong>Limit tool iterations</strong> - Prevent infinite loops with <code>max_iter</code></li>
+<li><strong>Handle tool failures gracefully</strong> - Tools may timeout or return errors</li>
+<li><strong>Use reasoning mode</strong> - Enable <code>reasoning=True</code> for complex tool orchestration</li>
+<li><strong>Monitor tool usage</strong> - Use <code>verbose_agent=True</code> during development</li>
+<li><strong>Cache tool results</strong> - Avoid redundant API calls for the same queries</li>
+</ol>
+<h3 id="example-robust-tool-usage">Example: Robust Tool Usage</h3>
+<div class="highlight"><pre><span></span><code><span class="nd">@transducible</span><span class="p">(</span>
+    <span class="n">tools</span><span class="o">=</span><span class="p">[</span><span class="n">web_search</span><span class="p">,</span> <span class="n">database_query</span><span class="p">],</span>
+    <span class="n">reasoning</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">max_iter</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+    <span class="n">timeout</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
+    <span class="n">verbose_agent</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">provide_explanation</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">robust_research</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">Query</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Report</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Research with fallback strategies if tools fail.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Transduce</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">report</span><span class="p">,</span> <span class="n">explanation</span> <span class="o">=</span> <span class="k">await</span> <span class="n">robust_research</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Used tools: </span><span class="si">{</span><span class="n">explanation</span><span class="o">.</span><span class="n">tools_called</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Tool call count: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">explanation</span><span class="o">.</span><span class="n">tool_calls</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">except</span> <span class="ne">TimeoutError</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Research timed out - try simpler query or increase timeout&quot;</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="see-also">See Also</h2>
+<ul>
+<li>👉 <a href="../transducible_functions/">Transducible Functions</a> - Core concepts and basic usage</li>
+<li>👉 <a href="../optimization/">Optimization</a> - Performance tuning and batch processing</li>
+<li>👉 <a href="../examples/mcp_server_example.py">Examples</a> - Complete MCP server example</li>
+<li>👉 <a href="../">Index</a></li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": [], "search": "../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      
+        <script src="../javascripts/katex.js"></script>
+      
+        <script src="https://unpkg.com/katex@0/dist/katex.min.js"></script>
+      
+        <script src="https://unpkg.com/katex@0/dist/contrib/auto-render.min.js"></script>
+      
+    
+  </body>
+</html>
