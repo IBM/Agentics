@@ -339,6 +339,7 @@ def make_all_fields_optional(
 ) -> type[BaseModel]:
     """
     Returns a new Pydantic model class where all fields are Optional and default to None.
+    Preserves model validators from the original class.
 
     Args:
         model_cls: Original Pydantic model class.
@@ -352,9 +353,16 @@ def make_all_fields_optional(
         # Original type
         annotation = field.annotation
         origin = get_origin(annotation)
+        args = get_args(annotation)
+
+        # Check if already Optional (Union[X, None] or Union[X, type(None)])
+        is_already_optional = False
+        if origin is Union:
+            # Check if None is in the union args
+            is_already_optional = type(None) in args or None in args
 
         # Make it Optional if not already
-        if origin is not Optional and annotation is not Any:
+        if not is_already_optional and annotation is not Any:
             annotation = Optional[annotation]
 
         fields[name] = (
@@ -363,7 +371,19 @@ def make_all_fields_optional(
         )
 
     new_name = rename_type or f"{model_cls.__name__}Optional"
-    return create_model(new_name, **fields)
+
+    # Create the new model with fields
+    new_model = create_model(new_name, **fields)
+
+    # Copy validators from the original model to the new model
+    # This preserves @model_validator decorators
+    if hasattr(model_cls, "__pydantic_decorators__"):
+        # Pydantic v2 stores validators in __pydantic_decorators__
+        new_model.__pydantic_decorators__ = model_cls.__pydantic_decorators__
+        # Rebuild the model to apply the validators
+        new_model.model_rebuild(force=True)
+
+    return new_model
 
 
 def pretty_print_atype(atype, indent: int = 2):

@@ -114,7 +114,6 @@ def get_available_llms() -> dict[str, LLM | AsyncOpenAI]:
             model=os.getenv("OPENAI_MODEL_ID", "openai/gpt-4"),
             temperature=0.8,
             top_p=0.9,
-            stop=["END"],
             api_key=os.getenv("OPENAI_API_KEY"),
             seed=42,
         )

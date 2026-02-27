@@ -180,21 +180,22 @@ class AG(BaseModel, Generic[T]):
     def create_crewai_llm(**kwargs):
         return LLM(**kwargs)
 
-    async def generate_atype(self, description: str, retry: int = 3):
+    async def generate_atype(
+        self, description: str, retry: int = 3
+    ) -> Tuple[str, Type[BaseModel]] | None:
         class GeneratedAtype(BaseModel):
             python_code: Optional[str] = Field(
                 None, description="Python Code for the described Pydantic type"
             )
-            # methods: list[str] = Field(None, description="Methods for the class above")
+            methods: list[str] = Field(None, description="Methods for the class above")
 
         i = 0
         while i < retry:
             generated_atype_ag = await (
                 AG(
                     atype=GeneratedAtype,
-                    instructions="""Generate Python code for the pydantic type following the input specs.
-                Make all fields Optional.
-                Use only primitive types for the fields, avoiding nested.
+                    instructions="""Generate python code for the input nl type specs.
+                Make all fields Optional. Use only primitive types for the fields, avoiding nested.
                 Provide descriptions for the class and all its fields, using Field(None,description= "...")
                 If the input nl type spec is a question, generate a pydantic type that can be used to
                 represent the answer to that question.
@@ -702,48 +703,101 @@ class AG(BaseModel, Generic[T]):
         else:
             return output
 
-    async def copy_fewshots_from_ground_truth(
-        self, source_target_pairs: List[Tuple[str, str]], first_n: Optional[int] = None
-    ) -> AG:
-        """for each state, copy fields values from ground truth to target attributes
-        to be used as fewshot during transduction
+    def get_instructions_from_source(self, source: AG) -> AG:
         """
-        for src, target in source_target_pairs:
-            func = partial(
-                copy_attribute_values,
-                source_attribute=src,
-                target_attribute=target,
-            )
-            await self.apply(func, first_n=first_n)
+        Get the instructions from the source.
+
+        Args:
+            source:AGStream: The source to get the instructions from.
+        Returns:
+            AG: The instructions from the source.
+        """
+        if source.instructions:
+            self.instructions = source.instructions
+        if source.areduce_batch_size:
+            self.areduce_batch_size = source.areduce_batch_size
+        if source.amap_batch_size:
+            self.amap_batch_size = source.amap_batch_size
+        if source.transduction_type:
+            self.transduction_type = source.transduction_type
+        if source.transduce_fields:
+            self.transduce_fields = source.transduce_fields
+        if source.max_iter:
+            self.max_iter = source.max_iter
+        if source.prompt_template:
+            self.prompt_template = source.prompt_template
+        if source.reasoning:
+            self.reasoning = source.reasoning
+        if source.provide_explanations:
+            self.provide_explanations = source.provide_explanations
+        if source.transduction_timeout:
+            self.transduction_timeout = source.transduction_timeout
         return self
 
-    async def self_transduction(
-        self,
-        source_fields: List[str] | None = None,
-        target_fields: List[str] | None = None,
-        instructions: str = None,
-    ):
-        target = self.clone()
-        # if not source_fields and not target_fields:
-        #     return await self.amap(self._single_self_transduction)
+    # def get_instructions_from_source(self, source:AG) -> AG:
+    #     """
+    #     Get the instructions and other parameters from the source AG.
 
-        if not source_fields:
-            self.transduce_fields = get_active_fields(self[0])
-        else:
-            self.transduce_fields = source_fields
+    #     Args:
+    #         source:AGStream: The source to get the instructions from.
+    #     Returns:
+    #         AGStream: The instructions from the source.
+    #     """
+    #     self.instructions=source.instructions
+    #     self.areduce_batch_size=source.areduce_batch_size
+    #     self.amap_batch_size=source.amap_batch_size
+    #     self.transduction_type=source.transduction_type
+    #     self.transduction_function=source.transduction_function
+    #     self.transduce_fields=source.transduce_fields
+    #     self.max_iter=source.max_iter
+    #     self.prompt_template=source.prompt_template
+    #     self.reasoning=source.reasoning
+    #     self.provide_explanations=source.provide_explanations
+    #     self.transduction_timeout=source.transduction_timeout
+    #     return self
 
-        target.instructions = instructions or target.instructions
-        if not target_fields:
-            target.transduce_fields = list(
-                {x["name"] for x in get_pydantic_fields(self.atype)}
-                - get_active_fields(self[0])
-            )
-        else:
-            target.transduce_fields = target_fields
+    # async def copy_fewshots_from_ground_truth(
+    #     self, source_target_pairs: List[Tuple[str, str]], first_n: Optional[int] = None
+    # ) -> AG:
+    #     """for each state, copy fields values from ground truth to target attributes
+    #     to be used as fewshot during transduction
+    #     """
+    #     for src, target in source_target_pairs:
+    #         func = partial(
+    #             copy_attribute_values,
+    #             source_attribute=src,
+    #             target_attribute=target,
+    #         )
+    #         await self.apply(func, first_n=first_n)
+    #     return self
 
-        output_process = target << self
-        output = await output_process
-        return output
+    # async def self_transduction(
+    #     self,
+    #     source_fields: List[str] | None = None,
+    #     target_fields: List[str] | None = None,
+    #     instructions: str = None,
+    # ):
+    #     target = self.clone()
+    #     # if not source_fields and not target_fields:
+    #     #     return await self.amap(self._single_self_transduction)
+
+    #     if not source_fields:
+    #         self.transduce_fields = get_active_fields(self[0])
+    #     else:
+    #         self.transduce_fields = source_fields
+
+    #     target.instructions = instructions or target.instructions
+    #     if not target_fields:
+    #         target.transduce_fields = list(
+    #             {x["name"] for x in get_pydantic_fields(self.atype)}
+    #             - get_active_fields(self[0])
+    #         )
+    #     else:
+    #         target.transduce_fields = target_fields
+
+    #     output_process = target << self
+    #     output = await output_process
+    #     return output
 
     ##################################
     ##### Import Functionalities #####
@@ -1290,3 +1344,73 @@ class AG(BaseModel, Generic[T]):
                     out.states.append(state)
                 continue
         return out
+
+    @staticmethod
+    def _create_model_from_schema(schema: Dict[str, Any]) -> Type[BaseModel]:
+        """
+        Create a Pydantic model from a JSON schema.
+
+        Args:
+            schema: JSON schema dictionary with 'properties' and 'title'
+
+        Returns:
+            Dynamically created Pydantic model class
+        """
+        from typing import Any, Optional
+
+        from pydantic import create_model
+
+        model_name = schema.get("title", "DynamicModel")
+        properties = schema.get("properties", {})
+
+        # Build field definitions from schema properties
+        field_definitions = {}
+        for field_name, field_schema in properties.items():
+            # Determine the field type from schema
+            field_type = Any  # Default to Any
+
+            if "anyOf" in field_schema:
+                # Handle optional fields (anyOf with null)
+                types = []
+                for type_def in field_schema["anyOf"]:
+                    if type_def.get("type") == "string":
+                        types.append(str)
+                    elif type_def.get("type") == "integer":
+                        types.append(int)
+                    elif type_def.get("type") == "number":
+                        types.append(float)
+                    elif type_def.get("type") == "boolean":
+                        types.append(bool)
+                    elif type_def.get("type") == "null":
+                        types.append(type(None))
+
+                if len(types) > 1:
+                    from typing import Union
+
+                    field_type = Union[tuple(types)]
+                elif len(types) == 1:
+                    field_type = types[0]
+            elif "type" in field_schema:
+                # Simple type mapping
+                schema_type = field_schema["type"]
+                if schema_type == "string":
+                    field_type = str
+                elif schema_type == "integer":
+                    field_type = int
+                elif schema_type == "number":
+                    field_type = float
+                elif schema_type == "boolean":
+                    field_type = bool
+                elif schema_type == "array":
+                    field_type = list
+                elif schema_type == "object":
+                    field_type = dict
+
+            # Get default value
+            default_value = field_schema.get("default", None)
+
+            # Create field definition
+            field_definitions[field_name] = (field_type, default_value)
+
+        # Create and return the model
+        return create_model(model_name, **field_definitions)

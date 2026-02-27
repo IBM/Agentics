@@ -1,0 +1,119 @@
+version: '3.8'
+
+services:
+  kafka:
+    image: apache/kafka:3.9.0
+    hostname: kafka
+    container_name: kafka
+    ports:
+      - "9092:9092"
+      - "9101:9101"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_NODE_ID: 1
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:29093'
+      KAFKA_LISTENERS: 'PLAINTEXT://kafka:29092,CONTROLLER://kafka:29093,PLAINTEXT_HOST://0.0.0.0:9092'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
+    networks:
+      - karapace
+
+  karapace-schema-registry:
+    image: ghcr.io/aiven-open/karapace:latest
+    hostname: karapace-schema-registry
+    container_name: karapace-schema-registry
+    entrypoint:
+      - python3
+      - -m
+      - karapace
+    depends_on:
+      - kafka
+    ports:
+      - "8081:8081"
+    environment:
+      KARAPACE_KARAPACE_REGISTRY: "true"
+      KARAPACE_KARAPACE_REST: "false"
+      KARAPACE_ADVERTISED_HOSTNAME: karapace-schema-registry
+      KARAPACE_BOOTSTRAP_URI: kafka:29092
+      KARAPACE_PORT: 8081
+      KARAPACE_HOST: 0.0.0.0
+      KARAPACE_CLIENT_ID: karapace-schema-registry-0
+      KARAPACE_GROUP_ID: karapace-schema-registry
+      KARAPACE_MASTER_ELIGIBILITY: "true"
+      KARAPACE_TOPIC_NAME: _schemas
+      KARAPACE_LOG_LEVEL: INFO
+      KARAPACE_COMPATIBILITY: BACKWARD
+    networks:
+      - karapace
+
+  karapace-rest-proxy:
+    image: ghcr.io/aiven-open/karapace:latest
+    hostname: karapace-rest-proxy
+    container_name: karapace-rest-proxy
+    entrypoint:
+      - python3
+      - -m
+      - karapace.kafka_rest_apis
+    depends_on:
+      - kafka
+      - karapace-schema-registry
+    ports:
+      - "8082:8082"
+    environment:
+      KARAPACE_KARAPACE_REST: "true"
+      KARAPACE_KARAPACE_REGISTRY: "false"
+      KARAPACE_PORT: 8082
+      KARAPACE_HOST: 0.0.0.0
+      KARAPACE_ADVERTISED_HOSTNAME: karapace-rest-proxy
+      KARAPACE_BOOTSTRAP_URI: kafka:29092
+      KARAPACE_REGISTRY_HOST: karapace-schema-registry
+      KARAPACE_REGISTRY_PORT: 8081
+      KARAPACE_LOG_LEVEL: INFO
+    networks:
+      - karapace
+
+  schema-registry-ui:
+    image: landoop/schema-registry-ui:latest
+    hostname: schema-registry-ui
+    container_name: schema-registry-ui
+    depends_on:
+      - karapace-schema-registry
+    ports:
+      - "8000:8000"
+    environment:
+      SCHEMAREGISTRY_URL: http://karapace-schema-registry:8081
+      PROXY: "true"
+    networks:
+      - karapace
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    hostname: kafka-ui
+    container_name: kafka-ui
+    depends_on:
+      - kafka
+      - karapace-schema-registry
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_SCHEMAREGISTRY: http://karapace-schema-registry:8081
+      DYNAMIC_CONFIG_ENABLED: 'true'
+    networks:
+      - karapace
+
+networks:
+  karapace:
+    name: karapace_network
+    driver: bridge
+
+# Made with Bob
