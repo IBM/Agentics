@@ -5,8 +5,10 @@
 
 set -e
 
-COMPOSE_FILE="docker-compose-karapace-flink.yml"
-PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Get the script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+COMPOSE_FILE="$SCRIPT_DIR/docker-compose-karapace.yml"
+PROJECT_DIR="$SCRIPT_DIR"
 
 # Colors for output
 RED='\033[0;31m'
@@ -73,11 +75,6 @@ start_services() {
     print_info "Waiting for Kafka to initialize (15 seconds)..."
     sleep 15
 
-    print_info "Starting Streamlit Chat UI..."
-    nohup streamlit run examples/streaming_agent/streamlit_chat_client.py > /tmp/streamlit.log 2>&1 &
-    echo $! > /tmp/streamlit.pid
-    sleep 3
-
     print_info "Starting Local PyFlink Listener..."
     # Run listener locally (not in Docker)
     nohup python3 examples/streaming_agent/start_listener.py > /tmp/listener.log 2>&1 &
@@ -92,26 +89,20 @@ start_services() {
     print_info "  - Karapace REST Proxy: http://localhost:8082"
     print_info "  - Kafka UI: http://localhost:8080"
     print_info "  - Schema Registry UI: http://localhost:8000"
-    print_info "  - Streamlit Chat: http://localhost:8501"
-    print_info "  - Services Dashboard: open services_dashboard.html"
     print_info ""
     print_info "Logs:"
-    print_info "  - Streamlit: tail -f /tmp/streamlit.log"
     print_info "  - Listener: tail -f /tmp/listener.log"
     print_info ""
     print_info "Check status with: $0 status"
+    print_info ""
+    print_info "Opening services dashboard..."
+    cd "$PROJECT_DIR/examples/streaming_agent"
+    open services_dashboard.html 2>/dev/null || xdg-open services_dashboard.html 2>/dev/null || print_warn "Could not open dashboard automatically. Please open examples/streaming_agent/services_dashboard.html in your browser"
 }
 
 # Function to stop services
 stop_services() {
     print_info "Stopping all services..."
-
-    # Stop Streamlit
-    if [ -f /tmp/streamlit.pid ]; then
-        print_info "Stopping Streamlit..."
-        kill $(cat /tmp/streamlit.pid) 2>/dev/null || true
-        rm /tmp/streamlit.pid
-    fi
 
     # Stop Local Listener
     if [ -f /tmp/listener.pid ]; then
@@ -149,6 +140,49 @@ show_logs() {
         docker compose -f "$COMPOSE_FILE" logs -f
     else
         docker compose -f "$COMPOSE_FILE" logs -f "$1"
+    fi
+}
+
+# Function to start Streamlit only
+start_streamlit() {
+    print_info "Starting Streamlit service..."
+
+    # Check if already running
+    if [ -f /tmp/streamlit.pid ] && kill -0 $(cat /tmp/streamlit.pid) 2>/dev/null; then
+        print_warn "Streamlit is already running (PID: $(cat /tmp/streamlit.pid))"
+        return 0
+    fi
+
+    kill_port 8501
+
+    cd "$PROJECT_DIR"
+    nohup streamlit run examples/streaming_agent/streamlit_chat_client.py > /tmp/streamlit.log 2>&1 &
+    echo $! > /tmp/streamlit.pid
+    sleep 2
+
+    print_info "Streamlit started (PID: $(cat /tmp/streamlit.pid))"
+    print_info "Access at: http://localhost:8501"
+    print_info "View logs: tail -f /tmp/streamlit.log"
+}
+
+# Function to stop Streamlit only
+stop_streamlit() {
+    if [ -f /tmp/streamlit.pid ]; then
+        print_info "Stopping Streamlit service..."
+        kill $(cat /tmp/streamlit.pid) 2>/dev/null || true
+        rm /tmp/streamlit.pid
+        print_info "Streamlit stopped"
+    else
+        print_warn "Streamlit is not running"
+    fi
+}
+
+# Function to view Streamlit logs
+view_streamlit_logs() {
+    if [ -f /tmp/streamlit.log ]; then
+        tail -f /tmp/streamlit.log
+    else
+        print_error "No Streamlit logs found"
     fi
 }
 
@@ -218,6 +252,15 @@ case "$1" in
     listener-logs)
         view_listener_logs
         ;;
+    start-streamlit)
+        start_streamlit
+        ;;
+    stop-streamlit)
+        stop_streamlit
+        ;;
+    streamlit-logs)
+        view_streamlit_logs
+        ;;
     dashboard)
         print_info "Opening services dashboard..."
         open services_dashboard.html 2>/dev/null || xdg-open services_dashboard.html 2>/dev/null || print_info "Please open services_dashboard.html in your browser"
@@ -225,31 +268,35 @@ case "$1" in
     *)
         echo "Agentics Services Manager (Local PyFlink)"
         echo ""
-        echo "Usage: $0 {start|stop|restart|status|logs|start-listener|stop-listener|listener-logs|dashboard}"
+        echo "Usage: $0 {start|stop|restart|status|logs|start-listener|stop-listener|listener-logs|start-streamlit|stop-streamlit|streamlit-logs|dashboard}"
         echo ""
         echo "Commands:"
-        echo "  start            - Start all services (Kafka, UIs, Listener, Streamlit)"
-        echo "  stop             - Stop all services"
-        echo "  restart          - Restart all services"
-        echo "  status           - Show Docker service status"
-        echo "  logs [service]   - Show Docker logs (optionally for specific service)"
-        echo "  start-listener   - Start only the PyFlink listener"
-        echo "  stop-listener    - Stop only the PyFlink listener"
-        echo "  listener-logs    - View listener logs"
-        echo "  dashboard        - Open services dashboard in browser"
+        echo "  start              - Start all services (Kafka, UIs, Listener) and open dashboard"
+        echo "  stop               - Stop all services"
+        echo "  restart            - Restart all services"
+        echo "  status             - Show Docker service status"
+        echo "  logs [service]     - Show Docker logs (optionally for specific service)"
+        echo "  start-listener     - Start only the PyFlink listener"
+        echo "  stop-listener      - Stop only the PyFlink listener"
+        echo "  listener-logs      - View listener logs"
+        echo "  start-streamlit    - Start only the Streamlit service"
+        echo "  stop-streamlit     - Stop only the Streamlit service"
+        echo "  streamlit-logs     - View Streamlit logs"
+        echo "  dashboard          - Open services dashboard in browser"
         echo ""
         echo "Examples:"
         echo "  $0 start                    # Start everything"
         echo "  $0 logs kafka               # View Kafka logs"
         echo "  $0 start-listener           # Start just the listener"
         echo "  $0 listener-logs            # View listener logs"
+        echo "  $0 start-streamlit          # Start just Streamlit"
+        echo "  $0 streamlit-logs           # View Streamlit logs"
         echo "  $0 dashboard                # Open web dashboard"
         echo ""
         echo "Access Points:"
         echo "  - Kafka UI: http://localhost:8080"
         echo "  - Schema Registry UI: http://localhost:8000"
-        echo "  - Streamlit Chat: http://localhost:8501"
-        echo "  - Services Dashboard: open services_dashboard.html"
+        echo "  - Services Dashboard: examples/streaming_agent/services_dashboard.html"
         exit 1
         ;;
 esac

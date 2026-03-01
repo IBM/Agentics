@@ -12,6 +12,13 @@ import time
 from pydantic import BaseModel, Field
 
 from agentics.core.streaming import AGStream
+from agentics.core.streaming_utils import (
+    create_kafka_topic,
+    get_atype_from_registry,
+    kafka_topic_exists,
+    list_schema_versions,
+    register_atype_schema,
+)
 
 
 # Define example types
@@ -52,11 +59,13 @@ def example_1_register_schemas():
 
     # Register schemas
     print("\n📝 Registering Question schema...")
-    question_schema_id = question_stream.register_atype_schema()
+    question_schema_id = register_atype_schema(
+        atype=Question, schema_registry_url="http://localhost:8081"
+    )
 
     print("\n📝 Registering Answer schema...")
-    answer_schema_id = answer_stream.register_atype_schema(
-        topic="answers-topic", compatibility="BACKWARD"
+    answer_schema_id = register_atype_schema(
+        atype=Answer, schema_registry_url="http://localhost:8081"
     )
 
     if question_schema_id and answer_schema_id:
@@ -80,7 +89,9 @@ def example_2_retrieve_schemas():
 
     # Retrieve schema from registry
     print("\n🔍 Retrieving Question schema from registry...")
-    RetrievedQuestion = stream.get_atype_from_registry()
+    RetrievedQuestion = get_atype_from_registry(
+        atype_name="Question", schema_registry_url="http://localhost:8081"
+    )
 
     if RetrievedQuestion:
         print(f"\n✅ Successfully retrieved schema: {RetrievedQuestion.__name__}")
@@ -109,7 +120,9 @@ def example_3_list_versions():
     )
 
     print("\n📋 Listing all versions of Question schema...")
-    versions = stream.list_registered_schemas()
+    versions = list_schema_versions(
+        atype_name="Question", schema_registry_url="http://localhost:8081"
+    )
 
     if versions:
         print(f"\n✅ Found {len(versions)} version(s): {versions}")
@@ -117,7 +130,11 @@ def example_3_list_versions():
         # Retrieve specific version
         if len(versions) > 0:
             print(f"\n🔍 Retrieving version {versions[0]}...")
-            schema = stream.get_atype_from_registry(version=str(versions[0]))
+            schema = get_atype_from_registry(
+                atype_name="Question",
+                schema_registry_url="http://localhost:8081",
+                version=str(versions[0]),
+            )
             if schema:
                 print(f"   Retrieved: {schema.__name__}")
     else:
@@ -139,7 +156,7 @@ def example_4_end_to_end():
         schema_registry_url="http://localhost:8081",
     )
 
-    question_stream.register_atype_schema()
+    register_atype_schema(atype=Question, schema_registry_url="http://localhost:8081")
 
     # Step 2: Create and send a question
     print("\n📤 Step 2: Sending a question...")
@@ -150,8 +167,8 @@ def example_4_end_to_end():
     ]
 
     # Create topic if it doesn't exist
-    if not AGStream.topic_exists("demo-questions"):
-        AGStream.create_topic("demo-questions")
+    if not kafka_topic_exists("demo-questions"):
+        create_kafka_topic("demo-questions")
 
     key = question_stream.produce()
     print(f"   Sent with key: {key}")
@@ -163,7 +180,9 @@ def example_4_end_to_end():
     )
 
     # Get atype from registry
-    RetrievedQuestion = collector.get_atype_from_registry()
+    RetrievedQuestion = get_atype_from_registry(
+        atype_name="Question", schema_registry_url="http://localhost:8081"
+    )
     if RetrievedQuestion:
         collector.atype = RetrievedQuestion
 

@@ -1,25 +1,20 @@
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
 import sys
-from pathlib import Path
-from typing import Any, Dict, Optional, Type
+import threading
+import time
+from typing import Any, Dict, List, Optional, Type
 
-from pydantic import BaseModel, Field
+from dotenv import load_dotenv
+from kafka import KafkaProducer
+from pydantic import BaseModel, Field, ValidationError
 
 # Suppress Kafka consumer error logs
 logging.getLogger("kafka.consumer.fetcher").setLevel(logging.CRITICAL)
 logging.getLogger("kafka").setLevel(logging.WARNING)
-import asyncio
-import json
-import os
-import time
-from typing import Any, Dict, List, Optional, Type
-
-import requests
-from dotenv import load_dotenv
-from kafka import KafkaProducer
-from pydantic import BaseModel, ValidationError
 
 from agentics import AG
 from agentics.core.atype import (
@@ -27,14 +22,30 @@ from agentics.core.atype import (
     pydantic_model_from_dict,
 )
 from agentics.core.default_types import Explanation
-from agentics.core.utils import (
-    import_pydantic_from_code,
+from agentics.core.streaming_utils import (
+    create_kafka_topic,
+    get_atype_from_registry,
+    get_subject_name,
+    kafka_topic_exists,
+    register_atype_schema,
+    schema_exists,
 )
+from agentics.core.utils import import_pydantic_from_code
 
 load_dotenv()
 
 # PyFlink imports for the listener
 from pyflink.datastream.functions import MapFunction
+
+# Module-level registry: maps job_name -> threading.Event
+# ProcessTransducibleFn.map() sets the event on each processed message so that
+# the main thread can detect idle and stop the Flink daemon thread.
+_ACTIVITY_REGISTRY: Dict[str, threading.Event] = {}
+
+# Module-level registry: maps job_name -> TransducibleFunction
+# Avoids pickling Pydantic model classes (which fail to unpickle from __main__)
+# by storing the live fn object and looking it up by job_name in map().
+_FN_REGISTRY: Dict[str, Any] = {}
 
 
 # Helper class for writing to Kafka output
@@ -135,131 +146,6 @@ class ProcessSQLRow(MapFunction):
         self.aType = TargetAType
         self.sourceAtype = SourceAType
         self.schema_registry_url = schema_registry_url
-        self._schema_cache = {}  # Cache for retrieved schemas
-
-    def _get_schema_from_registry(
-        self, subject: str, version: str = "latest"
-    ) -> Optional[dict]:
-        """
-        Fetch schema from registry with caching.
-        Reuses AGStream's schema registry functions.
-        """
-        cache_key = f"{subject}:{version}"
-
-        # Check cache first
-        if cache_key in self._schema_cache:
-            return self._schema_cache[cache_key]
-
-        try:
-            import requests
-
-            url = f"{self.schema_registry_url}/subjects/{subject}/versions/{version}"
-            response = requests.get(url)
-
-            if response.status_code == 200:
-                result = response.json()
-                schema_str = result.get("schema")
-                if schema_str:
-                    schema = json.loads(schema_str)
-                    self._schema_cache[cache_key] = schema
-                    return schema
-            else:
-                sys.stderr.write(
-                    f"Failed to fetch schema: {response.status_code} - {response.text}\n"
-                )
-                sys.stderr.flush()
-                return None
-
-        except Exception as e:
-            sys.stderr.write(f"Error fetching schema: {e}\n")
-            sys.stderr.flush()
-            return None
-
-    def _get_atype_from_registry(
-        self, topic: str, is_key: bool = False, version: str = "latest"
-    ) -> Optional[Type[BaseModel]]:
-        """
-        Get atype from schema registry during PyFlink job execution.
-        Reuses the same logic as AGStream.get_atype_from_registry.
-        """
-        # Generate subject name
-        subject = self._get_subject_name(topic, is_key)
-
-        # Get schema from registry
-        schema = self._get_schema_from_registry(subject, version)
-        if not schema:
-            return None
-
-        # Extract model name
-        model_name = schema.get("title", "DynamicModel")
-
-        # Create Pydantic model from schema
-        try:
-            import typing
-
-            from pydantic import Field, create_model
-
-            properties = schema.get("properties", {})
-            required = schema.get("required", [])
-
-            field_definitions = {}
-
-            for field_name, field_schema in properties.items():
-                field_type = self._json_type_to_python(field_schema)
-                is_required = field_name in required
-
-                # Handle optional fields
-                if not is_required:
-                    field_type = typing.Optional[field_type]
-
-                # Create field with description if available
-                field_info = {}
-                if "description" in field_schema:
-                    field_info["description"] = field_schema["description"]
-
-                if is_required:
-                    field_definitions[field_name] = (field_type, Field(**field_info))
-                else:
-                    field_definitions[field_name] = (field_type, None)
-
-            # Create and return the model
-            return create_model(model_name, **field_definitions)
-
-        except Exception as e:
-            sys.stderr.write(f"Error creating model from schema: {e}\n")
-            sys.stderr.flush()
-            return None
-
-    def _get_subject_name(self, topic: str, is_key: bool = False) -> str:
-        """
-        Generate subject name for schema registry following Kafka conventions.
-        Same implementation as in AGStream.
-        """
-        suffix = "key" if is_key else "value"
-        return f"{topic}-{suffix}"
-
-    def _json_type_to_python(self, field_schema: dict) -> type:
-        """
-        Convert JSON Schema type to Python type.
-        Same implementation as in AGStream.
-        """
-        type_mapping = {
-            "string": str,
-            "integer": int,
-            "number": float,
-            "boolean": bool,
-            "array": list,
-            "object": dict,
-        }
-
-        json_type = field_schema.get("type")
-
-        # Handle arrays with item types
-        if json_type == "array" and "items" in field_schema:
-            item_type = self._json_type_to_python(field_schema["items"])
-            return typing.List[item_type]
-
-        return type_mapping.get(json_type, str)
 
     def map(self, row) -> tuple | None:
         """Process a row from the SQL query result (key, timestamp, value)"""
@@ -318,6 +204,158 @@ class ProcessSQLRow(MapFunction):
             return None
 
 
+class ProcessTransducibleFn(MapFunction):
+    """
+    Flink MapFunction that applies a transducible function to each incoming
+    Kafka message.
+
+    The live ``TransducibleFunction`` object is stored in the module-level
+    ``_FN_REGISTRY`` dict (keyed by ``job_name``) so that it is accessible
+    from all Flink task-slot threads **without pickling**.  Only plain
+    strings and primitive values are stored as instance attributes, which
+    are safely picklable.
+
+    This avoids the ``typing.Any`` / ``NameError`` failures that occur when
+    Pydantic model classes defined in a Jupyter notebook (``__main__``) are
+    pickled and unpickled by PyFlink's serialisation layer.
+    """
+
+    def __init__(
+        self,
+        job_name: str,
+        kafka_server: str,
+        output_topic: str,
+        schema_registry_url: str = "http://localhost:8081",
+        validate_schema: bool = True,
+        produce_results: bool = True,
+        target_atype_name: Optional[str] = None,
+    ):
+        super().__init__()
+        # Only picklable primitives stored here.
+        # The live fn object lives in _FN_REGISTRY[job_name].
+        self.job_name = job_name
+        self.kafka_server = kafka_server
+        self.output_topic = output_topic
+        self.schema_registry_url = schema_registry_url
+        self.validate_schema = validate_schema
+        self.produce_results = produce_results
+        self.target_atype_name = target_atype_name
+
+    def map(self, row) -> str:
+        """
+        Process one row (key, timestamp_ms, value_json_str) from the Flink
+        DataStream.  Looks up the live TransducibleFunction from
+        ``_FN_REGISTRY``, runs the async coroutine in a brand-new event
+        loop, and optionally produces the result to the output Kafka topic.
+        """
+        import asyncio
+        import sys
+
+        from pydantic import ValidationError
+
+        from agentics.core.transducible_functions import TransductionResult
+
+        # Signal activity so the idle-timeout watcher in the main thread knows
+        # a message arrived.
+        if self.job_name in _ACTIVITY_REGISTRY:
+            _ACTIVITY_REGISTRY[self.job_name].set()
+
+        try:
+            source_key = str(row[0]) if row[0] else None
+            timestamp = int(row[1]) if row[1] else int(time.time() * 1000)
+            value_str = str(row[2]) if row[2] else "{}"
+
+            # ── Look up the live fn from the module-level registry ─────────
+            fn = _FN_REGISTRY.get(self.job_name)
+            if fn is None:
+                sys.stderr.write(
+                    f"  ❌ fn not found in _FN_REGISTRY for job '{self.job_name}'\n"
+                )
+                sys.stderr.flush()
+                return f"✗ fn not found for job={self.job_name}"
+
+            input_model = fn.input_model
+            target_model = fn.target_model
+
+            # ── Deserialise the incoming state ─────────────────────────────
+            raw = json.loads(value_str)
+            states_list = (
+                raw["states"] if isinstance(raw, dict) and raw.get("states") else [raw]
+            )
+
+            results = []
+            for state_dict in states_list:
+                try:
+                    try:
+                        state_obj = input_model(**state_dict)
+                    except (ValidationError, TypeError) as ve:
+                        sys.stderr.write(f"  ❌ Schema validation failed: {ve}\n")
+                        sys.stderr.flush()
+                        if self.validate_schema:
+                            continue
+                        state_obj = input_model.model_construct(**state_dict)
+
+                    # ── Run the async transducible function ────────────────
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    try:
+                        result = loop.run_until_complete(fn(state_obj))
+                    finally:
+                        loop.close()
+
+                    # Unwrap TransductionResult if needed
+                    if isinstance(result, TransductionResult):
+                        result = result.value
+
+                    if result is None or not isinstance(result, target_model):
+                        sys.stderr.write(
+                            f"  ⚠️  Unexpected result type {type(result).__name__}; skipping.\n"
+                        )
+                        sys.stderr.flush()
+                        continue
+
+                    results.append(result)
+
+                except Exception as state_err:
+                    sys.stderr.write(f"  ❌ Error processing state: {state_err}\n")
+                    sys.stderr.flush()
+
+            if not results:
+                return f"✗ No valid results for key={source_key}"
+
+            # ── Produce results to the output topic ────────────────────────
+            if self.produce_results:
+                output_ag = AGStream(
+                    atype=target_model,
+                    kafka_server=self.kafka_server,
+                    input_topic=self.output_topic,
+                    output_topic=self.output_topic,
+                    schema_registry_url=self.schema_registry_url,
+                    target_atype_name=self.target_atype_name,
+                )
+                output_ag.states = results
+                try:
+                    msg_ids = output_ag.produce(
+                        register_if_missing=True,
+                        key=source_key,
+                    )
+                    return (
+                        f"✓ Produced {len(results)} state(s) to '{self.output_topic}' "
+                        f"| Key: {source_key} | IDs: {[m[:8] for m in (msg_ids or [])]}"
+                    )
+                except Exception as prod_err:
+                    sys.stderr.write(f"  ❌ Failed to produce result: {prod_err}\n")
+                    sys.stderr.flush()
+                    return f"✗ Produce failed for key={source_key}: {prod_err}"
+
+            return f"✓ Processed {len(results)} state(s) for key={source_key} (produce_results=False)"
+
+        except Exception as e:
+            sys.stderr.write(f"Error in ProcessTransducibleFn.map: {e}\n")
+            sys.stderr.flush()
+            return f"✗ Error: {e}"
+
+
 class AGStream(AG):
     model_config = {"arbitrary_types_allowed": True}
     streaming_key: Optional[str] = Field(
@@ -328,187 +366,76 @@ class AGStream(AG):
     input_topic: str = "agentics-stream"
     output_topic: str = "agentics-output"
     schema_registry_url: str = "http://localhost:8081"  # Karapace Schema Registry URL
-
-    @staticmethod
-    def _json_type_to_python_static(field_schema: Dict[str, Any]) -> type:
-        """Convert JSON Schema type to Python type (static version)."""
-        json_type = field_schema.get("type", "string")
-
-        type_mapping = {
-            "string": str,
-            "integer": int,
-            "number": float,
-            "boolean": bool,
-            "array": list,
-            "object": dict,
-        }
-
-        return type_mapping.get(json_type, str)
-
-    @staticmethod
-    def _create_pydantic_from_json_schema_static(
-        json_schema: Dict[str, Any],
-    ) -> Optional[Type[BaseModel]]:
-        """
-        Create a Pydantic model from JSON Schema (static version).
-
-        This is a simplified implementation that handles basic types.
-        For complex schemas, consider using a dedicated library.
-        """
-        try:
-            from pydantic import create_model
-
-            # Extract model name and properties
-            model_name = json_schema.get("title", "DynamicModel")
-            properties = json_schema.get("properties", {})
-            required = json_schema.get("required", [])
-
-            # Build field definitions
-            field_definitions = {}
-            for field_name, field_schema in properties.items():
-                field_type = AGStream._json_type_to_python_static(field_schema)
-                is_required = field_name in required
-
-                if is_required:
-                    field_definitions[field_name] = (field_type, ...)
-                else:
-                    field_definitions[field_name] = (Optional[field_type], None)
-
-            # Create the model
-            model = create_model(model_name, **field_definitions)
-            return model
-
-        except Exception as e:
-            sys.stderr.write(f"✗ Error creating Pydantic model: {e}\n")
-            sys.stderr.flush()
-            return None
-
-    @staticmethod
-    def _get_subject_name_static(topic: str, is_key: bool = False) -> str:
-        """
-        Generate subject name for schema registry following Kafka conventions (static version).
-
-        Args:
-            topic: Kafka topic name
-            is_key: If True, generates key subject name, otherwise value subject name
-
-        Returns:
-            Subject name string (e.g., "topic-name-value" or "topic-name-key")
-        """
-        suffix = "key" if is_key else "value"
-        return f"{topic}-{suffix}"
-
-    @staticmethod
-    def get_atype_from_registry_static(
-        topic: str,
-        schema_registry_url: str = "http://localhost:8081",
-        is_key: bool = False,
-        version: str = "latest",
-    ) -> Optional[Type[BaseModel]]:
-        """
-        Retrieve and reconstruct atype from Schema Registry (static method).
-
-        This static method can be called without creating an AGStream instance.
-
-        Args:
-            topic: Kafka topic name
-            schema_registry_url: URL of the schema registry
-            is_key: If True, retrieves key schema, otherwise value schema
-            version: Schema version ("latest" or specific version number)
-
-        Returns:
-            Pydantic BaseModel class if successful, None on error
-
-        Example:
-            >>> from agentics.core.streaming import AGStream
-            >>>
-            >>> # Retrieve schema from registry without creating an instance
-            >>> Question = AGStream.get_atype_from_registry_static(
-            ...     topic="questions",
-            ...     schema_registry_url="http://localhost:8081"
-            ... )
-            >>>
-            >>> if Question:
-            ...     # Use the retrieved type
-            ...     ag = AGStream(atype=Question, input_topic="questions")
-        """
-        subject = AGStream._get_subject_name_static(topic, is_key)
-
-        try:
-            # Fetch schema from registry
-            url = f"{schema_registry_url}/subjects/{subject}/versions/{version}"
-            response = requests.get(url)
-
-            if response.status_code != 200:
-                sys.stderr.write(
-                    f"✗ Failed to fetch schema: {response.status_code} - {response.text}\n"
-                )
-                sys.stderr.flush()
-                return None
-
-            result = response.json()
-            schema_str = result.get("schema")
-            schema_id = result.get("id")
-
-            if not schema_str:
-                sys.stderr.write("✗ No schema found in response\n")
-                sys.stderr.flush()
-                return None
-
-            # Parse JSON Schema
-            json_schema = json.loads(schema_str)
-
-            # Create Pydantic model from JSON Schema
-            atype = AGStream._create_pydantic_from_json_schema_static(json_schema)
-
-            if atype:
-                sys.stderr.write(
-                    f"✓ Retrieved schema '{subject}' (ID: {schema_id}, version: {version})\n"
-                )
-                sys.stderr.flush()
-                return atype
-            else:
-                sys.stderr.write("✗ Failed to create Pydantic model from schema\n")
-                sys.stderr.flush()
-                return None
-
-        except Exception as e:
-            sys.stderr.write(f"✗ Error retrieving schema: {e}\n")
-            sys.stderr.flush()
-            return None
+    target_atype_name: Optional[str] = Field(
+        None,
+        description="Name of the target atype as registered in the schema registry. "
+        "When set, this name is used as the subject name for schema registry "
+        "lookups instead of deriving it from the atype class name.",
+    )
+    source_atype_name: Optional[str] = Field(
+        None,
+        description="Name of the source atype as registered in the schema registry. "
+        "When set, this name is used as the subject name for source schema "
+        "registry lookups instead of deriving it from the atype class name.",
+    )
 
     def _get_subject_name(self, topic: str, is_key: bool = False) -> str:
         """
-        Generate subject name for schema registry following Kafka conventions.
+        Generate subject name for schema registry based on atype class name.
 
-        Args:
-            topic: Kafka topic name
-            is_key: If True, generates key subject name, otherwise value subject name
-
-        Returns:
-            Subject name string (e.g., "topic-name-value" or "topic-name-key")
+        Prefers ``source_atype_name`` when set, otherwise uses
+        ``self.atype.__name__``, falling back to ``topic``.
+        Delegates suffix logic to :func:`streaming_utils.get_subject_name`.
         """
-        return self._get_subject_name_static(topic, is_key)
+        if self.source_atype_name:
+            type_name = self.source_atype_name
+        elif self.atype:
+            type_name = self.atype.__name__
+        else:
+            type_name = topic
+        return get_subject_name(type_name, is_key)
 
-    def register_atype_schema(
+    def _get_target_subject_name(self, is_key: bool = False) -> str:
+        """
+        Generate subject name for the **target** atype in the schema registry.
+
+        Uses ``target_atype_name`` when explicitly set, otherwise falls back to
+        ``self.atype.__name__``.
+        """
+        if self.target_atype_name:
+            type_name = self.target_atype_name
+        elif self.atype:
+            type_name = self.atype.__name__
+        else:
+            type_name = "unknown"
+        return get_subject_name(type_name, is_key)
+
+    def produce(
         self,
-        topic: Optional[str] = None,
-        is_key: bool = False,
-        compatibility: str = "BACKWARD",
-    ) -> Optional[int]:
+        register_if_missing: bool = True,
+        compatibility_mode: str = "BACKWARD",
+        key: Optional[str] = None,
+    ) -> List[str]:
         """
-        Register the atype's JSON Schema in Karapace Schema Registry.
+        Produce all states in self.states to Kafka one-by-one with schema registry enforcement.
 
-        This method converts the Pydantic model to JSON Schema and registers it
-        with the schema registry, enabling schema evolution and validation.
+        This method iterates through self.states and validates each state against the
+        registered schema before sending. If the schema doesn't exist and register_if_missing
+        is True, it will register it.
 
         Args:
-            topic: Kafka topic name (uses self.input_topic if not provided)
-            is_key: If True, registers as key schema, otherwise as value schema
-            compatibility: Compatibility mode (BACKWARD, FORWARD, FULL, NONE)
+            register_if_missing: If True, register schema if it doesn't exist
+            compatibility_mode: Schema compatibility mode (BACKWARD, FORWARD, FULL, NONE)
+            key: Optional Kafka message key to use for all produced messages. When provided
+                (e.g. the key of the source message that triggered this produce), the same
+                key is reused so that consumers can correlate input and output messages.
+                If None, a fresh UUID is generated for each message.
 
         Returns:
-            Schema ID if successful, None on error
+            List of message IDs for successfully sent states
+
+        Raises:
+            ValueError: If any state doesn't match registered schema or wrong type
 
         Example:
             >>> from pydantic import BaseModel
@@ -519,370 +446,413 @@ class AGStream(AG):
             >>>     category: str
             >>>
             >>> ag = AGStream(atype=Question, input_topic="questions")
-            >>> schema_id = ag.register_atype_schema()
-            >>> print(f"Registered schema with ID: {schema_id}")
+            >>> ag.states = [
+            >>>     Question(text="What is AI?", category="technology"),
+            >>>     Question(text="What is ML?", category="technology")
+            >>> ]
+            >>> msg_ids = ag.produce()
+            >>> print(f"Sent {len(msg_ids)} messages")
         """
-        if not self.atype:
-            sys.stderr.write("✗ No atype defined, cannot register schema\n")
+        if not self.states:
+            sys.stderr.write("⚠️  No states to produce\n")
             sys.stderr.flush()
-            return None
-
-        topic = topic or self.input_topic
-        subject = self._get_subject_name(topic, is_key)
-
-        try:
-            # Get JSON Schema from Pydantic model
-            json_schema = self.atype.model_json_schema()
-
-            # Wrap in schema registry format
-            schema_data = {"schemaType": "JSON", "schema": json.dumps(json_schema)}
-
-            # Register schema
-            url = f"{self.schema_registry_url}/subjects/{subject}/versions"
-            response = requests.post(
-                url,
-                json=schema_data,
-                headers={"Content-Type": "application/vnd.schemaregistry.v1+json"},
-            )
-
-            if response.status_code in [200, 201]:
-                result = response.json()
-                schema_id = result.get("id")
-                sys.stderr.write(
-                    f"✓ Registered schema for '{subject}' with ID: {schema_id}\n"
-                )
-                sys.stderr.flush()
-
-                # Set compatibility mode if specified
-                if compatibility:
-                    self._set_compatibility(subject, compatibility)
-
-                return schema_id
-            else:
-                sys.stderr.write(
-                    f"✗ Failed to register schema: {response.status_code} - {response.text}\n"
-                )
-                sys.stderr.flush()
-                return None
-
-        except Exception as e:
-            sys.stderr.write(f"✗ Error registering schema: {e}\n")
-            sys.stderr.flush()
-            return None
-
-    def _set_compatibility(self, subject: str, compatibility: str) -> bool:
-        """Set compatibility mode for a subject."""
-        try:
-            url = f"{self.schema_registry_url}/config/{subject}"
-            response = requests.put(
-                url,
-                json={"compatibility": compatibility},
-                headers={"Content-Type": "application/vnd.schemaregistry.v1+json"},
-            )
-
-            if response.status_code == 200:
-                sys.stderr.write(
-                    f"✓ Set compatibility mode to {compatibility} for '{subject}'\n"
-                )
-                sys.stderr.flush()
-                return True
-            return False
-        except Exception:
-            return False
-
-    def get_atype_from_registry(
-        self, topic: Optional[str] = None, is_key: bool = False, version: str = "latest"
-    ) -> Optional[Type[BaseModel]]:
-        """
-        Retrieve and reconstruct atype from Schema Registry.
-
-        This method fetches the JSON Schema from the registry and dynamically
-        creates a Pydantic model from it.
-
-        Args:
-            topic: Kafka topic name (uses self.input_topic if not provided)
-            is_key: If True, retrieves key schema, otherwise value schema
-            version: Schema version ("latest" or specific version number)
-
-        Returns:
-            Pydantic BaseModel class if successful, None on error
-
-        Example:
-            >>> from agentics.core.streaming import AGStream
-            >>>
-            >>> # Retrieve schema from registry
-            >>> ag = AGStream(input_topic="questions")
-            >>> Question = ag.get_atype_from_registry()
-            >>>
-            >>> if Question:
-            >>>     # Use the retrieved type
-            >>>     ag.atype = Question
-            >>>     questions = ag.collect_sources(max_messages=10)
-        """
-        topic = topic or self.input_topic
-        subject = self._get_subject_name(topic, is_key)
-
-        try:
-            # Fetch schema from registry
-            url = f"{self.schema_registry_url}/subjects/{subject}/versions/{version}"
-            response = requests.get(url)
-
-            if response.status_code != 200:
-                sys.stderr.write(
-                    f"✗ Failed to fetch schema: {response.status_code} - {response.text}\n"
-                )
-                sys.stderr.flush()
-                return None
-
-            result = response.json()
-            schema_str = result.get("schema")
-            schema_id = result.get("id")
-
-            if not schema_str:
-                sys.stderr.write("✗ No schema found in response\n")
-                sys.stderr.flush()
-                return None
-
-            # Parse JSON Schema
-            json_schema = json.loads(schema_str)
-
-            # Create Pydantic model from JSON Schema
-            atype = self._create_pydantic_from_json_schema(json_schema)
-
-            if atype:
-                sys.stderr.write(
-                    f"✓ Retrieved schema '{subject}' (ID: {schema_id}, version: {version})\n"
-                )
-                sys.stderr.flush()
-                return atype
-            else:
-                sys.stderr.write("✗ Failed to create Pydantic model from schema\n")
-                sys.stderr.flush()
-                return None
-
-        except Exception as e:
-            sys.stderr.write(f"✗ Error retrieving schema: {e}\n")
-            sys.stderr.flush()
-            return None
-
-    def _create_pydantic_from_json_schema(
-        self, json_schema: Dict[str, Any]
-    ) -> Optional[Type[BaseModel]]:
-        """
-        Create a Pydantic model from JSON Schema.
-
-        This is a simplified implementation that handles basic types.
-        For complex schemas, consider using a dedicated library.
-        """
-        try:
-            from pydantic import create_model
-
-            # Extract model name and properties
-            model_name = json_schema.get("title", "DynamicModel")
-            properties = json_schema.get("properties", {})
-            required = json_schema.get("required", [])
-
-            # Build field definitions
-            field_definitions = {}
-            for field_name, field_schema in properties.items():
-                field_type = self._json_type_to_python(field_schema)
-                is_required = field_name in required
-
-                if is_required:
-                    field_definitions[field_name] = (field_type, ...)
-                else:
-                    field_definitions[field_name] = (Optional[field_type], None)
-
-            # Create the model
-            model = create_model(model_name, **field_definitions)
-            return model
-
-        except Exception as e:
-            sys.stderr.write(f"✗ Error creating Pydantic model: {e}\n")
-            sys.stderr.flush()
-            return None
-
-    def _json_type_to_python(self, field_schema: Dict[str, Any]) -> type:
-        """Convert JSON Schema type to Python type."""
-        json_type = field_schema.get("type", "string")
-
-        type_mapping = {
-            "string": str,
-            "integer": int,
-            "number": float,
-            "boolean": bool,
-            "array": list,
-            "object": dict,
-        }
-
-        return type_mapping.get(json_type, str)
-
-    def list_registered_schemas(
-        self, topic: Optional[str] = None, is_key: bool = False
-    ) -> Optional[List[int]]:
-        """
-        List all versions of registered schemas for a topic.
-
-        Args:
-            topic: Kafka topic name (uses self.input_topic if not provided)
-            is_key: If True, lists key schemas, otherwise value schemas
-
-        Returns:
-            List of version numbers if successful, None on error
-
-        Example:
-            >>> ag = AGStream(input_topic="questions")
-            >>> versions = ag.list_registered_schemas()
-            >>> print(f"Available versions: {versions}")
-        """
-        topic = topic or self.input_topic
-        subject = self._get_subject_name(topic, is_key)
-
-        try:
-            url = f"{self.schema_registry_url}/subjects/{subject}/versions"
-            response = requests.get(url)
-
-            if response.status_code == 200:
-                versions = response.json()
-                sys.stderr.write(
-                    f"✓ Found {len(versions)} version(s) for '{subject}': {versions}\n"
-                )
-                sys.stderr.flush()
-                return versions
-            elif response.status_code == 404:
-                sys.stderr.write(f"✗ No schemas found for '{subject}'\n")
-                sys.stderr.flush()
-                return []
-            else:
-                sys.stderr.write(
-                    f"✗ Failed to list schemas: {response.status_code} - {response.text}\n"
-                )
-                sys.stderr.flush()
-                return None
-
-        except Exception as e:
-            sys.stderr.write(f"✗ Error listing schemas: {e}\n")
-            sys.stderr.flush()
-            return None
-
-    def listen(self: AGStream, atype: Optional[Type[BaseModel]] = None):
-        """
-        Start AGStream listener using Flink SQL to query Kafka with key, timestamp, and value columns.
-        Processes messages and writes results back to an output Kafka topic.
-        """
-        from pyflink.datastream import RuntimeExecutionMode, StreamExecutionEnvironment
-        from pyflink.table import EnvironmentSettings, StreamTableEnvironment
-
-        # Create execution environment
-        env = StreamExecutionEnvironment.get_execution_environment()
-        env.set_runtime_mode(RuntimeExecutionMode.STREAMING)
-        env.set_parallelism(4)
-
-        # Create Table Environment
-        settings = EnvironmentSettings.in_streaming_mode()
-        table_env = StreamTableEnvironment.create(env, settings)
-
-        # Add Kafka connector JAR
-        table_env.get_config().get_configuration().set_string(
-            "pipeline.jars",
-            "file:///Users/gliozzo/Code/flink_tutorial/flink-sql-connector-kafka-3.3.0-1.20.jar",
-        )
-
-        # Create Kafka table - 'raw' format only supports single physical column
-        # Note: Kafka keys cannot be read as metadata in Flink SQL
-        # Keys will be generated from partition-offset to ensure consistency
-        create_table_ddl = f"""
-            CREATE TABLE kafka_source (
-                `value` STRING,
-                `event_timestamp` TIMESTAMP(3) METADATA FROM 'timestamp',
-                `kafka_partition` INT METADATA FROM 'partition',
-                `kafka_offset` BIGINT METADATA FROM 'offset',
-                WATERMARK FOR `event_timestamp` AS `event_timestamp` - INTERVAL '5' SECOND
-            ) WITH (
-                'connector' = 'kafka',
-                'topic' = '{self.input_topic}',
-                'properties.bootstrap.servers' = '{self.kafka_server}',
-                'properties.group.id' = 'flink-sql-consumer-group',
-                'scan.startup.mode' = 'latest-offset',
-                'format' = 'raw'
-            )
-        """
-
-        # Removed verbose output: Creating Kafka source table
-        table_env.execute_sql(create_table_ddl)
-
-        # Query to generate consistent keys from partition-offset
-        # This ensures the same message always gets the same key
-        # Removed verbose output: Executing SQL query
-
-        ## Generate deterministic key to read the
-        result_table = table_env.sql_query(
-            """
-            SELECT
-                CONCAT('partition-', CAST(kafka_partition AS STRING), '-offset-', CAST(kafka_offset AS STRING)) as key,
-                UNIX_TIMESTAMP(CAST(event_timestamp AS STRING)) * 1000 as timestamp_ms,
-                `value`
-            FROM kafka_source
-        """
-        )
-
-        # Convert to DataStream - each row has (key, timestamp_ms, value)
-        ds = table_env.to_data_stream(result_table)
-
-        # Apply processing using MapFunction class
-        # Pass both target atype (self.atype) and source atype (atype parameter)
-        processed_stream = ds.map(func=ProcessSQLRow(self.atype, atype))
-
-        # Filter out None values
-        filtered_stream = processed_stream.filter(lambda x: x is not None)
-
-        # Write output back to Kafka using MapFunction class
-        output_stream = filtered_stream.map(
-            WriteToKafkaOutput(self.kafka_server, self.output_topic)
-        )
-        output_stream.print()
-
-        # Removed verbose output: Starting AGStream SQL listener
-
-        # Execute the job
-        env.execute("PyFlink SQL Kafka Consumer")
-
-    def produce(self) -> str | None:
-        """
-        Stream the AG state to Kafka with a unique identifier as the key and timestamp
-        """
+            return []
 
         try:
             import uuid
 
+            from pydantic import ValidationError
+
+            # When target_atype_name is set the output schema subject is derived
+            # from the target name, not from self.atype (which may be a placeholder).
+            # _get_target_subject_name() returns "<target_atype_name>-value" when
+            # target_atype_name is set, otherwise falls back to the normal subject.
+            if self.target_atype_name:
+                subject = self._get_target_subject_name(is_key=False)
+                effective_type_name = self.target_atype_name
+            else:
+                subject = self._get_subject_name(self.input_topic, is_key=False)
+                effective_type_name = self.atype.__name__
+
+            subject_exists = schema_exists(subject, self.schema_registry_url)
+
+            # Register schema if it doesn't exist and registration is enabled
+            if not subject_exists and register_if_missing:
+                sys.stderr.write(
+                    f"📝 Schema not found, registering {effective_type_name}...\n"
+                )
+                sys.stderr.flush()
+                schema_id = register_atype_schema(
+                    atype=self.atype,
+                    schema_registry_url=self.schema_registry_url,
+                    topic=self.input_topic,
+                    is_key=False,
+                    compatibility=compatibility_mode,
+                )
+                if not schema_id:
+                    raise ValueError(
+                        f"Failed to register schema for {effective_type_name}"
+                    )
+            elif not subject_exists:
+                raise ValueError(
+                    f"Schema not registered for topic '{self.input_topic}'. "
+                    f"Set register_if_missing=True to auto-register."
+                )
+
+            # Create producer once for all states
             producer: KafkaProducer = KafkaProducer(
                 bootstrap_servers=self.kafka_server,
                 key_serializer=lambda k: k.encode("utf-8"),
                 value_serializer=lambda v: json.dumps(v).encode("utf-8"),
             )
 
-            # Generate unique identifier for this transduction
-            transduction_id = str(uuid.uuid4())
+            message_ids = []
 
-            # Get current timestamp in milliseconds (Kafka standard)
-            timestamp_ms = int(time.time() * 1000)
-
-            serialized = self.serialize()
-            producer.send(
-                topic=self.input_topic,
-                key=transduction_id,
-                value=serialized,
-                timestamp_ms=timestamp_ms,
+            sys.stderr.write(
+                f"\n📤 Producing {len(self.states)} states with schema enforcement...\n"
             )
-            # Removed: print(serialized) - too verbose
+            sys.stderr.flush()
+
+            # Iterate through each state and produce individually
+            for idx, state in enumerate(self.states, 1):
+                try:
+                    # Validate that state matches the effective output type.
+                    # When target_atype_name is set, self.atype may be a placeholder
+                    # class that differs from the actual state class (which was
+                    # produced by the transducer using the registry-fetched type).
+                    # In that case we accept any state whose class name matches
+                    # target_atype_name; otherwise we fall back to a strict
+                    # isinstance check.
+                    if self.target_atype_name:
+                        state_class_name = type(state).__name__
+                        if state_class_name != self.target_atype_name:
+                            raise ValueError(
+                                f"State {idx} class name '{state_class_name}' does not match "
+                                f"target_atype_name '{self.target_atype_name}'"
+                            )
+                    elif not isinstance(state, self.atype):
+                        raise ValueError(
+                            f"State {idx} must be an instance of {self.atype.__name__}, "
+                            f"got {type(state).__name__}"
+                        )
+
+                    # Validate state against schema
+                    try:
+                        state_dict = state.model_dump()
+                        # Ensure it can be serialized
+                        json.dumps(state_dict)
+                    except (ValidationError, TypeError, ValueError) as e:
+                        raise ValueError(f"State {idx} validation failed: {e}")
+
+                    # Use the supplied key (e.g. from the source message) or generate a new UUID
+                    message_id = key if key is not None else str(uuid.uuid4())
+                    timestamp_ms = int(time.time() * 1000)
+
+                    # Clone self so all config (instructions, transduction_type,
+                    # transduce_fields, streaming_key, etc.) is preserved in the
+                    # serialized envelope alongside the single state.
+                    temp_ag = AGStream.clone(self)
+                    temp_ag.states = [state]
+                    serialized = temp_ag.serialize()
+
+                    # Send to Kafka
+                    producer.send(
+                        topic=self.input_topic,
+                        key=message_id,
+                        value=serialized,
+                        timestamp_ms=timestamp_ms,
+                    )
+
+                    message_ids.append(message_id)
+
+                    sys.stderr.write(
+                        f"  ✓ [{idx}/{len(self.states)}] Sent {self.atype.__name__} "
+                        f"(ID: {message_id[:8]}...)\n"
+                    )
+                    sys.stderr.flush()
+
+                except ValueError as e:
+                    sys.stderr.write(f"  ✗ [{idx}/{len(self.states)}] Failed: {e}\n")
+                    sys.stderr.flush()
+                    producer.close()
+                    raise
+
             producer.flush()
             producer.close()
 
-            # Removed: print(f"✓ Sent to Kafka topic...") - too verbose
-            return transduction_id
+            sys.stderr.write(
+                f"\n✅ Successfully produced {len(message_ids)}/{len(self.states)} states\n"
+            )
+            sys.stderr.flush()
+
+            return message_ids
+
+        except ValueError as e:
+            sys.stderr.write(f"\n✗ Schema enforcement failed: {e}\n")
+            sys.stderr.flush()
+            raise
         except Exception as e:
-            # Silently fail - errors will be caught by caller if needed
-            return None
+            sys.stderr.write(f"\n✗ Error producing with schema enforcement: {e}\n")
+            sys.stderr.flush()
+            return []
+
+    async def aproduce_and_collect(
+        self,
+        source_atype_name: Optional[str] = None,
+        result_atype: Optional[Type[BaseModel]] = None,
+        register_if_missing: bool = True,
+        compatibility_mode: str = "BACKWARD",
+        timeout: float = 120.0,
+        poll_interval: float = 0.5,
+        validate_schema: bool = True,
+        verbose: bool = False,
+    ) -> List[Optional["AGStream"]]:
+        """
+        Produce all states to Kafka and asynchronously await their transduced results
+        from the output topic, returning them in the same order as the input states.
+
+        This method is the async "fire-and-collect" counterpart to the blocking
+        ``listen()`` loop.  It is designed to be used when a ``listen()`` worker is
+        already running on the output topic (or will be started externally):
+
+        1. Produces every state in ``self.states`` to ``self.input_topic``, each
+           tagged with a unique UUID key.
+        2. Starts a background thread that polls ``self.output_topic`` and collects
+           any message whose Kafka key matches one of the produced UUIDs.
+        3. Awaits (non-blocking) until every key has been collected or ``timeout``
+           seconds have elapsed.
+        4. Returns the results in the **same order** as the original ``self.states``
+           list, using the key→result mapping to reconstruct the order.
+
+        Args:
+            source_atype_name: Optional name of the source type in the schema
+                registry.  Passed through to the listener for schema validation.
+                Not used directly by this method but stored for documentation
+                consistency with ``listen()``.
+            result_atype: Optional Pydantic model class for the **output** (target)
+                type.  When provided, collected messages from ``output_topic`` are
+                deserialized into this type instead of ``self.atype`` (which is the
+                source/input type).  Use this when the output topic carries a
+                different schema than the input topic (the common case in
+                transduction pipelines).
+            register_if_missing: If ``True``, auto-register the source schema
+                before producing (default: ``True``).
+            compatibility_mode: Schema compatibility mode for auto-registration
+                (default: ``"BACKWARD"``).
+            timeout: Maximum seconds to wait for all results (default: 120).
+            poll_interval: Seconds between output-topic poll cycles (default: 0.5).
+            validate_schema: If ``True``, validate collected results against the
+                target schema (default: ``True``).
+            verbose: If ``True``, print per-message progress to stderr.
+
+        Returns:
+            List of ``AGStream`` objects (one per input state) in the same order
+            as ``self.states``.  If a result was not received before ``timeout``,
+            the corresponding entry is ``None``.
+
+        Raises:
+            ValueError: If ``self.states`` is empty or schema registration fails.
+
+        Example::
+
+            producer = AGStream(
+                atype=MovieReview,
+                kafka_server=KAFKA_SERVER,
+                input_topic='movie-reviews',
+                output_topic='movie-summaries',
+                schema_registry_url=SCHEMA_REGISTRY_URL,
+                instructions='Summarise the review in one sentence.',
+            )
+            producer.states = sample_reviews
+
+            # A listen() worker must be running on movie-reviews → movie-summaries
+            results = await producer.aproduce_and_collect(
+                result_atype=MovieSummary,
+                timeout=60,
+            )
+
+            for review, result_ag in zip(sample_reviews, results):
+                if result_ag:
+                    print(review.title, '->', result_ag.states[0].one_line_summary)
+        """
+        import threading as _threading
+        import uuid as _uuid
+
+        from kafka import KafkaConsumer, TopicPartition
+
+        if not self.states:
+            raise ValueError("No states to produce")
+
+        # ── Step 1: record the current end-offset of the output topic so the
+        #    consumer only reads messages produced AFTER this point.  This avoids
+        #    picking up stale results from previous runs while still catching
+        #    results that arrive before the consumer thread fully starts.
+        bootstrap = self.kafka_server
+        if "localhost" in bootstrap:
+            bootstrap = bootstrap.replace("localhost", "127.0.0.1")
+
+        _start_offsets: Dict[TopicPartition, int] = {}
+        try:
+            _probe = KafkaConsumer(
+                bootstrap_servers=bootstrap,
+                consumer_timeout_ms=2000,
+            )
+            _partitions = _probe.partitions_for_topic(self.output_topic) or set()
+            _tps = [TopicPartition(self.output_topic, p) for p in _partitions]
+            if _tps:
+                _probe.assign(_tps)
+                _probe.seek_to_end(*_tps)
+                _start_offsets = {tp: _probe.position(tp) for tp in _tps}
+            _probe.close()
+        except Exception:
+            pass  # If we can't probe, fall back to reading from latest
+
+        # ── Step 2: produce all states, recording keys in order ──────────────
+        msg_ids = await asyncio.get_event_loop().run_in_executor(
+            None,
+            lambda: self.produce(
+                register_if_missing=register_if_missing,
+                compatibility_mode=compatibility_mode,
+            ),
+        )
+
+        if not msg_ids:
+            raise ValueError(
+                "produce() returned no message IDs — check schema registration"
+            )
+
+        # Map key → original index so we can restore order later
+        key_to_index: Dict[str, int] = {k: i for i, k in enumerate(msg_ids)}
+        pending_keys: set = set(msg_ids)
+        results: Dict[str, Optional["AGStream"]] = {k: None for k in msg_ids}
+
+        if verbose:
+            sys.stderr.write(
+                f"\n⏳ Waiting for {len(msg_ids)} transduced result(s) on '{self.output_topic}'...\n"
+            )
+            sys.stderr.flush()
+
+        # ── Step 3: background consumer thread ───────────────────────────────
+        # Shared state between the consumer thread and the async waiter.
+        _lock = _threading.Lock()
+        _stop = _threading.Event()
+
+        def _consume():
+            """Poll output_topic and collect messages whose key is in pending_keys."""
+            if _start_offsets:
+                # Seek to the recorded end-offsets so we only read new messages
+                consumer = KafkaConsumer(
+                    bootstrap_servers=bootstrap,
+                    enable_auto_commit=False,
+                    group_id=f"agstream-aproduce-{_uuid.uuid4()}",
+                    value_deserializer=lambda m: json.loads(m.decode("utf-8")),
+                    consumer_timeout_ms=500,
+                    request_timeout_ms=40000,
+                    session_timeout_ms=30000,
+                    heartbeat_interval_ms=3000,
+                )
+                tps = list(_start_offsets.keys())
+                consumer.assign(tps)
+                for tp, offset in _start_offsets.items():
+                    consumer.seek(tp, offset)
+            else:
+                consumer = KafkaConsumer(
+                    self.output_topic,
+                    bootstrap_servers=bootstrap,
+                    auto_offset_reset="latest",
+                    enable_auto_commit=False,
+                    group_id=f"agstream-aproduce-{_uuid.uuid4()}",
+                    value_deserializer=lambda m: json.loads(m.decode("utf-8")),
+                    consumer_timeout_ms=500,
+                    request_timeout_ms=40000,
+                    session_timeout_ms=30000,
+                    heartbeat_interval_ms=3000,
+                )
+
+            try:
+                while not _stop.is_set():
+                    batch = consumer.poll(timeout_ms=500, max_records=50)
+                    for _tp, messages in batch.items():
+                        for msg in messages:
+                            msg_key = msg.key.decode("utf-8") if msg.key else None
+                            if msg_key is None or msg_key not in key_to_index:
+                                continue
+
+                            try:
+                                _deserialize_atype = (
+                                    result_atype
+                                    if result_atype is not None
+                                    else self.atype
+                                )
+                                ag = AGStream.deserialize(
+                                    msg.value,
+                                    atype=_deserialize_atype,
+                                )
+                            except Exception as exc:
+                                if verbose:
+                                    sys.stderr.write(
+                                        f"  ⚠️  Could not deserialize result for key {msg_key[:8]}...: {exc}\n"
+                                    )
+                                    sys.stderr.flush()
+                                continue
+
+                            with _lock:
+                                if msg_key in pending_keys:
+                                    results[msg_key] = ag
+                                    pending_keys.discard(msg_key)
+                                    if verbose:
+                                        idx = key_to_index[msg_key]
+                                        sys.stderr.write(
+                                            f"  ✓ [{idx + 1}/{len(msg_ids)}] Received result "
+                                            f"(key: {msg_key[:8]}...)\n"
+                                        )
+                                        sys.stderr.flush()
+
+                    with _lock:
+                        if not pending_keys:
+                            break
+            finally:
+                consumer.close()
+
+        consumer_thread = _threading.Thread(target=_consume, daemon=True)
+        consumer_thread.start()
+
+        # ── Step 4: async wait until all results arrive or timeout ────────────
+        deadline = asyncio.get_event_loop().time() + timeout
+        while True:
+            with _lock:
+                remaining = len(pending_keys)
+
+            if remaining == 0:
+                break
+
+            if asyncio.get_event_loop().time() >= deadline:
+                if verbose:
+                    sys.stderr.write(
+                        f"\n⚠️  Timeout after {timeout}s — "
+                        f"{remaining} result(s) not received\n"
+                    )
+                    sys.stderr.flush()
+                break
+
+            await asyncio.sleep(poll_interval)
+
+        # Signal the consumer thread to stop and wait briefly for it to exit
+        _stop.set()
+        consumer_thread.join(timeout=2.0)
+
+        # ── Step 5: reconstruct results in original order ─────────────────────
+        ordered: List[Optional["AGStream"]] = [results[k] for k in msg_ids]
+
+        if verbose:
+            received = sum(1 for r in ordered if r is not None)
+            sys.stderr.write(
+                f"\n✅ aproduce_and_collect complete: "
+                f"{received}/{len(msg_ids)} result(s) received\n"
+            )
+            sys.stderr.flush()
+
+        return ordered
 
     def collect_latest_source(self, timeout_seconds: int = 30) -> Optional["AGStream"]:
         """
@@ -958,56 +928,138 @@ class AGStream(AG):
         mode: str = "all",
         from_timestamp: Optional[int] = None,
         group_id: Optional[str] = None,
+        validate_schema: bool = True,
         verbose: bool = False,
+        atype_name: Optional[str] = None,
     ) -> list["AGStream"]:
         """
-        Collect AGStream objects from a Kafka topic with flexible collection modes.
+        Collect AGStream objects from Kafka with schema registry validation.
 
-        This method reads messages from Kafka and deserializes them into AGStream objects.
-        It uses the simple Kafka consumer (not PyFlink) for straightforward collection.
+        This method is the consumer counterpart to produce().
+        It collects messages and validates them against the schema registered in the
+        schema registry. You can either provide an atype on the AGStream instance or
+        specify an atype_name to fetch the type dynamically from the schema registry.
 
         Args:
             max_messages: Maximum number of messages to collect (default: 100)
             timeout_ms: Timeout in milliseconds for polling (default: 5000)
-            mode: Collection mode - one of:
-                - 'all': Collect all messages from the beginning (default)
-                - 'latest': Collect only new messages (from latest offset)
-                - 'timestamp': Collect messages from a specific timestamp (requires from_timestamp)
-            from_timestamp: Unix timestamp in milliseconds to start collecting from (only used with mode='timestamp')
-            group_id: Consumer group ID. If None, a unique ID is generated for each call.
-                     Use a persistent group_id to track offset across multiple calls.
-            verbose: If True, print detailed collection progress (default: False)
+            mode: Collection mode - 'all', 'latest', or 'timestamp' (default: 'all')
+            from_timestamp: Unix timestamp in ms to start from (only with mode='timestamp')
+            group_id: Consumer group ID (default: None, generates unique ID)
+            validate_schema: If True, validates each message against registry schema (default: True)
+            verbose: If True, print detailed progress (default: False)
+            atype_name: Optional type name to fetch from schema registry. If provided,
+                       overrides the AGStream's atype. Useful when you don't have the
+                       Pydantic class but know the schema name. (default: None)
 
         Returns:
-            List of AGStream objects deserialized from Kafka messages
+            List of AGStream objects that passed schema validation
+
+        Raises:
+            ValueError: If schema validation fails and validate_schema=True
 
         Examples:
             >>> from agentics.core.streaming import AGStream
             >>> from pydantic import BaseModel
-            >>> import time
             >>>
-            >>> class Question(BaseModel):
-            >>>     text: str
+            >>> class UserProfile(BaseModel):
+            ...     user_id: str
+            ...     username: str
+            ...     email: str
             >>>
-            >>> # Collect all messages from beginning
-            >>> collector = AGStream(atype=Question, input_topic="questions-topic")
-            >>> all_questions = collector.collect(mode='all', max_messages=10)
+            >>> # Method 1: Collect with explicit atype
+            >>> ag = AGStream(
+            ...     atype=UserProfile,
+            ...     input_topic="user-events",
+            ...     schema_registry_url="http://localhost:8081"
+            ... )
+            >>> users = ag.collect_sources(
+            ...     mode="latest",
+            ...     max_messages=50,
+            ...     validate_schema=True
+            ... )
             >>>
-            >>> # Collect only latest/new messages
-            >>> new_questions = collector.collect(mode='latest', max_messages=1, timeout_ms=10000)
+            >>> # Method 2: Collect by type name (fetches schema from registry)
+            >>> ag = AGStream(
+            ...     input_topic="user-events",
+            ...     schema_registry_url="http://localhost:8081"
+            ... )
+            >>> users = ag.collect_sources(
+            ...     atype_name="UserProfile",  # Fetches UserProfile schema from registry
+            ...     mode="latest",
+            ...     max_messages=50,
+            ...     validate_schema=True
+            ... )
             >>>
-            >>> # Collect messages from last hour
-            >>> one_hour_ago = int((time.time() - 3600) * 1000)
-            >>> recent_questions = collector.collect(mode='timestamp', from_timestamp=one_hour_ago)
-            >>>
-            >>> # Use persistent group ID to track offset across calls
-            >>> session_id = "my-session-123"
-            >>> q1 = collector.collect(mode='latest', group_id=session_id, max_messages=1)
-            >>> q2 = collector.collect(mode='latest', group_id=session_id, max_messages=1)  # Gets next message
+            >>> print(f"Collected {len(users)} validated messages")
         """
+        import sys
+
+        # Determine the atype to use
+        target_atype = self.atype
+
+        # If atype_name is provided, fetch the type from schema registry
+        if atype_name:
+            if verbose:
+                sys.stderr.write(
+                    f"\n📥 Fetching type '{atype_name}' from schema registry...\n"
+                )
+                sys.stderr.flush()
+
+            target_atype = get_atype_from_registry(
+                atype_name=atype_name,
+                schema_registry_url=self.schema_registry_url,
+                is_key=False,
+                version="latest",
+                add_suffix=True,
+            )
+
+            if not target_atype:
+                raise ValueError(
+                    f"Could not fetch type '{atype_name}' from schema registry"
+                )
+
+            if verbose:
+                sys.stderr.write(f"   ✓ Type fetched: {target_atype.__name__}\n")
+                sys.stderr.flush()
+
+        if not target_atype:
+            raise ValueError(
+                "Either atype must be set on AGStream or atype_name must be provided"
+            )
+
+        if verbose:
+            sys.stderr.write(
+                f"\n📥 Collecting {target_atype.__name__} messages with schema enforcement\n"
+            )
+            sys.stderr.write(f"   Topic: {self.input_topic}\n")
+            sys.stderr.flush()
+
+        # Check if schema exists in registry
+        if validate_schema:
+            subject = get_subject_name(
+                target_atype.__name__, is_key=False, add_suffix=True
+            )
+
+            if not schema_exists(subject, self.schema_registry_url):
+                raise ValueError(
+                    f"Schema '{subject}' not found in registry at {self.schema_registry_url}. "
+                    f"Messages cannot be validated."
+                )
+
+            if verbose:
+                sys.stderr.write(f"   ✓ Schema found: {subject}\n")
+                sys.stderr.flush()
+
+        # Collect messages directly from Kafka (don't use collect_sources which wraps in AGStream)
+        import time as time_module
         import uuid
 
         from kafka import KafkaConsumer, TopicPartition
+
+        if verbose:
+            sys.stderr.write(f"📥 Collecting messages with schema enforcement...\n")
+            sys.stderr.flush()
 
         try:
             # Determine group ID
@@ -1024,20 +1076,17 @@ class AGStream(AG):
                     raise ValueError(
                         "mode='timestamp' requires from_timestamp parameter"
                     )
-                auto_offset_reset = "earliest"  # Will be overridden by seek
+                auto_offset_reset = "earliest"
             else:
                 raise ValueError(
                     f"Invalid mode '{mode}'. Must be 'all', 'latest', or 'timestamp'"
                 )
 
-            # Create consumer with improved connection settings
-            # Force IPv4 by using 127.0.0.1 instead of localhost if needed
+            # Create consumer
             bootstrap_server = self.kafka_server
             if "localhost" in bootstrap_server:
                 bootstrap_server = bootstrap_server.replace("localhost", "127.0.0.1")
 
-            # For timestamp mode, create consumer WITHOUT subscribing (we'll assign manually)
-            # For other modes, subscribe to the topic
             if mode == "timestamp":
                 consumer = KafkaConsumer(
                     bootstrap_servers=bootstrap_server,
@@ -1049,14 +1098,6 @@ class AGStream(AG):
                     request_timeout_ms=40000,
                     session_timeout_ms=30000,
                     heartbeat_interval_ms=3000,
-                    max_poll_interval_ms=300000,
-                    connections_max_idle_ms=540000,
-                    fetch_max_wait_ms=500,
-                    api_version_auto_timeout_ms=10000,
-                    retry_backoff_ms=100,
-                    metadata_max_age_ms=300000,
-                    security_protocol="PLAINTEXT",
-                    client_id=f"{group_id}-client",
                 )
             else:
                 consumer = KafkaConsumer(
@@ -1070,133 +1111,100 @@ class AGStream(AG):
                     request_timeout_ms=40000,
                     session_timeout_ms=30000,
                     heartbeat_interval_ms=3000,
-                    max_poll_interval_ms=300000,
-                    connections_max_idle_ms=540000,
-                    fetch_max_wait_ms=500,
-                    api_version_auto_timeout_ms=10000,
-                    retry_backoff_ms=100,
-                    metadata_max_age_ms=300000,
-                    security_protocol="PLAINTEXT",
-                    client_id=f"{group_id}-client",
                 )
 
-            if verbose:
-                sys.stderr.write(
-                    f"Created consumer with bootstrap_servers={bootstrap_server}, group_id={group_id}\n"
-                )
-                sys.stderr.flush()
-
-            # Give consumer time to establish connection and fetch metadata
-            import time as time_module
-
-            time_module.sleep(0.5)
-
-            # If timestamp mode, manually assign partitions and seek
+            # Handle timestamp mode
             if mode == "timestamp":
+                time_module.sleep(0.5)
                 partitions = consumer.partitions_for_topic(self.input_topic)
                 if partitions:
                     topic_partitions = [
                         TopicPartition(self.input_topic, p) for p in partitions
                     ]
                     consumer.assign(topic_partitions)
-
-                    # Create timestamp dict for all partitions
                     timestamp_dict = {tp: from_timestamp for tp in topic_partitions}
-
-                    # Get offsets for timestamp
                     offsets = consumer.offsets_for_times(timestamp_dict)
-
-                    # Seek to the offsets
                     for tp, offset_and_timestamp in offsets.items():
                         if offset_and_timestamp is not None:
                             consumer.seek(tp, offset_and_timestamp.offset)
-                            if verbose:
-                                sys.stderr.write(
-                                    f"Seeking partition {tp.partition} to offset {offset_and_timestamp.offset} (timestamp: {from_timestamp})\n"
-                                )
-                                sys.stderr.flush()
             else:
-                # For non-timestamp modes, trigger partition assignment by polling
-                if verbose:
-                    sys.stderr.write(f"Triggering partition assignment...\n")
-                    sys.stderr.flush()
                 consumer.poll(timeout_ms=100, max_records=1)
                 time_module.sleep(0.2)
 
             collected_ags = []
             message_count = 0
-
-            if verbose:
-                mode_desc = f"mode={mode}"
-                if mode == "timestamp" and from_timestamp:
-                    mode_desc += f", from_timestamp={from_timestamp}"
-                sys.stderr.write(
-                    f"Collecting AGStream objects from topic '{self.input_topic}' ({mode_desc})...\n"
-                )
-                sys.stderr.flush()
-
-            # Log consumer assignment info after initial poll
-            if verbose:
-                try:
-                    assignment = consumer.assignment()
-                    sys.stderr.write(f"Consumer assigned to partitions: {assignment}\n")
-                    if not assignment:
-                        sys.stderr.write(
-                            f"⚠ WARNING: No partitions assigned! Waiting for rebalance...\n"
-                        )
-                        sys.stderr.flush()
-                        # Wait a bit more for rebalance
-                        time_module.sleep(1.0)
-                        consumer.poll(timeout_ms=100, max_records=1)
-                        assignment = consumer.assignment()
-                        sys.stderr.write(
-                            f"After rebalance, assigned to: {assignment}\n"
-                        )
-                    sys.stderr.flush()
-                except Exception as e:
-                    sys.stderr.write(f"Could not get consumer assignment: {e}\n")
-                    sys.stderr.flush()
+            invalid_count = 0
 
             try:
-                # Use poll() instead of iterator for better error handling
                 poll_count = 0
-                max_empty_polls = 20  # Allow up to 20 empty polls before giving up
+                max_empty_polls = 20
                 empty_poll_count = 0
 
                 while (
                     message_count < max_messages and empty_poll_count < max_empty_polls
                 ):
                     try:
-                        # Poll for messages with a shorter timeout
                         message_batch = consumer.poll(timeout_ms=500, max_records=10)
                         poll_count += 1
 
                         if not message_batch:
                             empty_poll_count += 1
-                            if verbose and empty_poll_count % 5 == 0:
-                                sys.stderr.write(
-                                    f"⏳ Waiting for messages... (poll #{poll_count}, {empty_poll_count} empty polls)\n"
-                                )
-                                sys.stderr.flush()
                             continue
 
-                        # Reset empty poll counter when we get messages
                         empty_poll_count = 0
 
-                        # Process messages from all partitions
                         for topic_partition, messages in message_batch.items():
                             for message in messages:
                                 try:
-                                    # Deserialize the AGStream from the message value
-                                    ag = AGStream.deserialize(message.value)
-                                    collected_ags.append(ag)
-                                    message_count += 1
+                                    # Message value is the serialized AGStream
+                                    serialized_ag = message.value
 
-                                    if verbose:
-                                        sys.stderr.write(
-                                            f"✓ Collected message {message_count}/{max_messages} (key: {message.key.decode('utf-8') if message.key else 'None'}, timestamp: {message.timestamp})\n"
-                                        )
-                                        sys.stderr.flush()
+                                    # Extract states from the serialized AGStream
+                                    if (
+                                        "states" in serialized_ag
+                                        and serialized_ag["states"]
+                                    ):
+                                        # Create AGStream objects for each state
+                                        for state_dict in serialized_ag["states"]:
+                                            try:
+                                                # Validate state against atype
+                                                if validate_schema:
+                                                    state_obj = target_atype(
+                                                        **state_dict
+                                                    )
+                                                else:
+                                                    # Skip validation, just create object
+                                                    state_obj = target_atype(
+                                                        **state_dict
+                                                    )
+
+                                                # Create AGStream wrapper with single state
+                                                ag = AGStream(atype=target_atype)
+                                                ag.states = [state_obj]
+                                                collected_ags.append(ag)
+                                                message_count += 1
+
+                                                if verbose:
+                                                    sys.stderr.write(
+                                                        f"  ✓ [{message_count}/{max_messages}] Collected {target_atype.__name__}\n"
+                                                    )
+                                                    sys.stderr.flush()
+
+                                                if message_count >= max_messages:
+                                                    break
+
+                                            except (ValidationError, TypeError) as e:
+                                                invalid_count += 1
+                                                if verbose:
+                                                    sys.stderr.write(
+                                                        f"  ❌ Validation failed: {e}\n"
+                                                    )
+                                                    sys.stderr.flush()
+                                                if validate_schema:
+                                                    # In strict mode, raise on validation error
+                                                    raise ValueError(
+                                                        f"Schema validation failed: {e}"
+                                                    )
 
                                     if message_count >= max_messages:
                                         break
@@ -1204,57 +1212,937 @@ class AGStream(AG):
                                 except Exception as e:
                                     if verbose:
                                         sys.stderr.write(
-                                            f"✗ Error deserializing message: {e}\n"
+                                            f"  ⚠️  Error processing message: {e}\n"
                                         )
                                         sys.stderr.flush()
-                                    continue
+                                    if validate_schema:
+                                        raise
 
                             if message_count >= max_messages:
                                 break
 
-                    except Exception as poll_error:
+                    except Exception as e:
                         if verbose:
-                            sys.stderr.write(f"✗ Error during poll: {poll_error}\n")
-                            sys.stderr.write(
-                                f"   Error type: {type(poll_error).__name__}\n"
-                            )
+                            sys.stderr.write(f"  ⚠️  Poll error: {e}\n")
                             sys.stderr.flush()
-                        # Continue trying to poll
-                        empty_poll_count += 1
+                        break
 
-            except KeyboardInterrupt:
-                if verbose:
-                    sys.stderr.write("\n⚠ Collection interrupted by user\n")
-                    sys.stderr.flush()
-            except Exception as fetch_error:
-                if verbose:
-                    sys.stderr.write(f"✗ Error during message fetch: {fetch_error}\n")
-                    sys.stderr.write(f"   Error type: {type(fetch_error).__name__}\n")
-                import traceback
-
-                traceback.print_exc(file=sys.stderr)
-                sys.stderr.flush()
             finally:
-                try:
-                    consumer.close()
-                except Exception as close_error:
-                    if verbose:
-                        sys.stderr.write(f"⚠ Error closing consumer: {close_error}\n")
-                        sys.stderr.flush()
+                consumer.close()
 
             if verbose:
                 sys.stderr.write(
-                    f"\n✓ Collected {len(collected_ags)} AGStream objects from Kafka\n"
+                    f"\n✅ Collected {len(collected_ags)} validated messages\n"
                 )
+                if invalid_count > 0:
+                    sys.stderr.write(f"⚠️  Skipped {invalid_count} invalid messages\n")
                 sys.stderr.flush()
 
             return collected_ags
 
         except Exception as e:
-            if verbose:
-                sys.stderr.write(f"✗ Error collecting from Kafka: {e}\n")
+            sys.stderr.write(f"\n❌ Error collecting with schema enforcement: {e}\n")
+            sys.stderr.flush()
+            raise
+
+    def listen(
+        self,
+        source_atype_name: Optional[str] = None,
+        timeout_ms: int = 500,
+        poll_interval_ms: int = 100,
+        max_empty_polls: Optional[int] = None,
+        group_id: Optional[str] = None,
+        validate_schema: bool = True,
+        produce_results: bool = True,
+        verbose: bool = False,
+        schema_fetch_retries: int = 5,
+        schema_fetch_retry_delay: float = 2.0,
+        stop_event=None,
+        log_queue=None,
+        auto_offset_reset: str = "earliest",
+    ):
+        """
+        Continuously listen to the input Kafka topic, validate each incoming state
+        against the schema registry, transduce it one at a time using the AGStream's
+        configured atype and instructions, and optionally produce the result to the
+        output topic.
+
+        For each message received:
+          1. Deserialize and validate the state against the schema registry.
+          2. Wrap the single state in a source AGStream.
+          3. Transduce: ``self << source`` (uses the LLM-based logical transduction).
+          4. If ``produce_results=True``, produce the transduced state to the output topic
+             using schema enforcement.
+
+        By default this method runs indefinitely (blocking) until interrupted
+        (e.g. ``KeyboardInterrupt`` or ``stop_event``).  Pass ``max_empty_polls``
+        to make it exit automatically after a fixed number of consecutive empty polls.
+
+        Args:
+            source_atype_name: Optional name of the source type to fetch from the schema
+                registry. If None, the source type is inferred from the incoming message.
+            timeout_ms: Consumer poll timeout in milliseconds (default: 500).
+            poll_interval_ms: Sleep interval between polls in milliseconds (default: 100).
+            max_empty_polls: Maximum number of consecutive empty polls before the listener
+                exits automatically.  ``None`` (default) means run forever — the listener
+                only stops on ``KeyboardInterrupt`` or when ``stop_event`` is set.
+                Set to a small integer (e.g. ``5``) for finite / dry-run scenarios.
+            group_id: Kafka consumer group ID. If None, a unique ID is generated so that
+                the listener always reads from the earliest available offset.
+            auto_offset_reset: Kafka consumer ``auto.offset.reset`` setting.
+                ``"earliest"`` (default) reads all messages from the beginning of the
+                topic when no committed offset exists.  Use ``"latest"`` to process only
+                messages produced *after* the listener starts — useful for dry-run or
+                one-shot scenarios where you don't want to replay old messages.
+            validate_schema: If True, validate each incoming state against the schema
+                registry before transducing (default: True).
+            produce_results: If True, produce each transduced result to the output topic
+                with schema enforcement (default: True).
+            verbose: If True, print detailed progress to stderr (default: False).
+            schema_fetch_retries: Number of times to retry fetching the source schema
+                from the registry before raising an error (default: 5). Useful when the
+                listener is started before ``register_atype_schema()`` has been called,
+                or when the schema registry is temporarily unavailable.
+            schema_fetch_retry_delay: Seconds to wait between schema-fetch retries
+                (default: 2.0).
+
+        Raises:
+            ValueError: If ``self.atype`` is not set on the AGStream instance, or if
+                the source schema cannot be fetched after all retries are exhausted.
+            KeyboardInterrupt: Raised when the user interrupts the listener loop.
+
+        Examples:
+            >>> from pydantic import BaseModel
+            >>> from agentics.core.streaming import AGStream
+            >>>
+            >>> class MovieReview(BaseModel):
+            ...     title: str
+            ...     review: str
+            >>>
+            >>> class MovieSummary(BaseModel):
+            ...     title: str
+            ...     one_line_summary: str
+            >>>
+            >>> ag = AGStream(
+            ...     atype=MovieSummary,
+            ...     input_topic="movie-reviews",
+            ...     output_topic="movie-summaries",
+            ...     schema_registry_url="http://localhost:8081",
+            ...     instructions="Summarise the review in one sentence.",
+            ... )
+            >>> ag.listen(verbose=True)
+        """
+        # ------------------------------------------------------------------
+        # Resolve the source atype from the schema registry if requested
+        # Retry with backoff in case the schema hasn't been registered yet.
+        # ------------------------------------------------------------------
+        import time as time_module
+        import time as _time_module
+        import uuid
+
+        from kafka import KafkaConsumer
+
+        source_atype = None
+        if source_atype_name:
+            sys.stderr.write(
+                f"\n📥 Fetching source type '{source_atype_name}' from schema registry...\n"
+            )
+            sys.stderr.flush()
+
+            # If the caller already passed a fully-qualified subject name (e.g.
+            # "Question-value") do NOT append another "-value" suffix.
+            _src_add_suffix = not (
+                source_atype_name.endswith("-value")
+                or source_atype_name.endswith("-key")
+            )
+
+            last_error: Optional[str] = None
+            for attempt in range(1, schema_fetch_retries + 1):
+                source_atype = get_atype_from_registry(
+                    atype_name=source_atype_name,
+                    schema_registry_url=self.schema_registry_url,
+                    is_key=False,
+                    version="latest",
+                    add_suffix=_src_add_suffix,
+                )
+                if source_atype:
+                    break
+                _subject_display = (
+                    source_atype_name
+                    if not _src_add_suffix
+                    else f"{source_atype_name}-value"
+                )
+                last_error = (
+                    f"Subject '{_subject_display}' not found in registry "
+                    f"at {self.schema_registry_url}."
+                )
+                if attempt < schema_fetch_retries:
+                    sys.stderr.write(
+                        f"   ⚠️  Schema not found (attempt {attempt}/{schema_fetch_retries}). "
+                        f"Retrying in {schema_fetch_retry_delay:.1f}s — "
+                        f"make sure you have called register_atype_schema() first.\n"
+                    )
+                    sys.stderr.flush()
+                    _time_module.sleep(schema_fetch_retry_delay)
+
+            if not source_atype:
+                raise ValueError(
+                    f"Could not fetch source type '{source_atype_name}' from schema registry "
+                    f"after {schema_fetch_retries} attempt(s). "
+                    f"Register the schema first with:\n"
+                    f"    AGStream(atype=<YourModel>, ...).register_atype_schema()\n"
+                    f"Last error: {last_error}"
+                )
+            sys.stderr.write(f"   ✓ Source type fetched: {source_atype.__name__}\n")
+            sys.stderr.flush()
+
+        # ------------------------------------------------------------------
+        # Resolve the effective target atype
+        # Priority: fetch from registry using target_atype_name if set,
+        # otherwise fall back to self.atype.
+        # ------------------------------------------------------------------
+        effective_target_atype = self.atype
+        _target_fetched_from_registry = False
+
+        if self.target_atype_name:
+            sys.stderr.write(
+                f"\n📥 Fetching target type '{self.target_atype_name}' from schema registry...\n"
+            )
+            sys.stderr.flush()
+
+            # Same suffix-detection logic for the target type name.
+            _tgt_add_suffix = not (
+                self.target_atype_name.endswith("-value")
+                or self.target_atype_name.endswith("-key")
+            )
+
+            last_target_error: Optional[str] = None
+            for attempt in range(1, schema_fetch_retries + 1):
+                _fetched = get_atype_from_registry(
+                    atype_name=self.target_atype_name,
+                    schema_registry_url=self.schema_registry_url,
+                    is_key=False,
+                    version="latest",
+                    add_suffix=_tgt_add_suffix,
+                )
+                if _fetched is not None:
+                    effective_target_atype = _fetched
+                    _target_fetched_from_registry = True
+                    break
+                _tgt_subject_display = (
+                    self.target_atype_name
+                    if not _tgt_add_suffix
+                    else f"{self.target_atype_name}-value"
+                )
+                last_target_error = (
+                    f"Subject '{_tgt_subject_display}' not found in registry "
+                    f"at {self.schema_registry_url}."
+                )
+                if attempt < schema_fetch_retries:
+                    sys.stderr.write(
+                        f"   ⚠️  Target schema not found (attempt {attempt}/{schema_fetch_retries}). "
+                        f"Retrying in {schema_fetch_retry_delay:.1f}s — "
+                        f"make sure register_atype_schema() has been called first.\n"
+                    )
+                    sys.stderr.flush()
+                    _time_module.sleep(schema_fetch_retry_delay)
+
+            if not _target_fetched_from_registry:
+                raise ValueError(
+                    f"Could not fetch target type '{self.target_atype_name}' from schema registry "
+                    f"after {schema_fetch_retries} attempt(s). "
+                    f"Register the schema first with:\n"
+                    f"    AGStream(atype=<YourModel>, ...).register_atype_schema()\n"
+                    f"Last error: {last_target_error}"
+                )
+            sys.stderr.write(
+                f"   ✓ Target type fetched: {effective_target_atype.__name__}\n"
+            )
+            sys.stderr.flush()
+
+        # ------------------------------------------------------------------
+        # Validate that we have a target atype (either from registry or self.atype)
+        # ------------------------------------------------------------------
+        if not effective_target_atype:
+            raise ValueError(
+                "Either self.atype must be set or self.target_atype_name must be provided "
+                "before calling listen()."
+            )
+
+        # ------------------------------------------------------------------
+        # Optionally verify that the target schema exists in the registry
+        # ------------------------------------------------------------------
+        if validate_schema and produce_results:
+            subject = get_subject_name(
+                effective_target_atype.__name__, is_key=False, add_suffix=True
+            )
+            if not schema_exists(subject, self.schema_registry_url):
+                sys.stderr.write(
+                    f"⚠️  Target schema '{subject}' not found in registry. "
+                    f"It will be registered on first produce.\n"
+                )
                 sys.stderr.flush()
-            return []
+            elif verbose:
+                sys.stderr.write(f"   ✓ Target schema found: {subject}\n")
+                sys.stderr.flush()
+
+        # ------------------------------------------------------------------
+        # Build the Kafka consumer
+        # ------------------------------------------------------------------
+        if group_id is None:
+            group_id = f"agstream-listener-{uuid.uuid4()}"
+
+        bootstrap_server = self.kafka_server
+        if "localhost" in bootstrap_server:
+            bootstrap_server = bootstrap_server.replace("localhost", "127.0.0.1")
+
+        consumer = KafkaConsumer(
+            self.input_topic,
+            bootstrap_servers=bootstrap_server,
+            auto_offset_reset=auto_offset_reset,
+            enable_auto_commit=True,
+            group_id=group_id,
+            value_deserializer=lambda m: json.loads(m.decode("utf-8")),
+            consumer_timeout_ms=timeout_ms,
+            request_timeout_ms=40000,
+            session_timeout_ms=30000,
+            heartbeat_interval_ms=3000,
+        )
+
+        # Warm up the consumer assignment
+        consumer.poll(timeout_ms=100, max_records=1)
+        time_module.sleep(0.2)
+
+        sys.stderr.write(
+            f"\n🎧 listen() started\n"
+            f"   Input topic  : {self.input_topic}\n"
+            f"   Output topic : {self.output_topic}\n"
+            f"   Target type  : {effective_target_atype.__name__}\n"
+            f"   Press Ctrl+C to stop.\n\n"
+        )
+        sys.stderr.flush()
+
+        processed_count = 0
+        error_count = 0
+        empty_poll_count = 0
+
+        # Helper: write to stderr AND optionally push to log_queue
+        def _log(msg: str) -> None:
+            sys.stderr.write(msg)
+            sys.stderr.flush()
+            if log_queue is not None:
+                try:
+                    log_queue.put_nowait(msg)
+                except Exception:
+                    pass
+
+        try:
+            while True:
+                # ── Check stop_event ──────────────────────────────────────────
+                if stop_event is not None and stop_event.is_set():
+                    _log("\n🛑 Stop event received — shutting down listener.\n")
+                    break
+
+                try:
+                    message_batch = consumer.poll(timeout_ms=timeout_ms, max_records=10)
+                except Exception as poll_err:
+                    _log(f"⚠️  Poll error: {poll_err}\n")
+                    time_module.sleep(poll_interval_ms / 1000.0)
+                    continue
+
+                if not message_batch:
+                    empty_poll_count += 1
+                    if max_empty_polls is not None:
+                        if empty_poll_count >= max_empty_polls:
+                            if verbose:
+                                _log(
+                                    f"   ⏹  Reached max_empty_polls={max_empty_polls} "
+                                    f"consecutive empty polls — stopping listener.\n"
+                                )
+                            break
+                        if (
+                            verbose
+                            and empty_poll_count % max(1, max_empty_polls // 4) == 0
+                        ):
+                            _log(
+                                f"   ⏳ Waiting for messages "
+                                f"({empty_poll_count}/{max_empty_polls} empty polls)...\n"
+                            )
+                    else:
+                        # Run-forever mode: log every 20 empty polls
+                        if verbose and empty_poll_count % 20 == 0:
+                            _log("   ⏳ Waiting for messages...\n")
+                    time_module.sleep(poll_interval_ms / 1000.0)
+                    continue
+
+                empty_poll_count = 0
+
+                for topic_partition, messages in message_batch.items():
+                    for message in messages:
+                        try:
+                            serialized_ag = message.value
+
+                            # Capture the source message key (bytes → str, or None)
+                            source_key: Optional[str] = None
+                            if message.key is not None:
+                                try:
+                                    source_key = message.key.decode("utf-8")
+                                except Exception:
+                                    source_key = str(message.key)
+
+                            # Extract states list from the serialized AGStream envelope
+                            states_list = []
+                            if (
+                                isinstance(serialized_ag, dict)
+                                and "states" in serialized_ag
+                                and serialized_ag["states"]
+                            ):
+                                states_list = serialized_ag["states"]
+                            else:
+                                # Treat the whole message value as a single state dict
+                                states_list = [serialized_ag]
+
+                            for state_dict in states_list:
+                                try:
+                                    # ------------------------------------------
+                                    # Determine the source type for this state
+                                    # ------------------------------------------
+                                    if source_atype is not None:
+                                        inferred_atype = source_atype
+                                    else:
+                                        # Fall back: try to instantiate as target type
+                                        inferred_atype = effective_target_atype
+
+                                    # ------------------------------------------
+                                    # Validate / instantiate the incoming state
+                                    # ------------------------------------------
+                                    try:
+                                        state_obj = inferred_atype(**state_dict)
+                                    except (ValidationError, TypeError) as ve:
+                                        error_count += 1
+                                        _log(
+                                            f"  ❌ Schema validation failed for incoming state: {ve}\n"
+                                        )
+                                        if validate_schema:
+                                            continue
+                                        # If not strict, try a best-effort construction
+                                        state_obj = inferred_atype.model_construct(
+                                            **state_dict
+                                        )
+
+                                    # ------------------------------------------
+                                    # Build a single-state source AGStream
+                                    # ------------------------------------------
+                                    source_ag = AGStream(atype=inferred_atype)
+                                    source_ag.states = [state_obj]
+
+                                    # ------------------------------------------
+                                    # Transduce: self << source_ag
+                                    # ------------------------------------------
+                                    if verbose:
+                                        _log(
+                                            f"  🔄 Transducing state from "
+                                            f"{inferred_atype.__name__} → "
+                                            f"{effective_target_atype.__name__}...\n"
+                                        )
+
+                                    # Clone self so we don't accumulate states across messages
+                                    # and set the effective target atype on the transducer
+                                    transducer = self.clone()
+                                    transducer.atype = effective_target_atype
+                                    transducer.states = []
+
+                                    # asyncio.run() / loop.run_until_complete() cannot be
+                                    # used when a running event loop already exists (e.g.
+                                    # inside a Jupyter notebook or when IPython owns the
+                                    # loop).  We offload the coroutine to a brand-new
+                                    # *thread* that has no event loop at all, so
+                                    # asyncio.run() works cleanly inside it.
+                                    import concurrent.futures
+
+                                    def _run_transduction():
+                                        return asyncio.run(
+                                            transducer.__lshift__(source_ag)
+                                        )
+
+                                    with concurrent.futures.ThreadPoolExecutor(
+                                        max_workers=1
+                                    ) as _executor:
+                                        future = _executor.submit(_run_transduction)
+                                        result_ag = future.result()
+
+                                    if (
+                                        result_ag is None
+                                        or not hasattr(result_ag, "states")
+                                        or not result_ag.states
+                                    ):
+                                        _log(
+                                            "  ⚠️  Transduction returned no states; skipping.\n"
+                                        )
+                                        continue
+
+                                    processed_count += 1
+                                    _log(
+                                        f"  ✓ [{processed_count}] Transduced "
+                                        f"{inferred_atype.__name__} → "
+                                        f"{effective_target_atype.__name__}\n"
+                                    )
+
+                                    # ------------------------------------------
+                                    # Produce the result to the output topic
+                                    # ------------------------------------------
+                                    if produce_results:
+                                        output_ag = AGStream(
+                                            atype=effective_target_atype,
+                                            kafka_server=self.kafka_server,
+                                            input_topic=self.output_topic,
+                                            output_topic=self.output_topic,
+                                            schema_registry_url=self.schema_registry_url,
+                                            target_atype_name=self.target_atype_name,
+                                        )
+                                        output_ag.states = result_ag.states
+
+                                        try:
+                                            msg_ids = output_ag.produce(
+                                                register_if_missing=True,
+                                                key=source_key,
+                                            )
+                                            if verbose:
+                                                if msg_ids:
+                                                    sys.stderr.write(
+                                                        f"     📤 Produced to '{self.output_topic}' "
+                                                        f"(ID: {msg_ids[0][:8]}...)\n"
+                                                    )
+                                                else:
+                                                    _log(
+                                                        f"     ⚠️  Produce returned no IDs.\n"
+                                                    )
+                                        except Exception as prod_err:
+                                            error_count += 1
+                                            _log(
+                                                f"  ❌ Failed to produce result: {prod_err}\n"
+                                            )
+
+                                except Exception as state_err:
+                                    error_count += 1
+                                    _log(f"  ❌ Error processing state: {state_err}\n")
+
+                        except Exception as msg_err:
+                            error_count += 1
+                            _log(f"  ❌ Error processing message: {msg_err}\n")
+
+        except KeyboardInterrupt:
+            _log(
+                f"\n🛑 Listener stopped by user.\n"
+                f"   Processed : {processed_count} states\n"
+                f"   Errors    : {error_count}\n"
+            )
+        finally:
+            consumer.close()
+
+    def transducible_function_listener(
+        self,
+        fn: Any,
+        timeout_ms: int = 500,
+        poll_interval_ms: int = 1000,
+        max_empty_polls: int = 30,
+        group_id: Optional[str] = None,
+        validate_schema: bool = True,
+        produce_results: bool = True,
+        verbose: bool = False,
+        schema_fetch_retries: int = 5,
+        schema_fetch_retry_delay: float = 2.0,
+        stop_event: Optional[Any] = None,
+        log_queue: Optional[Any] = None,
+        background: bool = False,
+        flink_startup_wait_s: float = 5.0,
+    ):
+        """
+        Continuously listen to the input Kafka topic, validate each incoming state
+        against the schema registry, apply a **transducible function** to it, and
+        optionally produce the result to the output topic.
+
+        This method uses a **PyFlink streaming pipeline** (mirroring ``listen()``)
+        for parallel, distributed processing.  The transducible function is
+        reconstructed fresh inside each Flink task slot via
+        ``make_transducible_function()`` so that only picklable data
+        (Pydantic classes + instruction strings) is serialised across workers.
+        Flink's ``set_parallelism(4)`` means up to 4 states are processed
+        concurrently, each in its own thread with its own ``asyncio`` event loop.
+
+        The transducible function must have been decorated with ``@transducible`` (or
+        created via ``make_transducible_function``).  Its ``input_model`` and
+        ``target_model`` attributes are used to:
+
+        * Fetch (and optionally validate) the source schema from the registry.
+        * Register the output schema in the registry if it is missing.
+        * Deserialize incoming states into ``fn.input_model`` instances.
+        * Serialize outgoing states as ``fn.target_model`` instances.
+
+        Key propagation: each output message is produced with the **same Kafka key**
+        as the source message that triggered it.
+
+        .. note::
+            ``stop_event`` and ``log_queue`` are accepted for API compatibility but
+            are **not functional** in the Flink execution model.  Flink jobs run
+            until the cluster cancels them or the process is interrupted (Ctrl+C /
+            SIGTERM).  To stop the job programmatically, cancel it via the Flink
+            REST API or ``env.execute()`` future.
+
+        Args:
+            fn: A transducible function (decorated with ``@transducible`` or created
+                via ``make_transducible_function``).  Must expose ``fn.input_model``
+                and ``fn.target_model`` attributes.  When ``fn`` was created with
+                ``@transducible``, its ``__original_fn__`` source code is extracted
+                via ``inspect.getsource()`` and stored as a string so that custom
+                pre/post-processing logic is preserved across Flink task slots.
+                For dynamically-created functions (no source available), the
+                function's ``__doc__`` string is used as the transduction
+                instructions instead.
+            timeout_ms: Unused (kept for API compatibility with the previous
+                KafkaConsumer-based implementation).
+            poll_interval_ms: Milliseconds between idle checks in the main thread
+                (default: 1000).  Combined with ``max_empty_polls`` to compute the
+                idle timeout: ``max_empty_polls × poll_interval_ms`` ms of no new
+                Kafka messages causes the listener to stop automatically.
+            max_empty_polls: Number of idle poll intervals before the listener stops
+                (default: 30).  With the default ``poll_interval_ms=1000`` this gives
+                a 30-second idle timeout.  Increase this value if you expect long gaps
+                between messages (e.g. ``max_empty_polls=300`` → 5-minute timeout).
+            group_id: Kafka consumer group ID passed to the Flink SQL source table.
+                Defaults to ``"agstream-fn-listener"`` if None.
+            validate_schema: If True, reject incoming states that fail Pydantic
+                validation inside each task slot (default: True).
+            produce_results: If True, produce each result to the output topic with
+                schema enforcement (default: True).
+            verbose: If True, print detailed startup info to stderr (default: False).
+            schema_fetch_retries: Number of times to retry fetching the source schema
+                from the registry before raising an error (default: 5).
+            schema_fetch_retry_delay: Seconds to wait between schema-fetch retries
+                (default: 2.0).
+            stop_event: **Not functional in Flink mode.**  Accepted for API
+                compatibility only.
+            log_queue: **Not functional in Flink mode.**  Accepted for API
+                compatibility only.
+
+        Raises:
+            ValueError: If ``fn`` does not expose ``input_model`` / ``target_model``,
+                or if the source schema cannot be fetched after all retries.
+
+        Examples:
+            >>> from pydantic import BaseModel
+            >>> from agentics.core.streaming import AGStream
+            >>> from agentics.core.transducible_functions import transducible, Transduce
+            >>>
+            >>> class MovieReview(BaseModel):
+            ...     title: str
+            ...     review: str
+            ...     rating: float
+            >>>
+            >>> class MovieSummary(BaseModel):
+            ...     title: str
+            ...     one_line_summary: str
+            ...     sentiment: str
+            >>>
+            >>> @transducible()
+            ... async def summarise(review: MovieReview) -> MovieSummary:
+            ...     \"\"\"Summarise the review in one sentence and classify sentiment.\"\"\"
+            ...     return Transduce(review)
+            >>>
+            >>> ag = AGStream(
+            ...     kafka_server="localhost:9092",
+            ...     input_topic="movie-reviews",
+            ...     output_topic="movie-summaries",
+            ...     schema_registry_url="http://localhost:8081",
+            ... )
+            >>> ag.transducible_function_listener(summarise, verbose=True)
+        """
+        import time as _time_module
+
+        from pyflink.datastream import RuntimeExecutionMode, StreamExecutionEnvironment
+        from pyflink.table import EnvironmentSettings, StreamTableEnvironment
+
+        # ------------------------------------------------------------------
+        # Validate the transducible function
+        # ------------------------------------------------------------------
+        if not hasattr(fn, "input_model") or not hasattr(fn, "target_model"):
+            raise ValueError(
+                "fn must be a transducible function with 'input_model' and "
+                "'target_model' attributes.  Decorate it with @transducible."
+            )
+
+        source_atype = fn.input_model
+        target_atype = fn.target_model
+
+        # ------------------------------------------------------------------
+        # If the TransducibleFunction carries its own schema_registry_url,
+        # use it in preference to self.schema_registry_url.
+        # ------------------------------------------------------------------
+        effective_registry_url: str = (
+            getattr(fn, "schema_registry_url", None) or self.schema_registry_url
+        )
+
+        # ------------------------------------------------------------------
+        # Verify source schema in registry (with retries)
+        # ------------------------------------------------------------------
+        sys.stderr.write(
+            f"\n📥 Verifying source schema '{source_atype.__name__}' in registry...\n"
+        )
+        sys.stderr.flush()
+
+        last_error: Optional[str] = None
+        source_schema_ok = False
+        for attempt in range(1, schema_fetch_retries + 1):
+            fetched = get_atype_from_registry(
+                atype_name=source_atype.__name__,
+                schema_registry_url=effective_registry_url,
+                is_key=False,
+                version="latest",
+                add_suffix=True,
+            )
+            if fetched is not None:
+                source_schema_ok = True
+                break
+            last_error = (
+                f"Subject '{source_atype.__name__}-value' not found in registry "
+                f"at {effective_registry_url}."
+            )
+            if attempt < schema_fetch_retries:
+                sys.stderr.write(
+                    f"   ⚠️  Schema not found (attempt {attempt}/{schema_fetch_retries}). "
+                    f"Retrying in {schema_fetch_retry_delay:.1f}s — "
+                    f"make sure register_atype_schema() has been called first.\n"
+                )
+                sys.stderr.flush()
+                _time_module.sleep(schema_fetch_retry_delay)
+
+        if not source_schema_ok:
+            raise ValueError(
+                f"Could not find source schema '{source_atype.__name__}' in registry "
+                f"after {schema_fetch_retries} attempt(s). "
+                f"Register it first with:\n"
+                f"    AGStream(atype={source_atype.__name__}, ...).register_atype_schema()\n"
+                f"Last error: {last_error}"
+            )
+        sys.stderr.write(f"   ✓ Source schema verified: {source_atype.__name__}\n")
+        sys.stderr.flush()
+
+        # ------------------------------------------------------------------
+        # Optionally verify / register target schema
+        # ------------------------------------------------------------------
+        if produce_results:
+            subject = get_subject_name(
+                target_atype.__name__, is_key=False, add_suffix=True
+            )
+            if not schema_exists(subject, effective_registry_url):
+                sys.stderr.write(
+                    f"⚠️  Target schema '{subject}' not found — will be registered "
+                    f"on first produce.\n"
+                )
+                sys.stderr.flush()
+            elif verbose:
+                sys.stderr.write(f"   ✓ Target schema found: {subject}\n")
+                sys.stderr.flush()
+
+        # ------------------------------------------------------------------
+        # Extract instructions and source code from the transducible function.
+        # fn.__doc__ carries the instructions; fn.__original_fn__ is the raw
+        # decorated function whose source code we can retrieve with inspect.
+        # Storing source code as a string keeps ProcessTransducibleFn picklable
+        # while preserving any custom pre/post-processing logic in the body.
+        # ------------------------------------------------------------------
+        sys.stderr.write(
+            f"\n🎧 transducible_function_listener (Flink) started\n"
+            f"   Input topic  : {self.input_topic}\n"
+            f"   Output topic : {self.output_topic}\n"
+            f"   Function     : {fn.__name__}\n"
+            f"   Input type   : {source_atype.__name__}\n"
+            f"   Output type  : {target_atype.__name__}\n"
+            f"   fn registry  : stored in _FN_REGISTRY['{fn.__name__}']\n\n"
+        )
+        sys.stderr.flush()
+
+        # ------------------------------------------------------------------
+        # Build the Flink streaming pipeline (mirrors listen())
+        # ------------------------------------------------------------------
+        env = StreamExecutionEnvironment.get_execution_environment()
+        env.set_runtime_mode(RuntimeExecutionMode.STREAMING)
+        env.set_parallelism(4)
+
+        settings = EnvironmentSettings.in_streaming_mode()
+        table_env = StreamTableEnvironment.create(env, settings)
+
+        # Add Kafka connector JAR
+        table_env.get_config().get_configuration().set_string(
+            "pipeline.jars",
+            "file:///Users/gliozzo/Code/flink_tutorial/flink-sql-connector-kafka-3.3.0-1.20.jar",
+        )
+
+        create_table_ddl = f"""
+            CREATE TABLE kafka_source (
+                `value` STRING,
+                `event_timestamp` TIMESTAMP(3) METADATA FROM 'timestamp',
+                `kafka_partition` INT METADATA FROM 'partition',
+                `kafka_offset` BIGINT METADATA FROM 'offset',
+                WATERMARK FOR `event_timestamp` AS `event_timestamp` - INTERVAL '5' SECOND
+            ) WITH (
+                'connector' = 'kafka',
+                'topic' = '{self.input_topic}',
+                'properties.bootstrap.servers' = '{self.kafka_server}',
+                'properties.group.id' = '{group_id or "agstream-fn-listener"}',
+                'scan.startup.mode' = 'latest-offset',
+                'format' = 'raw'
+            )
+        """
+        table_env.execute_sql(create_table_ddl)
+
+        result_table = table_env.sql_query(
+            """
+            SELECT
+                CONCAT('partition-', CAST(kafka_partition AS STRING), '-offset-', CAST(kafka_offset AS STRING)) as key,
+                UNIX_TIMESTAMP(CAST(event_timestamp AS STRING)) * 1000 as timestamp_ms,
+                `value`
+            FROM kafka_source
+            """
+        )
+
+        ds = table_env.to_data_stream(result_table)
+
+        job_name = f"AGStream transducible_function_listener: {fn.__name__}"
+
+        # Register an activity event for this job so ProcessTransducibleFn.map()
+        # can signal the idle-timeout watcher below.
+        activity_event = threading.Event()
+        _ACTIVITY_REGISTRY[job_name] = activity_event
+
+        # Store the live fn object in the module-level registry so that
+        # ProcessTransducibleFn.map() can look it up without pickling.
+        # (Pydantic model classes defined in __main__ / Jupyter notebooks
+        # do not survive pickle/unpickle, so we avoid storing them as
+        # instance attributes on the MapFunction.)
+        _FN_REGISTRY[job_name] = fn
+
+        # Apply the transducible function via ProcessTransducibleFn MapFunction
+        processed_stream = ds.map(
+            func=ProcessTransducibleFn(
+                job_name=job_name,
+                kafka_server=self.kafka_server,
+                output_topic=self.output_topic,
+                schema_registry_url=effective_registry_url,
+                validate_schema=validate_schema,
+                produce_results=produce_results,
+                target_atype_name=self.target_atype_name,
+            )
+        )
+
+        # Filter out error/skip results and print progress
+        processed_stream.filter(lambda x: x is not None).print()
+
+        # ------------------------------------------------------------------
+        # Run env.execute() in a daemon thread so we can implement idle-timeout
+        # termination (mirrors the old max_empty_polls behaviour).
+        # The idle timeout is: max_empty_polls * poll_interval_ms milliseconds.
+        # ------------------------------------------------------------------
+        idle_timeout_s = (max_empty_polls * poll_interval_ms) / 1000.0
+
+        flink_exc: list = []
+
+        def _run_flink():
+            try:
+                env.execute(job_name)
+            except Exception as exc:
+                flink_exc.append(exc)
+
+        flink_thread = threading.Thread(target=_run_flink, daemon=True)
+        flink_thread.start()
+
+        if verbose:
+            sys.stderr.write(
+                f"   Idle timeout : {idle_timeout_s:.1f}s "
+                f"(max_empty_polls={max_empty_polls} × poll_interval_ms={poll_interval_ms})\n\n"
+            )
+            sys.stderr.flush()
+
+        # Wait for the first message to arrive (give Flink time to start up)
+        # then switch to idle-timeout mode.
+        startup_timeout_s = max(idle_timeout_s, 30.0)
+        got_first = activity_event.wait(timeout=startup_timeout_s)
+
+        if not got_first:
+            # No messages arrived during startup window — stop.
+            if verbose:
+                sys.stderr.write(
+                    f"⏹  No messages received within {startup_timeout_s:.0f}s startup window. Stopping.\n"
+                )
+                sys.stderr.flush()
+            _ACTIVITY_REGISTRY.pop(job_name, None)
+            return
+
+        # Idle-timeout loop: reset the event and wait; if it doesn't fire
+        # within idle_timeout_s, no new messages arrived → stop.
+        while True:
+            activity_event.clear()
+            fired = activity_event.wait(timeout=idle_timeout_s)
+            if not fired:
+                # Idle timeout reached — no new messages
+                if verbose:
+                    sys.stderr.write(
+                        f"⏹  Idle for {idle_timeout_s:.1f}s — stopping listener.\n"
+                    )
+                    sys.stderr.flush()
+                break
+
+        _ACTIVITY_REGISTRY.pop(job_name, None)
+        # flink_thread is a daemon — it will be killed when this method returns.
+        if flink_exc:
+            raise flink_exc[0]
+
+    def transducible_function_listener_background(
+        self,
+        fn: Any,
+        flink_startup_wait_s: float = 5.0,
+        **kwargs,
+    ) -> threading.Thread:
+        """
+        Start ``transducible_function_listener`` in a background daemon thread
+        and return the thread so the caller can ``.join()`` it later.
+
+        This is the recommended pattern when you want to produce messages
+        **after** the listener is already running (so that ``latest-offset``
+        captures them):
+
+        .. code-block:: python
+
+            t = ag.transducible_function_listener_background(fn=summarise_review, verbose=True)
+            time.sleep(5)          # wait for Flink to start up
+            producer.produce()
+            t.join()               # wait for idle-timeout → listener stops
+            # collect results …
+
+        Args:
+            fn: The transducible function to apply.
+            flink_startup_wait_s: Seconds to sleep after starting the thread
+                before returning, giving Flink time to initialise the Kafka
+                source table (default: 5.0).
+            **kwargs: All other keyword arguments are forwarded to
+                ``transducible_function_listener``.
+
+        Returns:
+            The background ``threading.Thread`` running the listener.
+        """
+        exc_holder: list = []
+
+        def _target():
+            try:
+                self.transducible_function_listener(fn=fn, **kwargs)
+            except Exception as exc:
+                exc_holder.append(exc)
+
+        t = threading.Thread(target=_target, daemon=True)
+        t.start()
+        if flink_startup_wait_s > 0:
+            time.sleep(flink_startup_wait_s)
+        return t
 
     @classmethod
     def collect_by_key(cls, key: str, timeout_seconds: int = 30) -> "AGStream | None":
@@ -1379,142 +2267,6 @@ class AGStream(AG):
             sys.stderr.flush()
             return None
 
-    @staticmethod
-    def create_topic(
-        topic_name: str,
-        kafka_server: str = "localhost:9092",
-        num_partitions: int = 1,
-        replication_factor: int = 1,
-    ) -> bool:
-        """
-        Create a new Kafka topic.
-
-        This is a static method that creates a Kafka topic with the specified configuration.
-        It handles the case where the topic already exists gracefully.
-
-        Args:
-            topic_name: Name of the topic to create
-            kafka_server: Kafka server address (default: "localhost:9092")
-            num_partitions: Number of partitions for the topic (default: 1)
-            replication_factor: Replication factor for the topic (default: 1)
-
-        Returns:
-            True if topic was created successfully or already exists, False on error
-
-        Example:
-            >>> from agentics.core.streaming import AGStream
-            >>>
-            >>> # Create a new topic for questions
-            >>> success = AGStream.create_topic(
-            >>>     topic_name="questions-topic",
-            >>>     num_partitions=3,
-            >>>     replication_factor=1
-            >>> )
-            >>>
-            >>> if success:
-            >>>     print("Topic ready for use!")
-        """
-        from kafka.admin import KafkaAdminClient, NewTopic
-        from kafka.errors import TopicAlreadyExistsError
-
-        try:
-            admin_client = KafkaAdminClient(
-                bootstrap_servers=kafka_server, client_id="agstream-topic-creator"
-            )
-
-            topic = NewTopic(
-                name=topic_name,
-                num_partitions=num_partitions,
-                replication_factor=replication_factor,
-            )
-
-            try:
-                admin_client.create_topics(new_topics=[topic], validate_only=False)
-                sys.stderr.write(f"✓ Topic '{topic_name}' created successfully!\n")
-                sys.stderr.write(f"  - Partitions: {num_partitions}\n")
-                sys.stderr.write(f"  - Replication Factor: {replication_factor}\n")
-                sys.stderr.flush()
-                return True
-
-            except TopicAlreadyExistsError:
-                sys.stderr.write(f"✓ Topic '{topic_name}' already exists!\n")
-                sys.stderr.flush()
-                return True
-
-            except Exception as e:
-                sys.stderr.write(f"✗ Error creating topic '{topic_name}': {e}\n")
-                sys.stderr.flush()
-                return False
-
-            finally:
-                admin_client.close()
-
-        except Exception as e:
-            sys.stderr.write(f"✗ Error connecting to Kafka admin: {e}\n")
-            sys.stderr.flush()
-            return False
-
-    @staticmethod
-    def topic_exists(topic_name: str, kafka_server: str = "localhost:9092") -> bool:
-        """
-        Check if a Kafka topic exists.
-
-        This is a static method that queries the Kafka cluster to determine
-        if a topic with the given name exists.
-
-        Args:
-            topic_name: Name of the topic to check
-            kafka_server: Kafka server address (default: "localhost:9092")
-
-        Returns:
-            True if the topic exists, False otherwise
-
-        Example:
-            >>> from agentics.core.streaming import AGStream
-            >>>
-            >>> # Check if a topic exists before using it
-            >>> if AGStream.topic_exists("questions-topic"):
-            >>>     print("Topic exists, ready to use!")
-            >>> else:
-            >>>     print("Topic doesn't exist, creating it...")
-            >>>     AGStream.create_topic("questions-topic")
-        """
-        from kafka.admin import KafkaAdminClient
-
-        try:
-            admin_client = KafkaAdminClient(
-                bootstrap_servers=kafka_server, client_id="agstream-topic-checker"
-            )
-
-            try:
-                # Get list of all topics
-                topics = admin_client.list_topics()
-                exists = topic_name in topics
-
-                if exists:
-                    sys.stderr.write(f"✓ Topic '{topic_name}' exists\n")
-                else:
-                    sys.stderr.write(f"✗ Topic '{topic_name}' does not exist\n")
-                sys.stderr.flush()
-
-                return exists
-
-            except Exception as e:
-                sys.stderr.write(f"✗ Error checking topic '{topic_name}': {e}\n")
-                sys.stderr.flush()
-                return False
-
-            finally:
-                admin_client.close()
-
-        except Exception as e:
-            sys.stderr.write(f"✗ Error connecting to Kafka admin: {e}\n")
-            sys.stderr.flush()
-            return False
-            sys.stderr.write(f"✗ Error connecting to Kafka admin: {e}\n")
-            sys.stderr.flush()
-            return False
-
     def serialize(self) -> Dict[str, Any]:
         """
         Serialize the Agentic instance to a dictionary that can be saved to JSON.
@@ -1569,6 +2321,9 @@ class AGStream(AG):
             "amap_batch_size": self.amap_batch_size,
             "save_amap_batches_to_path": self.save_amap_batches_to_path,
             "crew_prompt_params": self.crew_prompt_params,
+            "streaming_key": self.streaming_key,
+            "target_atype_name": self.target_atype_name,
+            "source_atype_name": self.source_atype_name,
         }
 
         return serialized
@@ -1697,6 +2452,9 @@ class AGStream(AG):
                     "expected_output": "Described by Pydantic Type",
                 },
             ),
+            streaming_key=data.get("streaming_key"),
+            target_atype_name=data.get("target_atype_name"),
+            source_atype_name=data.get("source_atype_name"),
         )
 
         return ag
@@ -1705,18 +2463,36 @@ class AGStream(AG):
         """
         Get the instructions from the source.
 
+        When ``source.target_atype_name`` is set the method also attempts to
+        fetch the corresponding Pydantic model from the schema registry and
+        assign it to ``self.atype``, so that the copy is immediately usable
+        with the correct target type without waiting for
+        ``listen`` to perform the fetch at startup.
+
         Args:
             source:AGStream: The source to get the instructions from.
         Returns:
-            AG: The instructions from the source.
+            AGStream: The instructions from the source.
         """
         self = super().get_instructions_from_source(source)
         if source.streaming_key:
             self.streaming_key = source.streaming_key
+        if source.target_atype_name:
+            self.target_atype_name = source.target_atype_name
+            # Attempt to resolve the target atype from the registry so that
+            # self.atype reflects the intended target type immediately.
+            registry_url = source.schema_registry_url or self.schema_registry_url
+            if registry_url:
+                fetched = get_atype_from_registry(
+                    atype_name=source.target_atype_name,
+                    schema_registry_url=registry_url,
+                )
+                if fetched is not None:
+                    self.atype = fetched
+        if source.source_atype_name:
+            self.source_atype_name = source.source_atype_name
         return self
 
-
-from agentics.core.utils import import_pydantic_from_code
 
 if __name__ == "__main__":
     import argparse
@@ -1807,8 +2583,5 @@ if __name__ == "__main__":
 
     elif args.mode == "create-topic":
         # Create topic mode: create a new Kafka topic
-        from kafka.admin import KafkaAdminClient, NewTopic
-        from kafka.errors import TopicAlreadyExistsError
-
-        AGstream.create_topic(args.kafka_server, args.output_topic)
+        create_kafka_topic(args.output_topic, args.kafka_server)
         print(f"Created topic: {args.output_topic}")

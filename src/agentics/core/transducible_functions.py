@@ -111,12 +111,174 @@ def _unpack_if_needed(result):
 # ============================================================
 
 
-def _wrap_composed(fn):
+class TransducibleFunction:
     """
-    Ensures that ANY composed function behaves like a transducible function.
+    A callable wrapper around an async transducible function that supports
+    the ``<<`` composition operator natively (class-level ``__lshift__``).
+
+    Python's operator dispatch looks up dunder methods on the *class*, not on
+    the instance, so attaching ``__lshift__`` as an instance attribute on a
+    plain ``function`` object is silently ignored.  Wrapping in this class
+    fixes that: ``f << g`` now works exactly like ``f.__lshift__(g)``.
+
+    Attributes
+    ----------
+    schema_registry_url : str or None
+        When set, the function is bound to a specific schema registry.
+        ``transducible_function_listener`` will use this URL to validate
+        incoming messages and produce results.
     """
-    fn.__lshift__ = types.MethodType(_function_lshift, fn)
-    return fn
+
+    def __init__(
+        self,
+        fn,
+        input_model,
+        target_model,
+        description=None,
+        tools=None,
+        original_fn=None,
+        schema_registry_url: Optional[str] = None,
+    ):
+        self._fn = fn
+        self.input_model = input_model
+        self.target_model = target_model
+        self.description = description
+        self.tools = tools or []
+        self.__original_fn__ = original_fn
+        self.schema_registry_url = schema_registry_url
+        # Preserve the wrapped function's identity
+        functools.update_wrapper(self, fn)
+
+    async def __call__(self, *args, **kwargs):
+        return await self._fn(*args, **kwargs)
+
+    def __lshift__(self, other):
+        return _function_lshift(self, other)
+
+    def __repr__(self):
+        return (
+            f"TransducibleFunction({self.__name__}: "
+            f"{self.input_model.__name__} → {self.target_model.__name__})"
+        )
+
+
+def _wrap_composed(fn, input_model=None, target_model=None):
+    """
+    Ensures that ANY composed async function behaves like a transducible
+    function by wrapping it in a ``TransducibleFunction`` instance.
+
+    If ``fn`` is already a ``TransducibleFunction``, return it unchanged.
+    """
+    if isinstance(fn, TransducibleFunction):
+        return fn
+    im = input_model or getattr(fn, "input_model", None)
+    tm = target_model or getattr(fn, "target_model", None)
+    return TransducibleFunction(
+        fn=fn,
+        input_model=im,
+        target_model=tm,
+        description=getattr(fn, "description", None),
+        tools=getattr(fn, "tools", []),
+        original_fn=getattr(fn, "__original_fn__", None),
+    )
+
+
+def _registry_check_or_register(
+    registry_url: str,
+    source_model,
+    target_model,
+    auto_register: bool,
+    fn_name: str,
+) -> None:
+    """
+    Validate that *source_model* and *target_model* are registered in the
+    schema registry at *registry_url*.
+
+    If ``auto_register=True`` and a model is missing, it is registered
+    automatically (using the model class name as the subject base, with the
+    standard ``-value`` suffix).
+
+    If ``auto_register=False`` and a model is missing, a ``RuntimeError``
+    is raised immediately at decoration time so the developer is notified
+    before any Kafka traffic occurs.
+
+    Parameters
+    ----------
+    registry_url : str
+        Base URL of the schema registry (e.g. ``http://localhost:8081``).
+    source_model : type[BaseModel]
+        The input Pydantic model class.
+    target_model : type[BaseModel]
+        The output Pydantic model class.
+    auto_register : bool
+        When ``True``, missing schemas are registered automatically.
+    fn_name : str
+        Name of the decorated function (used in error messages).
+    """
+    import json
+    import sys
+
+    import requests
+
+    def _subject(model) -> str:
+        return f"{model.__name__}-value"
+
+    def _is_registered(subject: str) -> bool:
+        try:
+            url = f"{registry_url.rstrip('/')}/subjects/{subject}/versions/latest"
+            r = requests.get(url, timeout=5)
+            return r.status_code == 200
+        except Exception:
+            return False
+
+    def _register(model) -> None:
+        subject = _subject(model)
+        schema_json = model.model_json_schema()
+        payload = {"schemaType": "JSON", "schema": json.dumps(schema_json)}
+        url = f"{registry_url.rstrip('/')}/subjects/{subject}/versions"
+        try:
+            r = requests.post(
+                url,
+                json=payload,
+                headers={"Content-Type": "application/vnd.schemaregistry.v1+json"},
+                timeout=10,
+            )
+            if r.status_code in (200, 201):
+                schema_id = r.json().get("id")
+                sys.stderr.write(
+                    f"✓ @transducible({fn_name}): auto-registered "
+                    f"'{subject}' (schema ID {schema_id})\n"
+                )
+                sys.stderr.flush()
+            else:
+                raise RuntimeError(
+                    f"@transducible({fn_name}): failed to auto-register "
+                    f"'{subject}': HTTP {r.status_code} — {r.text}"
+                )
+        except RuntimeError:
+            raise
+        except Exception as exc:
+            raise RuntimeError(
+                f"@transducible({fn_name}): error auto-registering '{subject}': {exc}"
+            ) from exc
+
+    for model in (source_model, target_model):
+        subject = _subject(model)
+        if not _is_registered(subject):
+            if auto_register:
+                _register(model)
+            else:
+                raise RuntimeError(
+                    f"@transducible({fn_name}): model '{model.__name__}' is not "
+                    f"registered in the schema registry at {registry_url!r} "
+                    f"(subject '{subject}' not found).  "
+                    f"Either register it first or use auto_register=True."
+                )
+        else:
+            sys.stderr.write(
+                f"✓ @transducible({fn_name}): '{subject}' found in registry.\n"
+            )
+            sys.stderr.flush()
 
 
 def transducible(
@@ -136,7 +298,27 @@ def transducible(
     persist_output: str = None,
     transduce_fields: list[str] = None,
     prompt_template: str = None,
+    schema_registry_url: Optional[str] = None,
+    auto_register: bool = False,
 ):
+    """
+    Decorator that turns an async function into a transducible function.
+
+    Parameters
+    ----------
+    schema_registry_url : str, optional
+        URL of the Karapace / Confluent Schema Registry.  When provided the
+        decorator will verify that both ``input_model`` and ``target_model``
+        are already registered in the registry.  If they are not registered
+        and ``auto_register=True`` the schemas are registered automatically.
+        If they are not registered and ``auto_register=False`` a
+        ``RuntimeError`` is raised at decoration time.
+    auto_register : bool, default False
+        When ``True`` (and ``schema_registry_url`` is set), automatically
+        register the input and target Pydantic models in the schema registry
+        if they are not already present.  Has no effect when
+        ``schema_registry_url`` is ``None``.
+    """
     if tools is None:
         tools = []
 
@@ -303,15 +485,25 @@ INSTRUCTIONS:
                 f"Function accepts only {SourceModel.__name__}, Transduce, or list."
             )
 
-        wrapper.input_model = SourceModel
-        wrapper.target_model = TargetModel
-        wrapper.description = fn.__doc__
-        wrapper.tools = tools
-        wrapper.__original_fn__ = fn
+        # ── Registry validation / auto-registration ──────────────────────
+        if schema_registry_url is not None:
+            _registry_check_or_register(
+                registry_url=schema_registry_url,
+                source_model=SourceModel,
+                target_model=TargetModel,
+                auto_register=auto_register,
+                fn_name=fn.__name__,
+            )
 
-        wrapper.__lshift__ = types.MethodType(_function_lshift, wrapper)
-
-        return _wrap_composed(wrapper)
+        return TransducibleFunction(
+            fn=wrapper,
+            input_model=SourceModel,
+            target_model=TargetModel,
+            description=fn.__doc__,
+            tools=tools,
+            original_fn=fn,
+            schema_registry_url=schema_registry_url,
+        )
 
     return _transducible
 
@@ -353,7 +545,7 @@ def make_transducible_function(
         else:
             AnnotatedInput = InputModel
 
-        async def _auto_fn(state: AnnotatedInput) -> OutputModel:
+        async def _auto_fn(state):
             """{instructions}"""
             return Transduce(state)
 
@@ -416,15 +608,19 @@ def _function_lshift(f, InputType):
         )
 
         # build f∘g
-        async def composed(a: A):
+        async def _composed_model(a):
             b = await g(a)
+            # Unwrap TransductionResult so f receives the plain model instance
+            if isinstance(b, TransductionResult):
+                b = b.value
             return await f(b)
 
-        composed.__name__ = f"{C.__name__}_after_{B.__name__}_after_{A.__name__}"
-        composed.input_model = A
-        composed.target_model = C
-        composed.__lshift__ = types.MethodType(_function_lshift, composed)
-        return _wrap_composed(composed)
+        _composed_model.__name__ = f"{C.__name__}_after_{B.__name__}_after_{A.__name__}"
+        return TransducibleFunction(
+            fn=_composed_model,
+            input_model=A,
+            target_model=C,
+        )
 
     # --------------------------------------------
     # CASE 2: f << g   (function << function)
@@ -433,17 +629,24 @@ def _function_lshift(f, InputType):
     if callable(InputType) and hasattr(InputType, "target_model"):
         g = InputType
         A = g.input_model
-        B = g.target_model
-        C = f.target_model
+        B_inner = g.target_model
+        C_inner = f.target_model
 
-        async def composed(a: A):
-            return await f(await g(a))
+        async def _composed_fn(a):
+            mid = await g(a)
+            # Unwrap TransductionResult so f receives the plain model instance
+            if isinstance(mid, TransductionResult):
+                mid = mid.value
+            return await f(mid)
 
-        composed.__name__ = f"{C.__name__}_after_{B.__name__}_after_{A.__name__}"
-        composed.input_model = A
-        composed.target_model = C
-        composed.__lshift__ = types.MethodType(_function_lshift, composed)
-        return _wrap_composed(composed)
+        _composed_fn.__name__ = (
+            f"{C_inner.__name__}_after_{B_inner.__name__}_after_{A.__name__}"
+        )
+        return TransducibleFunction(
+            fn=_composed_fn,
+            input_model=A,
+            target_model=C_inner,
+        )
 
     raise TypeError(f"Unsupported operand for function << : {InputType!r}")
 
@@ -461,34 +664,24 @@ def _model_lshift(OutputModel, InputType):
     # CASE: A << With(B, ...)
     if isinstance(InputType, TransductionConfig):
         M = InputType.model
-        f = make_transducible_function(
+        return make_transducible_function(
             InputModel=M,
             OutputModel=OutputModel,
             **InputType.config,
         )
-        f.__lshift__ = types.MethodType(_function_lshift, f)
-        return _wrap_composed(f)
 
     # CASE: A << instance
     if isinstance(InputType, BaseModel):
         f = OutputModel << type(InputType)
-        f.__lshift__ = types.MethodType(_function_lshift, f)
         return f(InputType)
 
     # CASE: A << Model (normal transductor)
     if isinstance(InputType, ModelMetaclass):
-        # ★ ADD THIS
-
-        f = make_transducible_function(
+        return make_transducible_function(
             InputModel=InputType,
             OutputModel=OutputModel,
             instructions=f"Transduce {InputType.__name__} → {OutputModel.__name__}",
         )
-        # Ensure proper identity and composition
-        f.input_model = InputType
-        f.target_model = OutputModel
-        f.__lshift__ = types.MethodType(_function_lshift, f)
-        return _wrap_composed(f)
 
     # CASE: A << g   (compose OutputModel∘g)
     if callable(InputType) and hasattr(InputType, "input_model"):
@@ -503,15 +696,19 @@ def _model_lshift(OutputModel, InputType):
             instructions=f"Transduce {B.__name__} → {Y.__name__}",
         )
 
-        async def composed(x: A):
+        async def _composed_model_g(x):
             mid = await g(x)
+            # Unwrap TransductionResult so f receives the plain model instance
+            if isinstance(mid, TransductionResult):
+                mid = mid.value
             return await f(mid)
 
-        composed.__name__ = f"{Y.__name__}_after_{B.__name__}"
-        composed.input_model = A
-        composed.target_model = Y
-        composed.__lshift__ = types.MethodType(_function_lshift, composed)
-        return _wrap_composed(composed)
+        _composed_model_g.__name__ = f"{Y.__name__}_after_{B.__name__}"
+        return TransducibleFunction(
+            fn=_composed_model_g,
+            input_model=A,
+            target_model=Y,
+        )
 
     raise TypeError(f"Unsupported operand for << : {InputType!r}")
 

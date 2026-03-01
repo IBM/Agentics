@@ -22,6 +22,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
 from atypes import AgentReply, ChatInput, ConversationHistory, UserMessage
 
 from agentics.core.streaming import AGStream
+from agentics.core.streaming_utils import (
+    create_kafka_topic,
+    get_atype_from_registry,
+    kafka_topic_exists,
+)
 
 # Load environment variables
 load_dotenv()
@@ -66,10 +71,10 @@ def get_schema_info(topic: str) -> Optional[dict]:
 
 
 # Ensure topics exist
-if not AGStream.topic_exists(input_topic):
-    AGStream.create_topic(input_topic)
-if not AGStream.topic_exists(output_topic):
-    AGStream.create_topic(output_topic)
+if not kafka_topic_exists(input_topic):
+    create_kafka_topic(input_topic)
+if not kafka_topic_exists(output_topic):
+    create_kafka_topic(output_topic)
 
 # Page configuration
 st.set_page_config(page_title="AGStream Chat", page_icon="💬", layout="wide")
@@ -196,11 +201,10 @@ if prompt := st.chat_input("Type your message here..."):
             # Determine target atype (from schema registry or default)
             target_atype = AgentReply
             if "selected_target_schema" in st.session_state:
-                # Load atype from schema registry using static method (no instance needed!)
-                loaded_atype = AGStream.get_atype_from_registry_static(
-                    topic=st.session_state.selected_target_schema,
+                # Load atype from schema registry
+                loaded_atype = get_atype_from_registry(
+                    atype_name=st.session_state.selected_target_schema,
                     schema_registry_url=schema_registry_url,
-                    is_key=False,
                 )
                 if loaded_atype:
                     target_atype = loaded_atype
