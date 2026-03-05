@@ -478,8 +478,13 @@ INSTRUCTIONS:
                 source_ag.states = input
                 intermediate = await source_ag.amap(wrap_single)
 
-                # ★ PATCH: list can contain TransductionResult OR raw values
-                return intermediate.states
+                # Unwrap TransductionResult objects so callers always receive
+                # plain model instances (or raw values) — never TransductionResult
+                # wrappers — when calling a transducible function on a list.
+                return [
+                    s.value if isinstance(s, TransductionResult) else s
+                    for s in intermediate.states
+                ]
 
             raise ValueError(
                 f"Function accepts only {SourceModel.__name__}, Transduce, or list."

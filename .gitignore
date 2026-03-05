@@ -42,3 +42,15 @@ invoke.json
 invoke.y*ml
 # Igore profiling flamegraphs
 profile*.svg
+
+# Docker/Colima migration backups
+*.backup
+.docker/config.json.backup
+
+# Kafka data persistence
+kafka-data/
+kafka-data-*/
+
+# Transduction Manager persistence
+examples/streaming_agent/transduction_functions.json
+examples/streaming_agent/transduction_listeners.json

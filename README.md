@@ -111,6 +111,42 @@ Run all tests:
 uv run pytest
 ```
 
+---
+
+## 🐳 Colima Setup (Docker Desktop Alternative)
+
+**For macOS users**: Use Colima as a free, lightweight alternative to Docker Desktop.
+
+### Complete Setup Guide
+
+See **[COLIMA_SETUP_GUIDE.md](COLIMA_SETUP_GUIDE.md)** for:
+- ✅ Migration from Docker Desktop
+- ✅ Auto-start configuration
+- ✅ Portainer UI installation
+- ✅ Troubleshooting tips
+
+### Quick Start
+
+```bash
+# Install Colima
+brew install colima docker docker-compose
+
+# Start Colima (auto-configured for Apple Silicon)
+colima start --arch aarch64 --vm-type=vz --vz-rosetta --mount-type virtiofs --cpu 4 --memory 8
+
+# Use Docker normally
+docker ps
+./manage_services.sh start
+```
+
+### What You Get
+
+- **Colima**: Free, open-source Docker runtime
+- **Auto-start**: Configured to start on boot
+- **Portainer UI**: Web-based Docker management at https://localhost:9444
+- **Same workflow**: All docker commands work identically
+
+**Full guide:** [COLIMA_SETUP_GUIDE.md](COLIMA_SETUP_GUIDE.md)
 
 ---
 

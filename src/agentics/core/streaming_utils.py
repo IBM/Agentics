@@ -586,6 +586,97 @@ def kafka_topic_exists(
         return False
 
 
+def get_topic_partition_count(
+    topic_name: str,
+    kafka_server: str = "localhost:9092",
+) -> int:
+    """
+    Get the number of partitions for a Kafka topic.
+
+    Args:
+        topic_name: Name of the topic.
+        kafka_server: Kafka bootstrap server address (default: ``"localhost:9092"``).
+
+    Returns:
+        Number of partitions, or 0 if topic doesn't exist or on error.
+    """
+    from kafka.admin import KafkaAdminClient
+
+    try:
+        admin_client = KafkaAdminClient(
+            bootstrap_servers=kafka_server, client_id="agstream-partition-checker"
+        )
+        try:
+            # Get topic metadata
+            metadata = admin_client.describe_topics([topic_name])
+            if topic_name in metadata:
+                partitions = len(metadata[topic_name]["partitions"])
+                return partitions
+            return 0
+        except Exception as e:
+            sys.stderr.write(
+                f"✗ Error getting partition count for '{topic_name}': {e}\n"
+            )
+            sys.stderr.flush()
+            return 0
+        finally:
+            admin_client.close()
+    except Exception as e:
+        sys.stderr.write(f"✗ Error connecting to Kafka admin: {e}\n")
+        sys.stderr.flush()
+        return 0
+
+
+def increase_topic_partitions(
+    topic_name: str,
+    new_partition_count: int,
+    kafka_server: str = "localhost:9092",
+) -> bool:
+    """
+    Increase the number of partitions for an existing Kafka topic.
+
+    Note: Kafka only allows increasing partitions, not decreasing them.
+
+    Args:
+        topic_name: Name of the topic to modify.
+        new_partition_count: New total number of partitions (must be greater than current).
+        kafka_server: Kafka bootstrap server address (default: ``"localhost:9092"``).
+
+    Returns:
+        ``True`` if partitions were increased successfully, ``False`` on error.
+    """
+    from kafka.admin import KafkaAdminClient, NewPartitions
+
+    try:
+        admin_client = KafkaAdminClient(
+            bootstrap_servers=kafka_server, client_id="agstream-partition-increaser"
+        )
+        try:
+            # Create NewPartitions object
+            new_partitions = {
+                topic_name: NewPartitions(total_count=new_partition_count)
+            }
+
+            # Apply the change
+            admin_client.create_partitions(new_partitions, validate_only=False)
+
+            sys.stderr.write(
+                f"✓ Increased partitions for '{topic_name}' to {new_partition_count}\n"
+            )
+            sys.stderr.flush()
+            return True
+        except Exception as e:
+            sys.stderr.write(f"✗ Error increasing partitions for '{topic_name}': {e}\n")
+            sys.stderr.flush()
+            return False
+        finally:
+            admin_client.close()
+    except Exception as e:
+        sys.stderr.write(f"✗ Error connecting to Kafka admin: {e}\n")
+        sys.stderr.flush()
+        return False
+
+
 # ---------------------------------------------------------------------------
 # Backward-compat alias: create_model_from_schema → create_pydantic_from_json_schema
 # ---------------------------------------------------------------------------

@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   kafka:
     image: apache/kafka:3.9.0
@@ -22,7 +20,12 @@ services:
       KAFKA_LISTENERS: 'PLAINTEXT://kafka:29092,CONTROLLER://kafka:29093,PLAINTEXT_HOST://0.0.0.0:9092'
       KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
       KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
-      KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
+      KAFKA_LOG_DIRS: '/var/lib/kafka/data'
+      KAFKA_DELETE_TOPIC_ENABLE: 'true'
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
+    volumes:
+      - ${KAFKA_DATA_DIR:-./kafka-data}:/var/lib/kafka/data
+    user: "1000:1000"
     networks:
       - karapace
 
@@ -82,6 +85,7 @@ services:
 
   schema-registry-ui:
     image: landoop/schema-registry-ui:latest
+    platform: linux/amd64
     hostname: schema-registry-ui
     container_name: schema-registry-ui
     depends_on:

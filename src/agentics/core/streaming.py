@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import sys
 import threading
 import time
@@ -26,6 +27,8 @@ from agentics.core.streaming_utils import (
     create_kafka_topic,
     get_atype_from_registry,
     get_subject_name,
+    get_topic_partition_count,
+    increase_topic_partitions,
     kafka_topic_exists,
     register_atype_schema,
     schema_exists,
@@ -46,6 +49,26 @@ _ACTIVITY_REGISTRY: Dict[str, threading.Event] = {}
 # Avoids pickling Pydantic model classes (which fail to unpickle from __main__)
 # by storing the live fn object and looking it up by job_name in map().
 _FN_REGISTRY: Dict[str, Any] = {}
+
+# Module-level registry: maps job_name -> message counter (for stop_after_lookback)
+_MESSAGE_COUNTER_REGISTRY: Dict[str, Dict[str, int]] = {}
+
+# Module-level registry: maps job_name -> list of filter keys
+_FILTER_KEYS_REGISTRY: Dict[str, Optional[List[str]]] = {}
+
+# Module-level registry: maps job_name -> dict mapping partition-offset to actual key
+_KEY_MAP_REGISTRY: Dict[str, Dict[str, str]] = {}
+
+# Module-level registry: maps job_name -> list of (timestamp, state) tuples for ordering
+_PRODUCED_STATES_REGISTRY: Dict[str, List[tuple]] = {}
+
+# Lock for thread-safe access to produced states registry
+import threading
+
+_PRODUCED_STATES_LOCK = threading.Lock()
+
+# Module-level registry: maps job_name -> completion flag
+_COMPLETION_REGISTRY: Dict[str, bool] = {}
 
 
 # Helper class for writing to Kafka output
@@ -229,6 +252,8 @@ class ProcessTransducibleFn(MapFunction):
         validate_schema: bool = True,
         produce_results: bool = True,
         target_atype_name: Optional[str] = None,
+        num_partitions: int = 3,
+        target_message_count: Optional[int] = None,
     ):
         super().__init__()
         # Only picklable primitives stored here.
@@ -240,6 +265,8 @@ class ProcessTransducibleFn(MapFunction):
         self.validate_schema = validate_schema
         self.produce_results = produce_results
         self.target_atype_name = target_atype_name
+        self.num_partitions = num_partitions
+        self.target_message_count = target_message_count
 
     def map(self, row) -> str:
         """
@@ -265,6 +292,27 @@ class ProcessTransducibleFn(MapFunction):
             timestamp = int(row[1]) if row[1] else int(time.time() * 1000)
             value_str = str(row[2]) if row[2] else "{}"
 
+            # ── Deserialise the incoming state ─────────────────────────────
+            raw = json.loads(value_str)
+
+            # Try to get the actual Kafka key from the key map registry
+            # The source_key is "partition-X-offset-Y", we need to map it to the actual UUID
+            key_map = _KEY_MAP_REGISTRY.get(self.job_name)
+            if key_map and source_key in key_map:
+                actual_key = key_map[source_key]
+            else:
+                # Fallback: try to get from streaming_key field (though it's usually None)
+                actual_key = raw.get("streaming_key") if isinstance(raw, dict) else None
+                if not actual_key:
+                    actual_key = source_key
+
+            # ------------------------------------------
+            # Filter by keys if specified
+            # ------------------------------------------
+            filter_keys = _FILTER_KEYS_REGISTRY.get(self.job_name)
+            if filter_keys is not None and actual_key not in filter_keys:
+                return None  # Silently skip filtered messages
+
             # ── Look up the live fn from the module-level registry ─────────
             fn = _FN_REGISTRY.get(self.job_name)
             if fn is None:
@@ -277,8 +325,6 @@ class ProcessTransducibleFn(MapFunction):
             input_model = fn.input_model
             target_model = fn.target_model
 
-            # ── Deserialise the incoming state ─────────────────────────────
-            raw = json.loads(value_str)
             states_list = (
                 raw["states"] if isinstance(raw, dict) and raw.get("states") else [raw]
             )
@@ -294,6 +340,15 @@ class ProcessTransducibleFn(MapFunction):
                         if self.validate_schema:
                             continue
                         state_obj = input_model.model_construct(**state_dict)
+
+                    # ── Log the source (input) state ────────────────────────
+                    sys.stdout.write(f"\n📥 INPUT STATE [{input_model.__name__}]:\n")
+                    sys.stdout.write(f"  Key: {actual_key}\n")
+                    state_dump = state_obj.model_dump()
+                    for field_name, field_value in state_dump.items():
+                        sys.stdout.write(f"  {field_name}: {field_value}\n")
+                    sys.stdout.write(f"{'='*60}\n\n")
+                    sys.stdout.flush()
 
                     # ── Run the async transducible function ────────────────
                     loop = asyncio.new_event_loop()
@@ -323,6 +378,58 @@ class ProcessTransducibleFn(MapFunction):
             if not results:
                 return f"✗ No valid results for key={source_key}"
 
+            # ── Log the generated (output) states ────────────────────────
+            sys.stdout.write(f"\n📤 OUTPUT STATE(S) [{target_model.__name__}]:\n")
+            for idx, result in enumerate(results, 1):
+                sys.stdout.write(f"  [{idx}/{len(results)}]\n")
+                result_dump = result.model_dump()
+                for field_name, field_value in result_dump.items():
+                    sys.stdout.write(f"    {field_name}: {field_value}\n")
+            sys.stdout.write(f"{'='*60}\n\n")
+            sys.stdout.flush()
+
+            # ------------------------------------------
+            # Increment message counter if tracking
+            # ------------------------------------------
+            if self.target_message_count is not None:
+                if self.job_name not in _MESSAGE_COUNTER_REGISTRY:
+                    _MESSAGE_COUNTER_REGISTRY[self.job_name] = {
+                        "count": 0,
+                        "target": self.target_message_count,
+                    }
+
+                _MESSAGE_COUNTER_REGISTRY[self.job_name]["count"] += 1
+                current_count = _MESSAGE_COUNTER_REGISTRY[self.job_name]["count"]
+
+                sys.stderr.write(
+                    f"  📊 Message counter: {current_count}/{self.target_message_count}\n"
+                )
+                sys.stderr.flush()
+
+                if current_count >= self.target_message_count:
+                    sys.stderr.write(
+                        f"\n✅ Reached target message count ({current_count}/{self.target_message_count}). "
+                        f"Signaling completion...\n"
+                    )
+                    sys.stderr.flush()
+                    # Signal completion by setting the completion flag
+                    _COMPLETION_REGISTRY[self.job_name] = True
+                    sys.stderr.write(
+                        f"  🚩 Completion flag set for job: {self.job_name}\n"
+                    )
+                    sys.stderr.flush()
+                    # Also clear the activity event to trigger idle timeout
+                    if self.job_name in _ACTIVITY_REGISTRY:
+                        _ACTIVITY_REGISTRY[self.job_name].clear()
+
+            # ── Store results in registry for collection (with timestamp for ordering) ────────────────────
+            with _PRODUCED_STATES_LOCK:
+                if self.job_name not in _PRODUCED_STATES_REGISTRY:
+                    _PRODUCED_STATES_REGISTRY[self.job_name] = []
+                # Store each result with its timestamp for proper ordering
+                for result in results:
+                    _PRODUCED_STATES_REGISTRY[self.job_name].append((timestamp, result))
+
             # ── Produce results to the output topic ────────────────────────
             if self.produce_results:
                 output_ag = AGStream(
@@ -338,6 +445,7 @@ class ProcessTransducibleFn(MapFunction):
                     msg_ids = output_ag.produce(
                         register_if_missing=True,
                         key=source_key,
+                        num_partitions=self.num_partitions,
                     )
                     return (
                         f"✓ Produced {len(results)} state(s) to '{self.output_topic}' "
@@ -415,6 +523,7 @@ class AGStream(AG):
         register_if_missing: bool = True,
         compatibility_mode: str = "BACKWARD",
         key: Optional[str] = None,
+        num_partitions: Optional[int] = None,
     ) -> List[str]:
         """
         Produce all states in self.states to Kafka one-by-one with schema registry enforcement.
@@ -430,6 +539,9 @@ class AGStream(AG):
                 (e.g. the key of the source message that triggered this produce), the same
                 key is reused so that consumers can correlate input and output messages.
                 If None, a fresh UUID is generated for each message.
+            num_partitions: Number of partitions to create if the topic doesn't exist.
+                If None, defaults to 3. For optimal parallelism, set this equal to the
+                parallelism parameter used in listener methods.
 
         Returns:
             List of message IDs for successfully sent states
@@ -499,6 +611,49 @@ class AGStream(AG):
                     f"Set register_if_missing=True to auto-register."
                 )
 
+            # Ensure the output topic exists with correct partition count
+            if not kafka_topic_exists(self.output_topic, self.kafka_server):
+                # Topic doesn't exist - create it
+                partitions = num_partitions if num_partitions is not None else 3
+                sys.stderr.write(
+                    f"📝 Topic '{self.output_topic}' not found, creating with {partitions} partitions...\n"
+                )
+                sys.stderr.flush()
+                topic_created = create_kafka_topic(
+                    topic_name=self.output_topic,
+                    kafka_server=self.kafka_server,
+                    num_partitions=partitions,
+                    replication_factor=1,
+                )
+                if not topic_created:
+                    raise ValueError(f"Failed to create topic '{self.output_topic}'")
+            elif num_partitions is not None:
+                # Topic exists - check if we need to increase partitions
+                current_partitions = get_topic_partition_count(
+                    self.output_topic, self.kafka_server
+                )
+                if current_partitions > 0 and num_partitions > current_partitions:
+                    sys.stderr.write(
+                        f"⚠️  Topic '{self.output_topic}' has {current_partitions} partitions, "
+                        f"increasing to {num_partitions} for optimal parallelism...\n"
+                    )
+                    sys.stderr.flush()
+                    increased = increase_topic_partitions(
+                        self.output_topic, num_partitions, self.kafka_server
+                    )
+                    if not increased:
+                        sys.stderr.write(
+                            f"⚠️  Warning: Could not increase partitions. "
+                            f"Parallelism will be limited to {current_partitions} workers.\n"
+                        )
+                        sys.stderr.flush()
+                elif current_partitions > 0 and num_partitions < current_partitions:
+                    sys.stderr.write(
+                        f"ℹ️  Topic '{self.output_topic}' has {current_partitions} partitions "
+                        f"(requested {num_partitions}). Cannot decrease partitions in Kafka.\n"
+                    )
+                    sys.stderr.flush()
+
             # Create producer once for all states
             producer: KafkaProducer = KafkaProducer(
                 bootstrap_servers=self.kafka_server,
@@ -512,6 +667,17 @@ class AGStream(AG):
                 f"\n📤 Producing {len(self.states)} states with schema enforcement...\n"
             )
             sys.stderr.flush()
+
+            # Unwrap any TransductionResult objects in self.states so callers can
+            # pass the raw output of a transducible function directly without
+            # manually extracting the .value field.  This is a framework-level fix
+            # that makes produce() robust to the common pattern:
+            #   stream.states = await my_transducible_fn(inputs)
+            from agentics.core.transducible_functions import TransductionResult
+
+            self.states = [
+                s.value if isinstance(s, TransductionResult) else s for s in self.states
+            ]
 
             # Iterate through each state and produce individually
             for idx, state in enumerate(self.states, 1):
@@ -544,8 +710,9 @@ class AGStream(AG):
                     except (ValidationError, TypeError, ValueError) as e:
                         raise ValueError(f"State {idx} validation failed: {e}")
 
-                    # Use the supplied key (e.g. from the source message) or generate a new UUID
-                    message_id = key if key is not None else str(uuid.uuid4())
+                    # Generate new UUID for even partition distribution
+                    # Store original source key in headers for traceability
+                    message_id = str(uuid.uuid4())
                     timestamp_ms = int(time.time() * 1000)
 
                     # Clone self so all config (instructions, transduction_type,
@@ -555,12 +722,20 @@ class AGStream(AG):
                     temp_ag.states = [state]
                     serialized = temp_ag.serialize()
 
-                    # Send to Kafka
+                    # Prepare headers with source key for traceability
+                    headers = []
+                    if key is not None:
+                        # Store original source key in headers
+                        headers.append(("source_key", key.encode("utf-8")))
+                        headers.append(("message_id", message_id.encode("utf-8")))
+
+                    # Send to Kafka with UUID key (for distribution) and headers (for traceability)
                     producer.send(
-                        topic=self.input_topic,
-                        key=message_id,
+                        topic=self.output_topic,
+                        key=message_id,  # UUID ensures even distribution
                         value=serialized,
                         timestamp_ms=timestamp_ms,
+                        headers=headers if headers else None,
                     )
 
                     message_ids.append(message_id)
@@ -568,6 +743,7 @@ class AGStream(AG):
                     sys.stderr.write(
                         f"  ✓ [{idx}/{len(self.states)}] Sent {self.atype.__name__} "
                         f"(ID: {message_id[:8]}...)\n"
+                        f"to topic: {self.output_topic}\n"
                     )
                     sys.stderr.flush()
 
@@ -606,6 +782,7 @@ class AGStream(AG):
         poll_interval: float = 0.5,
         validate_schema: bool = True,
         verbose: bool = False,
+        listener_manager: Optional[Any] = None,
     ) -> List[Optional["AGStream"]]:
         """
         Produce all states to Kafka and asynchronously await their transduced results
@@ -644,6 +821,11 @@ class AGStream(AG):
             validate_schema: If ``True``, validate collected results against the
                 target schema (default: ``True``).
             verbose: If ``True``, print per-message progress to stderr.
+            listener_manager: Optional :class:`~agentics.core.listener_manager.ListenerManager`
+                instance.  When provided, a pre-flight check verifies that at
+                least one alive listener is consuming ``self.input_topic`` before
+                any messages are produced.  Raises ``RuntimeError`` if no active
+                listener is found.
 
         Returns:
             List of ``AGStream`` objects (one per input state) in the same order
@@ -652,8 +834,16 @@ class AGStream(AG):
 
         Raises:
             ValueError: If ``self.states`` is empty or schema registration fails.
+            RuntimeError: If *listener_manager* is provided but no alive listener
+                is consuming ``self.input_topic``.
 
         Example::
+
+            from agentics.core.listener_manager import ListenerManager
+
+            mgr = ListenerManager(agstream_factory=make_ag)
+            mgr.start(fn=summarise, input_topic='movie-reviews',
+                      output_topic='movie-summaries')
 
             producer = AGStream(
                 atype=MovieReview,
@@ -665,10 +855,10 @@ class AGStream(AG):
             )
             producer.states = sample_reviews
 
-            # A listen() worker must be running on movie-reviews → movie-summaries
             results = await producer.aproduce_and_collect(
                 result_atype=MovieSummary,
                 timeout=60,
+                listener_manager=mgr,   # pre-flight check enabled
             )
 
             for review, result_ag in zip(sample_reviews, results):
@@ -679,6 +869,16 @@ class AGStream(AG):
         import uuid as _uuid
 
         from kafka import KafkaConsumer, TopicPartition
+
+        # ── Pre-flight: verify a listener is active (if a registry was given) ──
+        if listener_manager is not None:
+            if not listener_manager.has_listener_for(self.input_topic):
+                raise RuntimeError(
+                    f"No active listener found for input_topic '{self.input_topic}'. "
+                    "Start a listener via ListenerManager.start() or "
+                    "ListenerManager.start_simple_listener() before calling "
+                    "aproduce_and_collect()."
+                )
 
         if not self.states:
             raise ValueError("No states to produce")
@@ -1260,12 +1460,19 @@ class AGStream(AG):
         stop_event=None,
         log_queue=None,
         auto_offset_reset: str = "earliest",
+        lookback_messages: Optional[int] = None,
+        filter_keys: Optional[List[str]] = None,
+        stop_after_lookback: bool = False,
+        parallelism: int = 1,
     ):
         """
         Continuously listen to the input Kafka topic, validate each incoming state
-        against the schema registry, transduce it one at a time using the AGStream's
-        configured atype and instructions, and optionally produce the result to the
-        output topic.
+        against the schema registry, transduce it using the AGStream's configured
+        atype and instructions, and optionally produce the result to the output topic.
+
+        This method creates a transducible function from the AGStream's parameters
+        (source type, target type, and instructions) and delegates to
+        ``transducible_function_listener()`` for execution.
 
         For each message received:
           1. Deserialize and validate the state against the schema registry.
@@ -1305,6 +1512,23 @@ class AGStream(AG):
                 or when the schema registry is temporarily unavailable.
             schema_fetch_retry_delay: Seconds to wait between schema-fetch retries
                 (default: 2.0).
+            lookback_messages: Optional number of messages to look back from the end of
+                the topic. If set, the consumer will seek to this offset before processing.
+                Use with ``stop_after_lookback=True`` to process only historical messages.
+            filter_keys: Optional list of message keys to filter. Only messages with keys
+                in this list will be processed. Useful for reprocessing specific messages.
+            stop_after_lookback: If True and ``lookback_messages`` or ``filter_keys`` is set,
+                the listener will stop after processing the target messages and return the
+                transduced results. If False (default), continues listening indefinitely.
+            parallelism: Number of parallel workers for processing messages (default: 1).
+                Uses ThreadPoolExecutor to process multiple messages concurrently. Higher
+                values increase throughput but consume more resources. Note: This is different
+                from PyFlink parallelism - it controls concurrent message processing in the
+                KafkaConsumer-based listener.
+
+        Returns:
+            List[AGStream]: When ``stop_after_lookback=True``, returns a list of AGStream
+                objects containing the transduced results. Otherwise returns None (runs forever).
 
         Raises:
             ValueError: If ``self.atype`` is not set on the AGStream instance, or if
@@ -1333,14 +1557,22 @@ class AGStream(AG):
             >>> ag.listen(verbose=True)
         """
         # ------------------------------------------------------------------
-        # Resolve the source atype from the schema registry if requested
-        # Retry with backoff in case the schema hasn't been registered yet.
+        # Import make_transducible_function
         # ------------------------------------------------------------------
-        import time as time_module
+        # ------------------------------------------------------------------
+        # Resolve the source atype from the schema registry if requested
+        # ------------------------------------------------------------------
         import time as _time_module
-        import uuid
 
-        from kafka import KafkaConsumer
+        from agentics.core.transducible_functions import make_transducible_function
+
+        # Validate that we have either atype or target_atype_name
+        if not self.atype and not self.target_atype_name:
+            raise ValueError(
+                "Either self.atype or self.target_atype_name must be set before calling listen(). "
+                "Create the AGStream with: AGStream(atype=YourTargetModel, ...) or "
+                "AGStream(target_atype_name='YourModel', ...)"
+            )
 
         source_atype = None
         if source_atype_name:
@@ -1397,20 +1629,15 @@ class AGStream(AG):
             sys.stderr.flush()
 
         # ------------------------------------------------------------------
-        # Resolve the effective target atype
-        # Priority: fetch from registry using target_atype_name if set,
-        # otherwise fall back to self.atype.
+        # Determine the effective target atype
         # ------------------------------------------------------------------
         effective_target_atype = self.atype
-        _target_fetched_from_registry = False
-
         if self.target_atype_name:
             sys.stderr.write(
                 f"\n📥 Fetching target type '{self.target_atype_name}' from schema registry...\n"
             )
             sys.stderr.flush()
 
-            # Same suffix-detection logic for the target type name.
             _tgt_add_suffix = not (
                 self.target_atype_name.endswith("-value")
                 or self.target_atype_name.endswith("-key")
@@ -1427,7 +1654,6 @@ class AGStream(AG):
                 )
                 if _fetched is not None:
                     effective_target_atype = _fetched
-                    _target_fetched_from_registry = True
                     break
                 _tgt_subject_display = (
                     self.target_atype_name
@@ -1447,7 +1673,9 @@ class AGStream(AG):
                     sys.stderr.flush()
                     _time_module.sleep(schema_fetch_retry_delay)
 
-            if not _target_fetched_from_registry:
+            if effective_target_atype is None or (
+                self.atype is not None and effective_target_atype == self.atype
+            ):
                 raise ValueError(
                     f"Could not fetch target type '{self.target_atype_name}' from schema registry "
                     f"after {schema_fetch_retries} attempt(s). "
@@ -1460,285 +1688,72 @@ class AGStream(AG):
             )
             sys.stderr.flush()
 
-        # ------------------------------------------------------------------
-        # Validate that we have a target atype (either from registry or self.atype)
-        # ------------------------------------------------------------------
+        # Ensure we have a valid target atype
         if not effective_target_atype:
             raise ValueError(
-                "Either self.atype must be set or self.target_atype_name must be provided "
-                "before calling listen()."
+                "Could not determine target atype. Either set self.atype or provide "
+                "a valid self.target_atype_name that exists in the schema registry."
             )
 
         # ------------------------------------------------------------------
-        # Optionally verify that the target schema exists in the registry
+        # Create a transducible function from AGStream parameters
         # ------------------------------------------------------------------
-        if validate_schema and produce_results:
-            subject = get_subject_name(
-                effective_target_atype.__name__, is_key=False, add_suffix=True
+        if verbose:
+            sys.stderr.write(
+                f"\n🔧 Creating transducible function:\n"
+                f"   Input  : {source_atype.__name__ if source_atype else 'inferred'}\n"
+                f"   Output : {effective_target_atype.__name__}\n"
             )
-            if not schema_exists(subject, self.schema_registry_url):
-                sys.stderr.write(
-                    f"⚠️  Target schema '{subject}' not found in registry. "
-                    f"It will be registered on first produce.\n"
-                )
-                sys.stderr.flush()
-            elif verbose:
-                sys.stderr.write(f"   ✓ Target schema found: {subject}\n")
-                sys.stderr.flush()
-
-        # ------------------------------------------------------------------
-        # Build the Kafka consumer
-        # ------------------------------------------------------------------
-        if group_id is None:
-            group_id = f"agstream-listener-{uuid.uuid4()}"
-
-        bootstrap_server = self.kafka_server
-        if "localhost" in bootstrap_server:
-            bootstrap_server = bootstrap_server.replace("localhost", "127.0.0.1")
-
-        consumer = KafkaConsumer(
-            self.input_topic,
-            bootstrap_servers=bootstrap_server,
-            auto_offset_reset=auto_offset_reset,
-            enable_auto_commit=True,
-            group_id=group_id,
-            value_deserializer=lambda m: json.loads(m.decode("utf-8")),
-            consumer_timeout_ms=timeout_ms,
-            request_timeout_ms=40000,
-            session_timeout_ms=30000,
-            heartbeat_interval_ms=3000,
-        )
-
-        # Warm up the consumer assignment
-        consumer.poll(timeout_ms=100, max_records=1)
-        time_module.sleep(0.2)
-
-        sys.stderr.write(
-            f"\n🎧 listen() started\n"
-            f"   Input topic  : {self.input_topic}\n"
-            f"   Output topic : {self.output_topic}\n"
-            f"   Target type  : {effective_target_atype.__name__}\n"
-            f"   Press Ctrl+C to stop.\n\n"
-        )
-        sys.stderr.flush()
-
-        processed_count = 0
-        error_count = 0
-        empty_poll_count = 0
-
-        # Helper: write to stderr AND optionally push to log_queue
-        def _log(msg: str) -> None:
-            sys.stderr.write(msg)
             sys.stderr.flush()
-            if log_queue is not None:
-                try:
-                    log_queue.put_nowait(msg)
-                except Exception:
-                    pass
 
-        try:
-            while True:
-                # ── Check stop_event ──────────────────────────────────────────
-                if stop_event is not None and stop_event.is_set():
-                    _log("\n🛑 Stop event received — shutting down listener.\n")
-                    break
+        # Build the transducible function with AGStream's configuration
+        fn = make_transducible_function(
+            InputModel=source_atype if source_atype else effective_target_atype,
+            OutputModel=effective_target_atype,
+            instructions=self.instructions
+            or f"Transduce from input to {effective_target_atype.__name__}",
+            tools=self.tools if hasattr(self, "tools") else [],
+            schema_registry_url=self.schema_registry_url,
+            auto_register=True,
+            llm=self.llm if hasattr(self, "llm") else None,
+            reasoning=self.reasoning if hasattr(self, "reasoning") else False,
+            max_iter=self.max_iter if hasattr(self, "max_iter") else 10,
+            verbose_transduction=verbose,
+            provide_explanation=False,
+        )
 
-                try:
-                    message_batch = consumer.poll(timeout_ms=timeout_ms, max_records=10)
-                except Exception as poll_err:
-                    _log(f"⚠️  Poll error: {poll_err}\n")
-                    time_module.sleep(poll_interval_ms / 1000.0)
-                    continue
+        if verbose:
+            sys.stderr.write(f"   ✓ Transducible function created\n\n")
+            sys.stderr.flush()
 
-                if not message_batch:
-                    empty_poll_count += 1
-                    if max_empty_polls is not None:
-                        if empty_poll_count >= max_empty_polls:
-                            if verbose:
-                                _log(
-                                    f"   ⏹  Reached max_empty_polls={max_empty_polls} "
-                                    f"consecutive empty polls — stopping listener.\n"
-                                )
-                            break
-                        if (
-                            verbose
-                            and empty_poll_count % max(1, max_empty_polls // 4) == 0
-                        ):
-                            _log(
-                                f"   ⏳ Waiting for messages "
-                                f"({empty_poll_count}/{max_empty_polls} empty polls)...\n"
-                            )
-                    else:
-                        # Run-forever mode: log every 20 empty polls
-                        if verbose and empty_poll_count % 20 == 0:
-                            _log("   ⏳ Waiting for messages...\n")
-                    time_module.sleep(poll_interval_ms / 1000.0)
-                    continue
+        # ------------------------------------------------------------------
+        # Delegate to transducible_function_listener (Flink-based)
+        # ------------------------------------------------------------------
+        # Adjust max_empty_polls for Flink startup time
+        # Flink needs time to start up and seek to lookback position
+        # Default to 300 (5 minutes with 1000ms poll interval) if not specified
+        effective_max_empty_polls = (
+            max_empty_polls if max_empty_polls is not None else 300
+        )
 
-                empty_poll_count = 0
-
-                for topic_partition, messages in message_batch.items():
-                    for message in messages:
-                        try:
-                            serialized_ag = message.value
-
-                            # Capture the source message key (bytes → str, or None)
-                            source_key: Optional[str] = None
-                            if message.key is not None:
-                                try:
-                                    source_key = message.key.decode("utf-8")
-                                except Exception:
-                                    source_key = str(message.key)
-
-                            # Extract states list from the serialized AGStream envelope
-                            states_list = []
-                            if (
-                                isinstance(serialized_ag, dict)
-                                and "states" in serialized_ag
-                                and serialized_ag["states"]
-                            ):
-                                states_list = serialized_ag["states"]
-                            else:
-                                # Treat the whole message value as a single state dict
-                                states_list = [serialized_ag]
-
-                            for state_dict in states_list:
-                                try:
-                                    # ------------------------------------------
-                                    # Determine the source type for this state
-                                    # ------------------------------------------
-                                    if source_atype is not None:
-                                        inferred_atype = source_atype
-                                    else:
-                                        # Fall back: try to instantiate as target type
-                                        inferred_atype = effective_target_atype
-
-                                    # ------------------------------------------
-                                    # Validate / instantiate the incoming state
-                                    # ------------------------------------------
-                                    try:
-                                        state_obj = inferred_atype(**state_dict)
-                                    except (ValidationError, TypeError) as ve:
-                                        error_count += 1
-                                        _log(
-                                            f"  ❌ Schema validation failed for incoming state: {ve}\n"
-                                        )
-                                        if validate_schema:
-                                            continue
-                                        # If not strict, try a best-effort construction
-                                        state_obj = inferred_atype.model_construct(
-                                            **state_dict
-                                        )
-
-                                    # ------------------------------------------
-                                    # Build a single-state source AGStream
-                                    # ------------------------------------------
-                                    source_ag = AGStream(atype=inferred_atype)
-                                    source_ag.states = [state_obj]
-
-                                    # ------------------------------------------
-                                    # Transduce: self << source_ag
-                                    # ------------------------------------------
-                                    if verbose:
-                                        _log(
-                                            f"  🔄 Transducing state from "
-                                            f"{inferred_atype.__name__} → "
-                                            f"{effective_target_atype.__name__}...\n"
-                                        )
-
-                                    # Clone self so we don't accumulate states across messages
-                                    # and set the effective target atype on the transducer
-                                    transducer = self.clone()
-                                    transducer.atype = effective_target_atype
-                                    transducer.states = []
-
-                                    # asyncio.run() / loop.run_until_complete() cannot be
-                                    # used when a running event loop already exists (e.g.
-                                    # inside a Jupyter notebook or when IPython owns the
-                                    # loop).  We offload the coroutine to a brand-new
-                                    # *thread* that has no event loop at all, so
-                                    # asyncio.run() works cleanly inside it.
-                                    import concurrent.futures
-
-                                    def _run_transduction():
-                                        return asyncio.run(
-                                            transducer.__lshift__(source_ag)
-                                        )
-
-                                    with concurrent.futures.ThreadPoolExecutor(
-                                        max_workers=1
-                                    ) as _executor:
-                                        future = _executor.submit(_run_transduction)
-                                        result_ag = future.result()
-
-                                    if (
-                                        result_ag is None
-                                        or not hasattr(result_ag, "states")
-                                        or not result_ag.states
-                                    ):
-                                        _log(
-                                            "  ⚠️  Transduction returned no states; skipping.\n"
-                                        )
-                                        continue
-
-                                    processed_count += 1
-                                    _log(
-                                        f"  ✓ [{processed_count}] Transduced "
-                                        f"{inferred_atype.__name__} → "
-                                        f"{effective_target_atype.__name__}\n"
-                                    )
-
-                                    # ------------------------------------------
-                                    # Produce the result to the output topic
-                                    # ------------------------------------------
-                                    if produce_results:
-                                        output_ag = AGStream(
-                                            atype=effective_target_atype,
-                                            kafka_server=self.kafka_server,
-                                            input_topic=self.output_topic,
-                                            output_topic=self.output_topic,
-                                            schema_registry_url=self.schema_registry_url,
-                                            target_atype_name=self.target_atype_name,
-                                        )
-                                        output_ag.states = result_ag.states
-
-                                        try:
-                                            msg_ids = output_ag.produce(
-                                                register_if_missing=True,
-                                                key=source_key,
-                                            )
-                                            if verbose:
-                                                if msg_ids:
-                                                    sys.stderr.write(
-                                                        f"     📤 Produced to '{self.output_topic}' "
-                                                        f"(ID: {msg_ids[0][:8]}...)\n"
-                                                    )
-                                                else:
-                                                    _log(
-                                                        f"     ⚠️  Produce returned no IDs.\n"
-                                                    )
-                                        except Exception as prod_err:
-                                            error_count += 1
-                                            _log(
-                                                f"  ❌ Failed to produce result: {prod_err}\n"
-                                            )
-
-                                except Exception as state_err:
-                                    error_count += 1
-                                    _log(f"  ❌ Error processing state: {state_err}\n")
-
-                        except Exception as msg_err:
-                            error_count += 1
-                            _log(f"  ❌ Error processing message: {msg_err}\n")
-
-        except KeyboardInterrupt:
-            _log(
-                f"\n🛑 Listener stopped by user.\n"
-                f"   Processed : {processed_count} states\n"
-                f"   Errors    : {error_count}\n"
-            )
-        finally:
-            consumer.close()
+        return self.transducible_function_listener(
+            fn=fn,
+            timeout_ms=timeout_ms,
+            poll_interval_ms=poll_interval_ms,
+            max_empty_polls=effective_max_empty_polls,
+            group_id=group_id,
+            validate_schema=validate_schema,
+            produce_results=produce_results,
+            verbose=verbose,
+            schema_fetch_retries=schema_fetch_retries,
+            schema_fetch_retry_delay=schema_fetch_retry_delay,
+            stop_event=stop_event,
+            log_queue=log_queue,
+            parallelism=parallelism,
+            lookback_messages=lookback_messages,
+            filter_keys=filter_keys,
+            stop_after_lookback=stop_after_lookback,
+        )
 
     def transducible_function_listener(
         self,
@@ -1756,6 +1771,10 @@ class AGStream(AG):
         log_queue: Optional[Any] = None,
         background: bool = False,
         flink_startup_wait_s: float = 5.0,
+        parallelism: int = 4,
+        lookback_messages: Optional[int] = None,
+        filter_keys: Optional[List[str]] = None,
+        stop_after_lookback: bool = False,
     ):
         """
         Continuously listen to the input Kafka topic, validate each incoming state
@@ -1824,6 +1843,17 @@ class AGStream(AG):
                 compatibility only.
             log_queue: **Not functional in Flink mode.**  Accepted for API
                 compatibility only.
+            parallelism: Number of parallel task slots for processing messages
+                (default: 4). Higher values increase throughput but consume more
+                resources. Limited by the number of Kafka topic partitions.
+            lookback_messages: Optional number of messages to look back from the end of
+                the topic. If set, the consumer will start from this offset. Use with
+                ``stop_after_lookback=True`` to process only historical messages.
+            filter_keys: Optional list of message keys to filter. Only messages with keys
+                in this list will be processed. Useful for reprocessing specific messages.
+            stop_after_lookback: If True and ``lookback_messages`` or ``filter_keys`` is set,
+                the listener will stop after processing the target messages. If False (default),
+                continues listening indefinitely.
 
         Raises:
             ValueError: If ``fn`` does not expose ``input_model`` / ``target_model``,
@@ -1951,6 +1981,17 @@ class AGStream(AG):
         # Storing source code as a string keeps ProcessTransducibleFn picklable
         # while preserving any custom pre/post-processing logic in the body.
         # ------------------------------------------------------------------
+
+        # Calculate target message count
+        # - If filter_keys is set, always stop after processing all filtered messages
+        # - If lookback_messages is set with stop_after_lookback, stop after N messages
+        target_message_count = None
+        if filter_keys is not None:
+            # Auto-stop after processing all filtered messages
+            target_message_count = len(filter_keys)
+        elif lookback_messages is not None and stop_after_lookback:
+            target_message_count = lookback_messages
+
         sys.stderr.write(
             f"\n🎧 transducible_function_listener (Flink) started\n"
             f"   Input topic  : {self.input_topic}\n"
@@ -1958,8 +1999,17 @@ class AGStream(AG):
             f"   Function     : {fn.__name__}\n"
             f"   Input type   : {source_atype.__name__}\n"
             f"   Output type  : {target_atype.__name__}\n"
-            f"   fn registry  : stored in _FN_REGISTRY['{fn.__name__}']\n\n"
+            f"   fn registry  : stored in _FN_REGISTRY['{fn.__name__}']\n"
         )
+        if lookback_messages:
+            sys.stderr.write(f"   Lookback     : {lookback_messages} messages\n")
+        if filter_keys:
+            sys.stderr.write(f"   Filter keys  : {len(filter_keys)} keys\n")
+        if stop_after_lookback:
+            sys.stderr.write(
+                f"   Mode         : Stop after processing target messages\n"
+            )
+        sys.stderr.write("\n")
         sys.stderr.flush()
 
         # ------------------------------------------------------------------
@@ -1967,17 +2017,105 @@ class AGStream(AG):
         # ------------------------------------------------------------------
         env = StreamExecutionEnvironment.get_execution_environment()
         env.set_runtime_mode(RuntimeExecutionMode.STREAMING)
-        env.set_parallelism(4)
+        env.set_parallelism(parallelism)
 
         settings = EnvironmentSettings.in_streaming_mode()
         table_env = StreamTableEnvironment.create(env, settings)
 
-        # Add Kafka connector JAR
-        table_env.get_config().get_configuration().set_string(
-            "pipeline.jars",
-            "file:///Users/gliozzo/Code/flink_tutorial/flink-sql-connector-kafka-3.3.0-1.20.jar",
+        # Add Kafka connector JAR - use project's flink-lib directory
+        import pathlib
+
+        # Go up 4 levels: streaming.py -> core -> agentics -> src -> workspace root
+        project_root = pathlib.Path(__file__).parent.parent.parent.parent
+        flink_jar = (
+            project_root / "flink-lib" / "flink-sql-connector-kafka-3.3.0-1.18.jar"
         )
 
+        if not flink_jar.exists():
+            # Fallback to environment variable if set
+            flink_jar_env = os.getenv("FLINK_KAFKA_CONNECTOR_JAR")
+            if flink_jar_env:
+                flink_jar = pathlib.Path(flink_jar_env)
+            else:
+                raise FileNotFoundError(
+                    f"Flink Kafka connector JAR not found at {flink_jar}. "
+                    f"Please ensure the JAR exists or set FLINK_KAFKA_CONNECTOR_JAR environment variable."
+                )
+
+        table_env.get_config().get_configuration().set_string(
+            "pipeline.jars",
+            f"file://{flink_jar.absolute()}",
+        )
+
+        # Use earliest-offset when filter_keys is set or lookback_messages > 0 to read existing messages
+        # Use latest-offset when neither is set or lookback_messages is 0 (wait for new messages only)
+        if filter_keys is not None or (
+            lookback_messages is not None and lookback_messages > 0
+        ):
+            scan_mode = "earliest-offset"
+        else:
+            scan_mode = "latest-offset"
+
+        # Define job name early so we can use it in registries
+        job_name = f"AGStream transducible_function_listener: {fn.__name__}"
+
+        # Build a map of partition-offset -> actual Kafka key for filtering
+        # This is done once before starting the Flink job to enable SQL-level filtering
+        partition_offset_filter = None
+        if filter_keys is not None:
+            from kafka import KafkaConsumer
+
+            sys.stderr.write(f"\n📋 Building key map for SQL filtering...\n")
+            sys.stderr.flush()
+
+            key_map = {}  # Maps "partition-X-offset-Y" -> actual UUID key
+            matching_partition_offsets = (
+                []
+            )  # List of partition-offset combos that match filter_keys
+
+            temp_consumer = KafkaConsumer(
+                self.input_topic,
+                bootstrap_servers=self.kafka_server.replace("localhost", "127.0.0.1"),
+                auto_offset_reset="earliest",
+                consumer_timeout_ms=5000,
+                enable_auto_commit=False,
+            )
+
+            for message in temp_consumer:
+                partition_offset_key = (
+                    f"partition-{message.partition}-offset-{message.offset}"
+                )
+                actual_key = message.key.decode() if message.key else None
+                if actual_key:
+                    key_map[partition_offset_key] = actual_key
+                    # If this key matches our filter, add its partition-offset to the list
+                    if actual_key in filter_keys:
+                        matching_partition_offsets.append(
+                            (message.partition, message.offset)
+                        )
+
+            temp_consumer.close()
+
+            # Store the key map in the new registry so ProcessTransducibleFn can use it
+            _KEY_MAP_REGISTRY[job_name] = key_map
+
+            # Build SQL WHERE clause to filter at source
+            if matching_partition_offsets:
+                conditions = [
+                    f"(kafka_partition = {p} AND kafka_offset = {o})"
+                    for p, o in matching_partition_offsets
+                ]
+                partition_offset_filter = " OR ".join(conditions)
+                sys.stderr.write(f"   ✓ Built key map with {len(key_map)} entries\n")
+                sys.stderr.write(
+                    f"   ✓ Found {len(matching_partition_offsets)} matching messages for SQL filtering\n"
+                )
+            else:
+                sys.stderr.write(f"   ⚠️  No matching keys found in topic\n")
+            sys.stderr.flush()
+
+        # Note: Flink SQL Kafka connector doesn't support reading message keys as metadata
+        # We use partition+offset filtering in SQL to reduce data processed by Flink
         create_table_ddl = f"""
             CREATE TABLE kafka_source (
                 `value` STRING,
@@ -1990,25 +2128,33 @@ class AGStream(AG):
                 'topic' = '{self.input_topic}',
                 'properties.bootstrap.servers' = '{self.kafka_server}',
                 'properties.group.id' = '{group_id or "agstream-fn-listener"}',
-                'scan.startup.mode' = 'latest-offset',
+                'scan.startup.mode' = '{scan_mode}',
                 'format' = 'raw'
             )
         """
         table_env.execute_sql(create_table_ddl)
 
-        result_table = table_env.sql_query(
+        # Build SQL query with optional WHERE clause for filtering
+        if partition_offset_filter:
+            sql_query = f"""
+                SELECT
+                    CONCAT('partition-', CAST(kafka_partition AS STRING), '-offset-', CAST(kafka_offset AS STRING)) as key,
+                    UNIX_TIMESTAMP(CAST(event_timestamp AS STRING)) * 1000 as timestamp_ms,
+                    `value`
+                FROM kafka_source
+                WHERE {partition_offset_filter}
             """
-            SELECT
-                CONCAT('partition-', CAST(kafka_partition AS STRING), '-offset-', CAST(kafka_offset AS STRING)) as key,
-                UNIX_TIMESTAMP(CAST(event_timestamp AS STRING)) * 1000 as timestamp_ms,
-                `value`
-            FROM kafka_source
+        else:
+            sql_query = """
+                SELECT
+                    CONCAT('partition-', CAST(kafka_partition AS STRING), '-offset-', CAST(kafka_offset AS STRING)) as key,
+                    UNIX_TIMESTAMP(CAST(event_timestamp AS STRING)) * 1000 as timestamp_ms,
+                    `value`
+                FROM kafka_source
             """
-        )
 
+        result_table = table_env.sql_query(sql_query)
         ds = table_env.to_data_stream(result_table)
-
-        job_name = f"AGStream transducible_function_listener: {fn.__name__}"
 
         # Register an activity event for this job so ProcessTransducibleFn.map()
         # can signal the idle-timeout watcher below.
@@ -2022,6 +2168,10 @@ class AGStream(AG):
         # instance attributes on the MapFunction.)
         _FN_REGISTRY[job_name] = fn
 
+        # Store filter keys if provided
+        if filter_keys is not None:
+            _FILTER_KEYS_REGISTRY[job_name] = filter_keys
+
         # Apply the transducible function via ProcessTransducibleFn MapFunction
         processed_stream = ds.map(
             func=ProcessTransducibleFn(
@@ -2032,6 +2182,8 @@ class AGStream(AG):
                 validate_schema=validate_schema,
                 produce_results=produce_results,
                 target_atype_name=self.target_atype_name,
+                num_partitions=parallelism,  # Match partitions to parallelism
+                target_message_count=target_message_count,
             )
         )
 
@@ -2080,22 +2232,89 @@ class AGStream(AG):
 
         # Idle-timeout loop: reset the event and wait; if it doesn't fire
         # within idle_timeout_s, no new messages arrived → stop.
+        # Also check completion flag for immediate stop when target is reached.
+        # Use shorter polling interval to detect completion quickly.
+        poll_check_interval = min(
+            1.0, idle_timeout_s / 10
+        )  # Check every 1s or 10% of timeout
+        idle_time = 0.0
+
         while True:
-            activity_event.clear()
-            fired = activity_event.wait(timeout=idle_timeout_s)
-            if not fired:
-                # Idle timeout reached — no new messages
+            # Check if completion flag is set
+            if _COMPLETION_REGISTRY.get(job_name, False):
                 if verbose:
                     sys.stderr.write(
-                        f"⏹  Idle for {idle_timeout_s:.1f}s — stopping listener.\n"
+                        f"⏹  Target message count reached — stopping listener.\n"
                     )
                     sys.stderr.flush()
                 break
 
+            activity_event.clear()
+            fired = activity_event.wait(timeout=poll_check_interval)
+
+            if fired:
+                # Activity detected, reset idle timer
+                idle_time = 0.0
+            else:
+                # No activity, increment idle timer
+                idle_time += poll_check_interval
+                if idle_time >= idle_timeout_s:
+                    # Idle timeout reached — no new messages
+                    if verbose:
+                        sys.stderr.write(
+                            f"⏹  Idle for {idle_timeout_s:.1f}s — stopping listener.\n"
+                        )
+                        sys.stderr.flush()
+                    break
+
         _ACTIVITY_REGISTRY.pop(job_name, None)
+        _FILTER_KEYS_REGISTRY.pop(job_name, None)
+        _MESSAGE_COUNTER_REGISTRY.pop(job_name, None)
+        _COMPLETION_REGISTRY.pop(job_name, None)
+        _KEY_MAP_REGISTRY.pop(job_name, None)
+
+        # Collect produced states from registry
+        produced_states_with_timestamps = _PRODUCED_STATES_REGISTRY.pop(job_name, [])
+
         # flink_thread is a daemon — it will be killed when this method returns.
         if flink_exc:
             raise flink_exc[0]
+
+        # Return an AG with all produced states (sorted by timestamp)
+        if produced_states_with_timestamps:
+            # Sort by timestamp to maintain emission order
+            produced_states_with_timestamps.sort(key=lambda x: x[0])
+
+            # Extract just the states (without timestamps)
+            produced_states = [state for _, state in produced_states_with_timestamps]
+
+            # Get the target model from the function
+            target_model = (
+                fn.target_model if hasattr(fn, "target_model") else self.atype
+            )
+
+            result_ag = AGStream(
+                atype=target_model,
+                kafka_server=self.kafka_server,
+                input_topic=self.output_topic,
+                output_topic=self.output_topic,
+                schema_registry_url=effective_registry_url,
+                target_atype_name=self.target_atype_name,
+            )
+            result_ag.states = produced_states
+
+            if verbose:
+                sys.stderr.write(
+                    f"\n✅ Listener completed. Collected {len(produced_states)} state(s) in emission order.\n"
+                )
+                sys.stderr.flush()
+
+            return result_ag
+        else:
+            if verbose:
+                sys.stderr.write(f"\n⚠️  Listener completed. No states were produced.\n")
+                sys.stderr.flush()
+            return None
 
     def transducible_function_listener_background(
         self,
