@@ -1789,6 +1789,11 @@ class AGStream(AG):
         Flink's ``set_parallelism(4)`` means up to 4 states are processed
         concurrently, each in its own thread with its own ``asyncio`` event loop.
 
+        **Execution Modes:**
+        - ``execution_mode="local"`` (default): Runs PyFlink embedded in the current process
+        - ``execution_mode="cluster"``: Note - PyFlink does not support direct remote submission.
+          For cluster execution, use FlinkListenerManager which submits jobs via REST API.
+
         The transducible function must have been decorated with ``@transducible`` (or
         created via ``make_transducible_function``).  Its ``input_model`` and
         ``target_model`` attributes are used to:

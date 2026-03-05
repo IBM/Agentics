@@ -320,6 +320,16 @@
                             </small>
                         </div>
 
+                        <div class="form-group">
+                            <label for="listenerParallelism">Parallelism (PyFlink Threads) *</label>
+                            <input type="number" id="listenerParallelism" value="1" min="1" max="100" placeholder="1">
+                            <small style="color: #6b7280; display: block; margin-top: 5px;">
+                                <strong>1:</strong> Single-threaded (simple, good for development)<br>
+                                <strong>2-10:</strong> Multi-threaded (better performance, moderate workloads)<br>
+                                <strong>10+:</strong> High parallelism (production, high-throughput scenarios)<br>
+                                Higher values use more CPU and memory but process messages faster.
+                            </small>
+                        </div>
 
                         <div class="action-buttons">
                             <button class="btn btn-success" onclick="createListener()">▶️ Create & Start Listener</button>
@@ -1001,12 +1011,17 @@
 
                 if (listeners.length > 0) {
                     console.log(`Rendering ${listeners.length} listener(s)`);
-                    listenerList.innerHTML = listeners.map(listener => `
+                    listenerList.innerHTML = listeners.map(listener => {
+                        const parallelism = listener.parallelism || 1;
+                        const parallelismIcon = parallelism === 1 ? '🔹' : '⚡';
+                        const parallelismLabel = parallelism === 1 ? 'Single-threaded' : `${parallelism} threads`;
+                        return `
                         <div class="listener-card ${listener.status === 'stopped' ? 'stopped' : ''}">
                             <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
                                 <div style="flex: 1; min-width: 0;" onclick="viewListener('${listener.listener_id}')">
                                     <div class="item-name">${listener.listener_name || listener.listener_id}</div>
                                     <div class="item-meta">${listener.function_name}: ${listener.input_topic} → ${listener.output_topic}</div>
+                                    <div class="item-meta" style="margin-top: 4px;">${parallelismIcon} ${parallelismLabel}</div>
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 8px;">
                                     <span class="status-badge status-${listener.status}">${listener.status}</span>
@@ -1016,7 +1031,7 @@
                                 </div>
                             </div>
                         </div>
-                    `).join('');
+                    `}).join('');
                 } else {
                     console.log('No listeners found');
                     listenerList.innerHTML = '<div class="empty-state"><p>No listeners yet</p></div>';
@@ -1135,6 +1150,10 @@
 
                 const statusBadge = listener ? `<span class="status-badge status-${listener.status}">${listener.status}</span>` : '';
 
+                const parallelism = listener?.parallelism || 1;
+                const parallelismIcon = parallelism === 1 ? '🔹' : '⚡';
+                const parallelismLabel = parallelism === 1 ? 'Single-threaded' : `${parallelism} threads (PyFlink)`;
+
                 document.getElementById('listenerDetailsContainer').innerHTML = `
                     <h2>Listener: ${currentListener} ${statusBadge}</h2>
                     ${listener ? `
@@ -1142,6 +1161,7 @@
                         <p><strong>Function:</strong> ${listener.function_name}</p>
                         <p><strong>Input Topic:</strong> ${listener.input_topic}</p>
                         <p><strong>Output Topic:</strong> ${listener.output_topic}</p>
+                        <p><strong>Parallelism:</strong> ${parallelismIcon} ${parallelismLabel}</p>
                         <p><strong>Lookback Messages:</strong> ${listener.lookback_messages}</p>
                         <p><strong>Created:</strong> ${listener.created_at}</p>
                     </div>
@@ -1240,6 +1260,7 @@
             const inputTopic = document.getElementById('listenerInputTopic').value.trim();
             const outputTopic = document.getElementById('listenerOutputTopic').value.trim();
             const lookback = parseInt(document.getElementById('listenerLookback').value) || 0;
+            const parallelism = parseInt(document.getElementById('listenerParallelism').value) || 1;
 
             if (!listenerName) {
                 showListenerAlert('Please enter a listener name', 'error');
@@ -1261,8 +1282,13 @@
                 return;
             }
 
+            if (parallelism < 1 || parallelism > 100) {
+                showListenerAlert('Parallelism must be between 1 and 100', 'error');
+                return;
+            }
+
             try {
-                console.log('Creating listener:', { listenerName, functionName, inputTopic, outputTopic, lookback });
+                console.log('Creating listener:', { listenerName, functionName, inputTopic, outputTopic, lookback, parallelism });
 
                 const response = await fetch(`${API_URL}/transductions/listeners`, {
                     method: 'POST',
@@ -1272,7 +1298,8 @@
                         function_name: functionName,
                         input_topic: inputTopic,
                         output_topic: outputTopic,
-                        lookback: lookback
+                        lookback: lookback,
+                        parallelism: parallelism
                     })
                 });
 

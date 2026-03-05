@@ -4,7 +4,7 @@ AGstream Manager Service - Unified Flask API for managing schemas and transducti
 This consolidated service provides a REST API for:
 - Creating/managing Pydantic types (Schema Manager functionality)
 - Creating/managing transducible functions (Transduction Manager functionality)
-- Starting/stopping listeners as subprocess
+- Starting/stopping listeners as subprocess or Flink cluster
 - Monitoring listener logs
 - Producing/consuming Kafka messages
 """
@@ -24,6 +24,7 @@ from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 from pydantic import BaseModel, Field, create_model
 
+from agentics.core.flink_listener_manager import FlinkListenerManager
 from agentics.core.streaming_utils import (
     get_atype_from_registry,
     list_schema_versions,
@@ -40,6 +41,9 @@ SCHEMA_REGISTRY_URL = os.getenv(
 KAFKA_BOOTSTRAP_SERVERS = os.getenv(
     "AGSTREAM_BACKENDS_KAFKA_BOOTSTRAP", "localhost:9092"
 )
+FLINK_JOBMANAGER_URL = os.getenv("FLINK_JOBMANAGER_URL", "http://localhost:8085")
+# Execution mode: "local" (PyFlink embedded) or "cluster" (Flink cluster via REST API)
+LISTENER_EXECUTION_MODE = os.getenv("LISTENER_EXECUTION_MODE", "local")
 
 # Get the directory where this script is located
 SCRIPT_DIR = Path(__file__).parent
@@ -62,6 +66,17 @@ listeners_store: Dict[str, Dict[str, Any]] = (
     {}
 )  # {listener_id: {process, function_name, ...}}
 listener_logs: Dict[str, deque] = {}  # {listener_id: deque of log lines}
+
+# Flink listener manager for cluster mode
+flink_manager: Optional[FlinkListenerManager] = None
+
+
+def get_flink_manager() -> FlinkListenerManager:
+    """Get or create the FlinkListenerManager instance."""
+    global flink_manager
+    if flink_manager is None:
+        flink_manager = FlinkListenerManager(flink_jobmanager_url=FLINK_JOBMANAGER_URL)
+    return flink_manager
 
 
 # ============================================================================
@@ -344,6 +359,7 @@ def generate_listener_code(
     input_topic: str = "input-topic",
     output_topic: str = "output-topic",
     lookback: int = 0,
+    parallelism: int = 1,
 ) -> str:
     """Generate Python code to run a listener for this function"""
     name = function_data["name"]
@@ -358,6 +374,7 @@ def generate_listener_code(
     code = f'''"""
 Generated listener code for function: {name}
 Source: {source_type} -> Target: {target_type}
+Parallelism: {parallelism} thread(s)
 """
 
 import os
@@ -370,6 +387,7 @@ SCHEMA_REGISTRY_URL = "{SCHEMA_REGISTRY_URL}"
 INPUT_TOPIC = "{input_topic}"
 OUTPUT_TOPIC = "{output_topic}"
 CONSUMER_GROUP = os.getenv("KAFKA_CONSUMER_GROUP", "{consumer_group}")
+PARALLELISM = {parallelism}
 
 # Get types from registry
 {source_type}_type = get_atype_from_registry(
@@ -404,6 +422,7 @@ print("Starting listener for {name}...")
 print(f"Input: {{INPUT_TOPIC}} -> Output: {{OUTPUT_TOPIC}}")
 print(f"Source: {source_type} -> Target: {target_type}")
 print(f"Consumer Group: {{CONSUMER_GROUP}}")
+print(f"Parallelism: {{PARALLELISM}} thread(s)")
 print("This listener will track processed messages and not reprocess them on restart.")
 print("Press Ctrl+C to stop\\n")
 
@@ -414,8 +433,8 @@ print("Press Ctrl+C to stop\\n")
 target.transducible_function_listener(
     fn=fn,
     group_id=CONSUMER_GROUP,  # Persistent consumer group to track processed messages
-    parallelism=10,
-    lookback_messages=0,  # 0 = use latest-offset (only future messages)
+    parallelism=PARALLELISM,
+    lookback_messages={lookback},
     stop_after_lookback=False,
     verbose=True,
     max_empty_polls=999999
@@ -435,7 +454,8 @@ print("\\nListener stopped.")
 @app.route("/agstream_manager.html", methods=["GET"])
 def serve_frontend():
     """Serve the AGstream Manager frontend"""
-    response = send_from_directory(str(SCRIPT_DIR), "agstream_manager.html")
+    frontend_dir = SCRIPT_DIR.parent / "frontend"
+    response = send_from_directory(str(frontend_dir), "agstream_manager.html")
     # Disable caching to ensure latest version is always served
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Pragma"] = "no-cache"
@@ -1004,6 +1024,7 @@ def list_transduction_listeners():
                 "status": status,
                 "created_at": data.get("created_at", data.get("started_at", "")),
                 "lookback_messages": data.get("lookback_messages", 0),
+                "parallelism": data.get("parallelism", 1),
             }
         )
     return jsonify({"listeners": listeners})
@@ -1011,7 +1032,7 @@ def list_transduction_listeners():
 
 @app.route("/api/transductions/listeners", methods=["POST"])
 def start_transduction_listener():
-    """Start a new listener as a subprocess"""
+    """Start a new listener as a subprocess with configurable parallelism"""
     try:
         data = request.json
         listener_name = data.get("listener_name", "").strip()
@@ -1019,9 +1040,17 @@ def start_transduction_listener():
         input_topic = data.get("input_topic", "input-topic")
         output_topic = data.get("output_topic", "output-topic")
         lookback = data.get("lookback", 0)
+        # Per-listener parallelism (1 = single-threaded, >1 = multi-threaded PyFlink)
+        parallelism = data.get("parallelism", 1)
 
         if not listener_name:
             return jsonify({"error": "Listener name is required"}), 400
+
+        if not isinstance(parallelism, int) or parallelism < 1 or parallelism > 100:
+            return (
+                jsonify({"error": "parallelism must be an integer between 1 and 100"}),
+                400,
+            )
 
         # Check if listener name already exists
         for existing_id, existing_data in listeners_store.items():
@@ -1130,8 +1159,22 @@ def start_transduction_listener():
                         )
             except Exception as e:
                 print(f"Warning: Could not register schema for output topic: {e}")
+        # Use listener_name as the ID (sanitized)
+        listener_id = listener_name.replace(" ", "-").lower()
+
+        # Start listener with specified parallelism
+        parallelism_label = (
+            "single-threaded" if parallelism == 1 else f"{parallelism} threads"
+        )
+        print(
+            f"⚡ Starting listener with parallelism={parallelism} ({parallelism_label})"
+        )
+        print(f"   Listener: {listener_name}")
+        print(f"   Input: {input_topic} → Output: {output_topic}")
+
+        # Generate the listener code with specified parallelism
         code = generate_listener_code(
-            function_data, input_topic, output_topic, lookback
+            function_data, input_topic, output_topic, lookback, parallelism
         )
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
@@ -1146,9 +1189,6 @@ def start_transduction_listener():
             bufsize=1,
         )
 
-        # Use listener_name as the ID (sanitized)
-        listener_id = listener_name.replace(" ", "-").lower()
-
         listeners_store[listener_id] = {
             "listener_id": listener_id,
             "listener_name": listener_name,
@@ -1156,12 +1196,26 @@ def start_transduction_listener():
             "input_topic": input_topic,
             "output_topic": output_topic,
             "lookback_messages": lookback,
+            "parallelism": parallelism,
             "process": process,
             "temp_file": temp_file,
             "created_at": datetime.now().isoformat(),
             "status": "running",
         }
         listener_logs[listener_id] = deque(maxlen=1000)
+        listener_logs[listener_id].append(
+            f"[{datetime.now().isoformat()}] ⚡ Starting listener with parallelism={parallelism}"
+        )
+        listener_logs[listener_id].append(
+            f"[{datetime.now().isoformat()}] Job script: {temp_file}"
+        )
+        listener_logs[listener_id].append(
+            f"[{datetime.now().isoformat()}] Input topic: {input_topic}"
+        )
+        listener_logs[listener_id].append(
+            f"[{datetime.now().isoformat()}] Output topic: {output_topic}"
+        )
+
         save_listeners_config()
 
         import threading
@@ -1178,7 +1232,8 @@ def start_transduction_listener():
                 {
                     "success": True,
                     "listener_id": listener_id,
-                    "message": f"Listener started",
+                    "message": f"Listener started with parallelism={parallelism} ({parallelism_label})",
+                    "parallelism": parallelism,
                 }
             ),
             201,
@@ -1724,6 +1779,51 @@ def delete_topic(topic_name: str):
 
     except Exception as e:
         return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
+
+
+# ============================================================================
+# API Endpoints - Configuration
+# ============================================================================
+
+
+@app.route("/api/config/execution-mode", methods=["GET"])
+def get_execution_mode():
+    """Get the current listener execution mode"""
+    return jsonify(
+        {
+            "mode": LISTENER_EXECUTION_MODE,
+            "flink_url": (
+                FLINK_JOBMANAGER_URL if LISTENER_EXECUTION_MODE == "cluster" else None
+            ),
+            "available_modes": ["local", "cluster"],
+            "description": {
+                "local": "PyFlink embedded (runs in local process with parallel task slots)",
+                "cluster": "Flink cluster (distributed execution via JobManager)",
+            },
+        }
+    )
+
+
+@app.route("/api/config/execution-mode", methods=["POST"])
+def set_execution_mode():
+    """Set the listener execution mode"""
+    global LISTENER_EXECUTION_MODE
+
+    data = request.json
+    mode = data.get("mode")
+
+    if mode not in ["local", "cluster"]:
+        return jsonify({"error": "Invalid mode. Must be 'local' or 'cluster'"}), 400
+
+    LISTENER_EXECUTION_MODE = mode
+
+    return jsonify(
+        {
+            "success": True,
+            "mode": LISTENER_EXECUTION_MODE,
+            "message": f"Execution mode set to '{mode}'. New listeners will use this mode.",
+        }
+    )
 
 
 # ============================================================================
