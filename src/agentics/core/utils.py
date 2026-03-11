@@ -817,21 +817,23 @@ def percent_non_empty_fields(instance: BaseModel) -> float:
     filled = sum(1 for v in data.values() if _is_non_empty(v))
 
 
-def coerce_to_model_types(data: Dict[str, Any], model: Type[BaseModel]) -> Dict[str, Any]:
+def coerce_to_model_types(
+    data: Dict[str, Any], model: Type[BaseModel]
+) -> Dict[str, Any]:
     """
     Coerce dictionary values to match the expected types in a Pydantic model.
-    
+
     This function attempts to convert values to the types expected by the model fields,
-    which is useful when importing data from sources like DataFrames where type 
+    which is useful when importing data from sources like DataFrames where type
     information may not match exactly (e.g., integers stored as strings or vice versa).
-    
+
     Args:
         data: Dictionary with field names as keys
         model: Pydantic model class to match types against
-        
+
     Returns:
         Dictionary with values coerced to match model field types
-        
+
     Example:
         >>> class MyModel(BaseModel):
         ...     name: str
@@ -842,37 +844,45 @@ def coerce_to_model_types(data: Dict[str, Any], model: Type[BaseModel]) -> Dict[
     """
     coerced = {}
     model_fields = model.model_fields
-    
+
     for key, value in data.items():
         if value is None:
             coerced[key] = value
             continue
-            
+
         # Get the field info from the model
         field_info = model_fields.get(key)
         if field_info is None:
             # Field not in model, keep as-is
             coerced[key] = value
             continue
-        
+
         # Get the expected type annotation
         expected_type = field_info.annotation
-        
+
         # Handle Optional types
         origin = get_origin(expected_type)
         if origin is Union:
             # For Optional[X] or Union types, get the non-None type
-            args = [arg for arg in get_type_hints(model).get(key, expected_type).__args__ if arg is not type(None)]
+            args = [
+                arg
+                for arg in get_type_hints(model).get(key, expected_type).__args__
+                if arg is not type(None)
+            ]
             if args:
                 expected_type = args[0]
-        
+
         # Attempt type coercion
         try:
             # String coercion
-            if expected_type is str or (get_origin(expected_type) is type and issubclass(expected_type, str)):
+            if expected_type is str or (
+                get_origin(expected_type) is type and issubclass(expected_type, str)
+            ):
                 coerced[key] = str(value) if not isinstance(value, str) else value
             # Integer coercion
-            elif expected_type is int or (get_origin(expected_type) is type and issubclass(expected_type, int)):
+            elif expected_type is int or (
+                get_origin(expected_type) is type and issubclass(expected_type, int)
+            ):
                 if isinstance(value, str):
                     coerced[key] = int(float(value))  # Handle "123.0" strings
                 elif isinstance(value, float):
@@ -880,12 +890,16 @@ def coerce_to_model_types(data: Dict[str, Any], model: Type[BaseModel]) -> Dict[
                 else:
                     coerced[key] = value
             # Float coercion
-            elif expected_type is float or (get_origin(expected_type) is type and issubclass(expected_type, float)):
+            elif expected_type is float or (
+                get_origin(expected_type) is type and issubclass(expected_type, float)
+            ):
                 coerced[key] = float(value) if not isinstance(value, float) else value
             # Boolean coercion
-            elif expected_type is bool or (get_origin(expected_type) is type and issubclass(expected_type, bool)):
+            elif expected_type is bool or (
+                get_origin(expected_type) is type and issubclass(expected_type, bool)
+            ):
                 if isinstance(value, str):
-                    coerced[key] = value.lower() in ('true', '1', 'yes', 'y')
+                    coerced[key] = value.lower() in ("true", "1", "yes", "y")
                 else:
                     coerced[key] = bool(value)
             else:
@@ -894,6 +908,6 @@ def coerce_to_model_types(data: Dict[str, Any], model: Type[BaseModel]) -> Dict[
         except (ValueError, TypeError):
             # If coercion fails, keep original value and let Pydantic handle validation
             coerced[key] = value
-    
+
     return coerced
     return filled / total
