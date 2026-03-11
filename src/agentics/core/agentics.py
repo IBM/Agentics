@@ -60,6 +60,7 @@ from agentics.core.default_types import (
 from agentics.core.llm_connections import get_cached_available_llms
 from agentics.core.utils import (
     chunk_list,
+    coerce_to_model_types,
     get_function_io_types,
     import_pydantic_from_code,
     is_str_or_list_of_str,
@@ -573,7 +574,7 @@ class AG(BaseModel, Generic[T]):
         elif is_str_or_list_of_str(other):
             if isinstance(other, str):
                 other = [other]
-            input_prompts = ["\nSOURCE:\n" + x for x in other]
+            else: input_prompts = ["\nSOURCE:\n" + str(x) for x in other]
         elif isinstance(other, list):
             try:
                 input_prompts = ["\nSOURCE:\n" + str(x) for x in other]
@@ -863,12 +864,19 @@ class AG(BaseModel, Generic[T]):
 
     @classmethod
     def from_dataframe(
-        cls, dataframe: DataFrame, atype: Type[BaseModel] = None, max_rows: int = None
+        cls, dataframe: DataFrame, atype: Type[BaseModel] = None, max_rows: int = None, coerce_types: bool = True
     ) -> AG:
         """
         Import an object of type Agentics from a Pandas DataFrame object.
         If atype is not provided it will be automatically inferred from the column names and
         all attributes will be set as strings
+        
+        Args:
+            dataframe: Pandas DataFrame to import
+            atype: Optional Pydantic model type to use for validation
+            max_rows: Maximum number of rows to import
+            coerce_types: If True (default), automatically convert values to match the expected field types.
+                         If False, strict type validation is enforced and may raise errors for type mismatches.
         """
         states: List[BaseModel] = []
         new_type = atype or pydantic_model_from_dataframe(dataframe)
@@ -880,7 +888,13 @@ class AG(BaseModel, Generic[T]):
         for i, row in dataframe.iterrows():
             if max_rows and i >= max_rows:
                 break
-            state = new_type(**sanitize_dict_keys(row.to_dict()))
+            row_dict = sanitize_dict_keys(row.to_dict())
+            
+            # Optional type coercion
+            if coerce_types:
+                row_dict = coerce_to_model_types(row_dict, new_type)
+            
+            state = new_type(**row_dict)
             states.append(state)
         return cls(states=states, atype=new_type)
 
