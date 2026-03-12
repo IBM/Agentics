@@ -94,7 +94,7 @@ class AG(BaseModel, Generic[T]):
         None,
         description="""Python code for the used type""",
     )
-    states: List[BaseModel] = []
+    states: List[BaseModel] = Field(default_factory=list)
     tools: Optional[List[Any]] = Field(None, exclude=True)
     transduce_fields: Optional[List[str]] = Field(
         None,
@@ -549,6 +549,25 @@ class AG(BaseModel, Generic[T]):
             if self.transduce_fields
             else self.atype
         )
+        
+        # If self has no states, we need to initialize with empty states based on the input
+        if len(self.states) == 0:
+            if isinstance(other, AG):
+                # Match the number of states in other
+                self.states = [self.atype() for _ in range(len(other.states))]
+            elif is_str_or_list_of_str(other):
+                # For strings or list of strings, create one state per input
+                if isinstance(other, str):
+                    self.states = [self.atype()]
+                else:
+                    self.states = [self.atype() for _ in range(len(other))]
+            elif isinstance(other, list):
+                # For other lists, create one state per item
+                self.states = [self.atype() for _ in range(len(other))]
+            else:
+                # For single non-list inputs, create one state
+                self.states = [self.atype()]
+        
         if isinstance(other, AG):
             if other.prompt_template:
                 prompt_template = PromptTemplate.from_template(other.prompt_template)
@@ -574,7 +593,7 @@ class AG(BaseModel, Generic[T]):
         elif is_str_or_list_of_str(other):
             if isinstance(other, str):
                 other = [other]
-            else: input_prompts = ["\nSOURCE:\n" + str(x) for x in other]
+            input_prompts = ["\nSOURCE:\n" + str(x) for x in other]
         elif isinstance(other, list):
             try:
                 input_prompts = ["\nSOURCE:\n" + str(x) for x in other]
@@ -678,13 +697,13 @@ class AG(BaseModel, Generic[T]):
         # elif is_str_or_list_of_str(other):
         elif isinstance(other, list):
             for i in range(len(other)):
-                if isinstance(output_states[i], self.atype):
+                if i < len(output_states) and isinstance(output_states[i], self.atype):
                     output.states.append(self.atype(**output_states[i].model_dump()))
                 else:
                     output.states.append(self.atype())
         else:
-            if isinstance(output_states[0], self.atype):
-                output.states.append(self.atype(**output_states[i].model_dump()))
+            if len(output_states) > 0 and isinstance(output_states[0], self.atype):
+                output.states.append(self.atype(**output_states[0].model_dump()))
 
         if self.provide_explanations and isinstance(other, AG):
             target_explanation = AG(atype=Explanation)
