@@ -550,21 +550,44 @@ class AG(BaseModel, Generic[T]):
 
         # If self has no states, we need to initialize with empty states based on the input
         if len(self.states) == 0:
+            # Helper function to create an empty state, handling required fields
+            def create_empty_state():
+                try:
+                    return self.atype()
+                except Exception:
+                    # If the model has required fields, use model_construct with defaults
+                    # Get default values for all fields
+                    defaults = {}
+                    for field_name, field_info in self.atype.model_fields.items():
+                        if field_info.is_required():
+                            # Provide sensible defaults based on field type
+                            if hasattr(field_info.annotation, "__origin__"):
+                                origin = field_info.annotation.__origin__
+                                if origin is list:
+                                    defaults[field_name] = []
+                                elif origin is dict:
+                                    defaults[field_name] = {}
+                                else:
+                                    defaults[field_name] = None
+                            else:
+                                defaults[field_name] = None
+                    return self.atype.model_construct(**defaults)
+
             if isinstance(other, AG):
                 # Match the number of states in other
-                self.states = [self.atype() for _ in range(len(other.states))]
+                self.states = [create_empty_state() for _ in range(len(other.states))]
             elif is_str_or_list_of_str(other):
                 # For strings or list of strings, create one state per input
                 if isinstance(other, str):
-                    self.states = [self.atype()]
+                    self.states = [create_empty_state()]
                 else:
-                    self.states = [self.atype() for _ in range(len(other))]
+                    self.states = [create_empty_state() for _ in range(len(other))]
             elif isinstance(other, list):
                 # For other lists, create one state per item
-                self.states = [self.atype() for _ in range(len(other))]
+                self.states = [create_empty_state() for _ in range(len(other))]
             else:
                 # For single non-list inputs, create one state
-                self.states = [self.atype()]
+                self.states = [create_empty_state()]
 
         if isinstance(other, AG):
             if other.prompt_template:
@@ -692,7 +715,25 @@ class AG(BaseModel, Generic[T]):
                 )
                 allowed = self.atype.model_fields.keys()  # pydantic v2
                 filtered = {k: v for k, v in data.items() if k in allowed}
-                merged = self.atype(**filtered)
+                try:
+                    merged = self.atype(**filtered)
+                except Exception:
+                    # If validation fails due to missing required fields, use model_construct with defaults
+                    defaults = {}
+                    for field_name, field_info in self.atype.model_fields.items():
+                        if field_info.is_required() and field_name not in filtered:
+                            # Provide sensible defaults based on field type
+                            if hasattr(field_info.annotation, "__origin__"):
+                                origin = field_info.annotation.__origin__
+                                if origin is list:
+                                    defaults[field_name] = []
+                                elif origin is dict:
+                                    defaults[field_name] = {}
+                                else:
+                                    defaults[field_name] = None
+                            else:
+                                defaults[field_name] = None
+                    merged = self.atype.model_construct(**{**defaults, **filtered})
 
                 output.states.append(merged)
         # elif is_str_or_list_of_str(other):
