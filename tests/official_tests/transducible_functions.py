@@ -37,4 +37,4 @@ single_mail = asyncio.run(
         )
     )
 )
-print(single_mail.model_dump_json(indent=2))
+print(single_mail.value.model_dump_json(indent=2))
