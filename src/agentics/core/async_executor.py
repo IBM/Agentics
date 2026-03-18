@@ -5,16 +5,12 @@ from collections.abc import Iterable
 from typing import Any, Callable, List, Type, Union
 
 from crewai import Agent, Crew, Process, Task
-from dotenv import load_dotenv
 from loguru import logger
 from openai import AsyncOpenAI
 from pydantic import BaseModel
 
 from agentics.core.llm_connections import watsonx_llm
-from agentics.core.mellea_pydantic_transducer import structured_decoding_using_mellea
 from agentics.core.utils import async_odered_progress, openai_response
-
-load_dotenv()
 
 
 class AsyncExecutor(ABC):
@@ -106,92 +102,6 @@ class PydanticTransducer(AsyncExecutor):
     @abstractmethod
     async def _execute(self, input: str) -> BaseModel:
         pass
-
-
-# class PydanticTransducerMellea(PydanticTransducer):
-#     llm: AsyncOpenAI
-#     intentional_definiton: str
-#     verbose: bool = False
-#     MAX_CHAR_PROMPT: int = 30000
-
-#     def __init__(
-#         self,
-#         atype: Type[BaseModel],
-#         verbose: bool = False,
-#         llm=None,
-#         tools=None,
-#         intentional_definiton=None,
-#         timeout=10000,
-#         **kwargs,
-#     ):
-#         self.atype = atype
-#         self.verbose = verbose
-#         self.llm = llm
-#         self.tools = tools
-#         self.timeout = timeout
-#         self.intentional_definiton = (
-#             intentional_definiton
-#             or "Generate an object of the specified Pydantic Type from the following input."
-#         )
-#         self.llm_params = {
-#             "extra_body": {"guided_json": self.atype.model_json_schema()},
-#             "logprobs": False,
-#             "n": 1,
-#         }
-#         self.llm_params.update(kwargs)
-
-#     async def execute(
-#         self,
-#         input: Union[str, Iterable[str]],
-#         logprobs: bool = False,
-#         n_samples: int = 1,
-#         **kwargs,
-#     ) -> Union[BaseModel, Iterable[BaseModel]]:
-
-#         parser = PydanticOutputParser(pydantic_object=self.atype)
-
-#         prompt = PromptTemplate(
-#             template="Transduce the SOURCE object into a target JSON object matching this schema: {format_instructions}\n\nSOURCE: {target}\n\nTARGET:",
-#             input_variables=["target"],
-#             partial_variables={"format_instructions": parser.get_format_instructions()},
-#         )
-
-#         if isinstance(input, str):
-#             structured_decoding_using_mellea()
-#             formatted_prompt = prompt.format(target=input)
-#             m = mellea.start_session()
-#             result = m.chat(formatted_prompt)
-#             res = m.chat(formatted_prompt)
-#             result = extract_json_objects(res.content, expected_type=self.atype)
-
-#             return  await structured_decoding_using_mellea()
-
-
-#         elif isinstance(input, Iterable) and all(isinstance(i, str) for i in input):
-#             processes = []
-#             for state in input:
-#                 corutine = openai_response(
-#                     model=os.getenv("VLLM_MODEL_ID"),
-#                     base_url=os.getenv("VLLM_URL"),
-#                     user_prompt=default_user_prompt + str(state),
-#                     **self.llm_params,
-#                 )
-#                 processes.append(corutine)
-#             results = await asyncio.wait_for(
-#                 asyncio.gather(*processes, return_exceptions=True), timeout=self.timeout
-#             )
-
-#             decoded_results = []
-#             for result in results:
-#                 if issubclass(type(result), Exception):
-#                     if self.verbose:
-#                         logger.debug("Something went wrongs, generating empty states")
-#                     decoded_results.append(self.atype())
-#                 else:
-#                     decoded_results.append(self.atype.model_validate_json(result))
-#             return decoded_results
-#         else:
-#             return NotImplemented
 
 
 class PydanticTransducerVLLM(PydanticTransducer):
@@ -343,55 +253,3 @@ class PydanticTransducerCrewAI(PydanticTransducer):
             {"task_description": input[: self.MAX_CHAR_PROMPT]}
         )
         return answer.pydantic
-
-
-class PydanticTransducerMellea(PydanticTransducer):
-    llm: Any
-    intentional_definiton: str
-    verbose: bool = False
-    max_iter: int = 3
-    MAX_CHAR_PROMPT: int = 30000
-
-    def __init__(
-        self,
-        atype: Type[BaseModel],
-        verbose: bool = False,
-        llm=None,
-        tools=None,
-        intentional_definiton=None,
-        max_iter=max_iter,
-        timeout: float | None = 200,
-        **kwargs,
-    ):
-        self.atype = atype
-        self.timeout = timeout
-        self.llm = llm
-        self.intentional_definiton = (
-            intentional_definiton
-            or "Generate an object of the specified Pydantic Type from the following input."
-        )
-
-    async def _execute(self, input: str) -> BaseModel:
-        instructions = f"""
-You are a Logical Transducer. Your goal is to generate a JSON object that strictly
-conforms to the Output Pydantic schema below:
-
-{self.atype.model_json_schema()}
-
-IMPORTANT:
-- If you cannot logically infer the value of a field from the input, set that field to null.
-- Never invent content.
-- Never generate placeholder strings such as "null", "$null$", "N/A", "...", or repeated characters.
-- Never generate invisible Unicode characters (zero-width spaces).
-- Produce only clean, natural text for fields you can infer.
-
-Follow the following instructions:
-{self.intentional_definiton}
-"""
-        answer = await structured_decoding_using_mellea(
-            input, self.atype, instructions=self.intentional_definiton, llm=self.llm
-        )
-        # self.crew.kickoff_async(
-        #     {"task_description": input[: self.MAX_CHAR_PROMPT]}
-        # )
-        return answer

@@ -5,51 +5,95 @@
   <img src="https://raw.githubusercontent.com/IBM/Agentics/refs/heads/main/image.png" height="140" alt="Agentics logo">
 </p>
 
-
 <p align="center">
   Agentics is a Python framework for structured, scalable, and semantically grounded <i>agentic computation</i>.<br/>
   Build AI-powered pipelines as <b>typed data transformations</b>—combining Pydantic schemas, LLM-powered transduction, and async execution.
 </p>
 
+---
+
+## 🧠 What is Agentics?
+
+Most "agent frameworks" let untyped text flow through a pipeline. **Agentics flips that: types are the interface.**
+
+Workflows are expressed as **transformations between structured states**, with predictable schemas and composable operators. Because every step is a typed transformation, you can compose workflows safely without losing semantic structure.
+
+**Core Philosophy:**
+- 🎯 **Type-driven design**: Pydantic models define your data contracts
+- 🔄 **Logical transduction**: Transform between types using LLM-powered reasoning
+- 📊 **Structured outputs**: Every operation produces validated, typed results
+- 🔗 **Composable operators**: Chain transformations with mathematical precision
+
+**Core Operations:**
+- `<<` — Logical transduction from source to target types
+- `amap(func)` — Apply async function over each state
+- `areduce(func)` — Reduce list of states into single value
+- `&` — Merge Pydantic types/instances
+- `@` — Compose Pydantic types/instances
 
 ---
 
 ## 🚀 Key Features
 
-- **Typed agentic computation**: Define workflows over structured types using standard **Pydantic** models.
-- **Logical transduction (`<<`)**: Transform data between types using LLMs (few-shot examples, tools, memory).
-- **Async mapping & reduction**: Scale out with `amap` and `areduce` over datasets.
-- **Batch execution & retry**: Built-in batching, retries, and graceful fallbacks.
-- **Tool support (MCP)**: Integrate external tools via MCP.
+- **Typed agentic computation**: Define workflows over structured types using standard **Pydantic** models
+- **Logical transduction (`<<`)**: Transform data between types using LLMs (few-shot examples, tools, memory)
+- **Async mapping & reduction**: Scale out with `amap` and `areduce` over datasets
+- **Batch execution & retry**: Built-in batching, retries, and graceful fallbacks
+- **Tool support (MCP)**: Integrate external tools via Model Context Protocol
+- **AGStream**: Real-time streaming with Kafka, Flink SQL, and schema registry
+- **PyFlink SQL Auto-Connector**: Automatically discover and query AGStream Manager channels with zero configuration
 
 ---
 
-## 📦 Getting Started
+## 📦 Quick Start
 
-Quickstart:
+### Installation
 
-Install Agentics in your current env, set up your environment variable, and run your first logical transduction:
-
-```bash
-uv pip install agentics-py
-```
-set up your .env using the required parameters for your LLM provider of choice. Use [.env_sample](.env_sample) as a reference.
-
-Find out more
-👉 **Getting Started**: [docs/getting_started.md](docs/getting_started.md)
-
-**Examples**
-
-Run scripts in the `examples/` folder (via `uv`):
+#### Core Framework
 
 ```bash
-uv run python examples/hello_world.py
+# Install from PyPI
+pip install agentics-py
+
+# Or install from source with uv (recommended)
+git clone https://github.com/IBM/agentics.git
+cd agentics
+uv sync  # Installs core framework only (excludes tools/)
 ```
 
+**Note:** The core framework is lightweight and does not include heavy dependencies like Kafka, Flink, or Docling. These are available as separate add-on packages.
 
----
+#### Add-on Packages
 
-## 🧪 Example Usage
+Each tool in `tools/` has its own isolated environment with tool-specific dependencies:
+
+**AGStream Manager** - Real-time streaming with Kafka & Flink
+```bash
+cd tools/agstream_manager
+uv sync  # Installs kafka-python, confluent-kafka, flask, streamlit
+```
+
+**Dockling Knowledge Graph Extractor** - Document-to-KG extraction
+```bash
+cd tools/dockling_kg_extractor
+uv sync  # Installs docling, docling-core, fastapi, uvicorn
+```
+
+See individual tool documentation for details:
+- [AGStream Manager Installation](tools/agstream_manager/INSTALL.md)
+- [Dockling KG Extractor Installation](tools/dockling_kg_extractor/INSTALL.md)
+
+### Environment Setup
+
+```bash
+# Copy sample environment file
+cp .env_sample .env
+
+# Edit .env with your LLM provider credentials
+# Supported: OpenAI, Anthropic, Google Gemini, Azure OpenAI, IBM WatsonX
+```
+
+### Basic Example
 
 ```python
 from pydantic import BaseModel, Field
@@ -82,17 +126,24 @@ print(f"🔥 {tweet.tweet}")
 print(f"📱 {' '.join(tweet.hashtags)}")
 ```
 
-**Output:**
-```
-🔥 Stop wrestling with unstructured LLM outputs! 🎯 Agentics gives you type-safe AI workflows that just work. Build production-ready agents in minutes, not weeks. And it's FREE! 🚀
-📱 #AI #OpenSource #Python #LLM #DevTools
+**Run examples:**
+```bash
+python examples/hello_world.py
+python examples/generate_tweets.py
 ```
 
 ---
 
-## 📘 Documentation and Notebooks
+## 📘 Documentation
 
-Complete documentation available [here](./docs/index.md)
+### 📚 Complete Documentation
+- **[Full Documentation](./docs/index.md)** - Comprehensive guides and API reference
+- **[Getting Started](./docs/introduction/quickstart.md)** - Quick introduction to Agentics
+- **[Architecture](./docs/introduction/architecture.md)** - System design and components
+- **[Key Concepts](./docs/introduction/key-concepts.md)** - Core principles and terminology
+- **[API Reference](./docs/reference/index.md)** - Detailed API documentation
+
+### 📓 Interactive Tutorials
 
 | Notebook | Description |
 |---|---|
@@ -103,50 +154,202 @@ Complete documentation available [here](./docs/index.md)
 | [synthetic_data_generation.ipynb](./tutorials/synthetic_data_generation.ipynb) | Generate structured synthetic datasets using typed transductions |
 | [transducible_functions.ipynb](./tutorials/transducible_functions.ipynb) | Build reusable `@transducible` functions, explanations, and transduction control |
 
-## ✅ Tests
+### 💡 Examples
+- **[Examples Directory](./examples/)** - Ready-to-run code examples
+- **[Use Cases](./docs/introduction/use-cases.md)** - Real-world applications
 
-Run all tests:
+---
+
+## 🛠️ Agentics Tools
+
+The [`tools/`](tools/) directory contains production-ready applications built with Agentics. Each tool is a separate package with its own dependencies, installed independently from the core framework.
+
+### 🌊 AGStream Manager
+**Real-time streaming agent framework** with Kafka, Flink SQL, and schema registry integration.
+
+**Features:**
+- 📨 **Topic Management**: Create and manage Kafka topics with type associations
+- ⚡ **Transducible Functions**: Define AI-powered transformations between typed streams
+- 🎧 **Listener Orchestration**: Start, stop, and monitor streaming listeners
+- 📊 **Schema Registry**: Automatic Avro schema management with Karapace
+- 🔄 **Type Safety**: Automatic type matching ensures compatible topic connections
+- 🐳 **Docker Integration**: Kafka and Schema Registry via Docker Compose
+
+**Quick Start:**
+```bash
+cd tools/agstream_manager
+uv sync
+./manage_services_full.sh start  # Starts Kafka, Schema Registry, and web UI
+```
+
+**📖 Documentation**: [`tools/agstream_manager/README.md`](tools/agstream_manager/README.md)
+
+### 📚 Dockling Knowledge Graph Extractor
+**Document-to-knowledge-graph extraction** powered by Docling and Agentics.
+
+**Features:**
+- 📄 **Multi-Format Support**: PDFs, DOCX, images, URLs, and markdown
+- 🎯 **Custom Schemas**: Define your own entity types with Pydantic
+- 🔗 **Entity Extraction**: Automatic entity and relationship detection
+- 🧩 **Coreference Resolution**: Merge duplicate entities intelligently
+- 📊 **Export Options**: JSON, CSV, or graph formats
+- 🌐 **Web UI**: FastAPI-based interface for easy document processing
+
+**Quick Start:**
+```bash
+cd tools/dockling_kg_extractor
+uv sync
+./start_server.sh  # Starts web UI on http://localhost:5000
+```
+
+**📖 Documentation**: [`tools/dockling_kg_extractor/README.md`](tools/dockling_kg_extractor/README.md)
+
+---
+
+## 🐳 Docker Setup
+
+### Option A: Colima (macOS - Free Alternative to Docker Desktop)
 
 ```bash
+# Install
+brew install colima docker docker-compose
+
+# Start with optimized settings
+colima start --arch aarch64 --vm-type=vz --vz-rosetta \
+  --mount-type virtiofs --cpu 4 --memory 8
+
+# Verify
+docker ps
+```
+
+### Option B: Docker Desktop
+
+Download from [docker.com](https://www.docker.com/products/docker-desktop) and verify:
+```bash
+docker --version && docker compose version
+```
+
+---
+
+## ✅ Testing
+
+### Core Framework Tests
+
+```bash
+# Run all core tests
+uv run pytest tests/test_package.py tests/test_examples.py -v
+
+# Run with coverage
+uv run pytest tests/ --cov=src/agentics --cov-report=html
+
+# Run specific test
+uv run pytest tests/test_specific_module.py -v
+```
+
+**Test Coverage:**
+- ✅ Package import and initialization
+- ✅ Example scripts (hello_world, transducible_functions, emotion_extractor, generate_tweets)
+- ✅ Transduction operations and type transformations
+- ✅ Async map/reduce operations
+
+### AGStream Tests
+
+AGStream tests require Kafka and Schema Registry services:
+
+```bash
+# Start services
+cd tools/agstream_manager
+./manage_services_full.sh start
+
+# Run AGStream integration tests
+cd ../..
+uv run python tests/agstream_tests/test_agstream_integration.py
+```
+
+**Test Coverage:**
+- ✅ Schema registration with Avro
+- ✅ Message production to Kafka topics
+- ✅ Message consumption from Kafka topics
+- ✅ Transducible function execution
+- ✅ Full produce-consume-transform cycle
+
+**Note:** AGStream tests are automatically skipped if Kafka dependencies are not installed.
+
+### Dockling KG Extractor Tests
+
+```bash
+cd tools/dockling_kg_extractor
+uv sync  # Ensure dependencies are installed
+uv run pytest tests/ -v  # If tests exist
+```
+
+**Manual Testing:**
+```bash
+./start_server.sh
+# Open http://localhost:5000 and test document upload/processing
+```
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for:
+- Development setup with `uv`
+- Pre-commit hooks
+- Testing guidelines
+- Code style requirements
+
+**Quick setup:**
+```bash
+# Install dependencies
+uv sync --all-groups --all-extras
+
+# Install pre-commit hooks
+uv tool install pre-commit
+pre-commit install
+
+# Run tests
 uv run pytest
 ```
 
 ---
 
-## 🐳 Colima Setup (Docker Desktop Alternative)
+## 📜 References
 
-**For macOS users**: Use Colima as a free, lightweight alternative to Docker Desktop.
+Agentics implements **Logical Transduction Algebra**, described in the following papers:
 
-### Complete Setup Guide
+### Primary Reference
+**Agentics 2.0: Logical Transduction Algebra for Agentic Data Workflows**
+- Authors: Alfio Massimiliano Gliozzo, Junkyu Lee, Nahuel Defosse
+- arXiv:2603.04241 [cs.AI, cs.LG] — https://arxiv.org/abs/2603.04241
+- Submitted: March 4, 2026
+- Abstract: Presents Agentics 2.0, a lightweight Python-native framework for building high-quality, structured, explainable, and type-safe agentic data workflows with Logical Transduction Algebra at its core.
 
-See **[COLIMA_SETUP_GUIDE.md](COLIMA_SETUP_GUIDE.md)** for:
-- ✅ Migration from Docker Desktop
-- ✅ Auto-start configuration
-- ✅ Portainer UI installation
-- ✅ Troubleshooting tips
+### Foundational Work
+**Transduction is All You Need for Structured Data Workflows**
+- Authors: Alfio Gliozzo, Naweed Khan, Christodoulos Constantinides, Nandana Mihindukulasooriya, Nahuel Defosse, Junkyu Lee
+- arXiv:2210.13952 [cs.CL, cs.AI, cs.IR]
+- Foundational work on transduction-based approaches for structured data processing
 
-### Quick Start
+### Applications & Use Cases
 
-```bash
-# Install Colima
-brew install colima docker docker-compose
+**An end-to-end agentic pipeline for smart contract translation and quality evaluation**
+- Authors: Abhinav Goel, Chaitya Shah, Agostino Capponi, Alfio Gliozzo
+- arXiv:2602.13808 [cs.AI, cs.SE] — https://arxiv.org/abs/2602.13808
+- Submitted: February 14, 2026
+- Application: End-to-end framework for LLM-generated smart contracts from natural-language specifications, with automated quality assessment through compilation and security checks using CrewAI-style agent teams.
 
-# Start Colima (auto-configured for Apple Silicon)
-colima start --arch aarch64 --vm-type=vz --vz-rosetta --mount-type virtiofs --cpu 4 --memory 8
+**Semantic Trading: Agentic AI for Clustering and Relationship Discovery in Prediction Markets**
+- Authors: Agostino Capponi, Alfio Gliozzo, Brian Zhu
+- arXiv:2512.02436 [cs.AI] — https://arxiv.org/abs/2512.02436
+- Submitted: December 2, 2025
+- Application: Agentic AI pipeline for autonomous clustering of prediction markets into coherent topical groups and identification of hidden relationships using natural-language understanding.
 
-# Use Docker normally
-docker ps
-./manage_services.sh start
-```
-
-### What You Get
-
-- **Colima**: Free, open-source Docker runtime
-- **Auto-start**: Configured to start on boot
-- **Portainer UI**: Web-based Docker management at https://localhost:9444
-- **Same workflow**: All docker commands work identically
-
-**Full guide:** [COLIMA_SETUP_GUIDE.md](COLIMA_SETUP_GUIDE.md)
+**DAO-AI: Evaluating Collective Decision-Making through Agentic AI in Decentralized Governance**
+- Authors: Agostino Capponi, Alfio Gliozzo, Chunghyun Han, Junkyu Lee
+- arXiv:2510.21117 [cs.AI] — https://arxiv.org/abs/2510.21117
+- Submitted: October 23, 2025
+- Application: Empirical study of agentic AI as autonomous decision-makers in decentralized governance, analyzing 3K+ proposals from major protocols with realistic financial simulation.
 
 ---
 
@@ -173,51 +376,16 @@ Apache 2.0
 - Gaetano Rossiello (IBM) — gaetano.rossiello@ibm.com
 - Agostino Capponi (Columbia University) — ac3827@columbia.edu
 - Chunghyun Han (Columbia University) — ch4005@columbia.edu
-- Abhinav Goel (Columbia University) ag5252@columbia.edu
+- Abhinav Goel (Columbia University) — ag5252@columbia.edu
 - Chaitya Shan (Columbia University) — cs4621@columbia.edu
 - Brian Zi Qi Zhu (Columbia University) — bzz2101@columbia.edu
----
-
-
-## 🧠 Conceptual Overview
-
-Most “agent frameworks” let untyped text flow through a pipeline. Agentics flips that: **types are the interface**.
-Workflows are expressed as transformations between structured states, with predictable schemas and composable operators.
-
-Because every step is a typed transformation, you can **compose** workflows safely (merge and compose types/instances, chain transductions, and reuse `@transducible` functions) without losing semantic structure.
-
-Agentics makes it natural to **scale out**: apply transformations over collections with async `amap`, and aggregate results with `areduce`.
-
-Agentics models workflows as transformations between **typed states**.
-
-Core operations:
-
-- `amap(func)`: apply an async function over each state
-- `areduce(func)`: reduce a list of states into a single value
-- `<<`: logical transduction from source to target Agentics
-- `&`: merge Pydantic types / instances
-- `@`: compose Pydantic types / instances
-
-
-
-## 📜 Reference
-
-Agentics implements **Logical Transduction Algebra**, described in:
-
-- Alfio Gliozzo, Naweed Khan, Christodoulos Constantinides, Nandana Mihindukulasooriya, Nahuel Defosse, Junkyu Lee.
-  *Transduction is All You Need for Structured Data Workflows* (August 2025).
-  arXiv:2508.15610 — https://arxiv.org/abs/2508.15610
-
 
 ---
 
-## 🤝 Contributing
+## 🔗 Additional Resources
 
-Contributions are welcome!
-[CONTRIBUTING.md](CONTRIBUTING.md)
-
- Please ensure your commit messages include:
-
-```text
-Signed-off-by: Author Name <authoremail@example.com>
-```
+- **Documentation**: [`docs/`](./docs/)
+- **Tutorials**: [`tutorials/`](./tutorials/)
+- **Examples**: [`examples/`](./examples/)
+- **API Reference**: [`docs/references.md`](./docs/references.md)
+- **Tools**: [`tools/`](./tools/) - Production-ready applications

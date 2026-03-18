@@ -10,12 +10,13 @@ echo "   Version: ${FLINK_VERSION}"
 echo "   URL: ${DOWNLOAD_URL}"
 echo ""
 
-cd "$(dirname "$0")/../../.." || exit 1
+cd "$(dirname "$0")/.." || exit 1
 
 if [ -f "flink-lib/${AVRO_JAR}" ]; then
     echo "✅ ${AVRO_JAR} already exists"
 else
     echo "⏳ Downloading..."
+    mkdir -p flink-lib
     curl -L -o "flink-lib/${AVRO_JAR}" "${DOWNLOAD_URL}"
 
     if [ $? -eq 0 ]; then

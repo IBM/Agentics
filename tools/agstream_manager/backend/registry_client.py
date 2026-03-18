@@ -20,6 +20,7 @@ from typing import Dict, List, Optional, Tuple, Type
 import requests
 from pydantic import BaseModel
 
+from agentics.core.agstream_sql import AGStreamSQL
 from agentics.core.streaming import AGStream
 from agentics.core.streaming_utils import get_atype_from_registry
 
@@ -164,7 +165,7 @@ class RegistryClient:
         return result
 
     # ------------------------------------------------------------------
-    # Convenience: build an AGStream pre-wired to a subject pair
+    # Convenience: build AGStream instances
     # ------------------------------------------------------------------
 
     def make_agstream(
@@ -173,21 +174,103 @@ class RegistryClient:
         output_topic: str,
         source_atype_name: Optional[str] = None,
         target_atype_name: Optional[str] = None,
-    ) -> AGStream:
+    ) -> Optional[AGStream]:
         """
-        Construct an ``AGStream`` instance wired to the given topics and
-        optional registry subject names.
+        Construct an ``AGStream`` instance for JSON-formatted streaming.
 
-        The returned stream has no ``atype`` set — callers should assign
-        one (e.g. via ``get_atype``) before calling listener methods.
+        Parameters
+        ----------
+        input_topic:
+            Kafka input topic name
+        output_topic:
+            Kafka output topic name
+        source_atype_name:
+            Registry subject name for the source data type (optional)
+        target_atype_name:
+            Registry subject name for the target data type (optional)
+
+        Returns
+        -------
+        AGStream or None
+            Configured AGStream instance, or None if types cannot be retrieved
+
+        Note
+        ----
+        AGStream produces JSON-formatted messages with envelope structure.
+        For Flink SQL compatibility, use ``make_agstream_sql`` instead.
         """
+        # Get the Pydantic types from registry if specified
+        source_atype = None
+        target_atype = None
+
+        if source_atype_name:
+            source_atype = self.get_atype(source_atype_name)
+            if not source_atype:
+                sys.stderr.write(
+                    f"⚠️  Could not retrieve source type '{source_atype_name}' from registry\n"
+                )
+                return None
+
+        if target_atype_name:
+            target_atype = self.get_atype(target_atype_name)
+            if not target_atype:
+                sys.stderr.write(
+                    f"⚠️  Could not retrieve target type '{target_atype_name}' from registry\n"
+                )
+                return None
+
+        # Create AGStream instance
+        # Note: AGStream constructor varies, using target_atype_name approach
         return AGStream(
-            kafka_server=self.kafka_server,
-            schema_registry_url=self.registry_url,
+            target_atype_name=target_atype_name,
             input_topic=input_topic,
             output_topic=output_topic,
-            source_atype_name=source_atype_name,
-            target_atype_name=target_atype_name,
+            kafka_server=self.kafka_server,
+            schema_registry_url=self.registry_url,
+        )
+
+    def make_agstream_sql(
+        self,
+        topic: str,
+        atype_name: str,
+    ) -> Optional[AGStreamSQL]:
+        """
+        Construct an ``AGStreamSQL`` instance for Flink SQL-compatible streaming.
+
+        Parameters
+        ----------
+        topic:
+            Kafka topic name
+        atype_name:
+            Registry subject name for the data type
+
+        Returns
+        -------
+        AGStreamSQL or None
+            Configured AGStreamSQL instance, or None if atype cannot be retrieved
+
+        Note
+        ----
+        AGStreamSQL produces Avro-formatted messages that are compatible with
+        Flink SQL queries. Messages contain only state data (no envelope) for
+        direct SQL access.
+        """
+        # Get the Pydantic type from registry
+        atype = self.get_atype(atype_name)
+        if not atype:
+            sys.stderr.write(
+                f"⚠️  Could not retrieve type '{atype_name}' from registry\n"
+            )
+            return None
+
+        # Create AGStreamSQL instance
+        return AGStreamSQL(
+            atype=atype,
+            topic=topic,
+            kafka_server=self.kafka_server,
+            schema_registry_url=self.registry_url,
+            auto_create_topic=True,
+            num_partitions=1,
         )
 
     # ------------------------------------------------------------------

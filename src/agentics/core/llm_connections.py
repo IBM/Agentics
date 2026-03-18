@@ -1,11 +1,8 @@
 import os
 
 from crewai import LLM
-from dotenv import load_dotenv
 from loguru import logger
 from openai import AsyncOpenAI
-
-load_dotenv()
 
 # Track which environment variables are used for each LLM
 _llms_env_vars: dict[str, list[str]] = {}
@@ -14,7 +11,7 @@ _llms_env_vars: dict[str, list[str]] = {}
 def get_llm_provider(provider_name: str | None = None) -> LLM | AsyncOpenAI | None:
     """
     Retrieve the LLM instance based on the provider name. If no provider name is given,
-    the function returns the first available LLM.
+    the function checks the SELECTED_LLM environment variable, or returns the first available LLM.
 
     Args:
         provider_name (str): The name of the LLM provider (e.g., 'openai', 'watsonx', 'gemini').
@@ -25,19 +22,54 @@ def get_llm_provider(provider_name: str | None = None) -> LLM | AsyncOpenAI | No
     llms = get_available_llms()
 
     if not provider_name:
+        # Check if SELECTED_LLM environment variable is set
+        selected_llm = os.getenv("SELECTED_LLM")
+        if selected_llm:
+            logger.trace(f"SELECTED_LLM environment variable set to: {selected_llm}")
+            # Try to use the selected LLM
+            if selected_llm in llms:
+                provider = llms[selected_llm]
+                model_id = "unknown"
+                if hasattr(provider, "model") and provider.model:
+                    model_id = provider.model
+                logger.trace(f"Using SELECTED_LLM provider: {selected_llm}")
+                print(
+                    f"\n🤖 Using LLM (from SELECTED_LLM): {selected_llm} (model: {model_id})\n"
+                )
+                return provider
+            else:
+                logger.warning(
+                    f"SELECTED_LLM '{selected_llm}' not available. Available providers: {list(llms.keys())}"
+                )
+
+        # Fall back to first available LLM
         if llms:  # Not empty
-            logger.trace(
-                f"Available LLM providers: {list(llms)}. None specified, defaulting to '{list(llms)[0]}'"
-            )
+            first_provider_name = list(llms.keys())[0]
             first_provider = next((iter(llms.values())))
+            # Get the model ID for the provider
+            model_id = "unknown"
+            if hasattr(first_provider, "model") and first_provider.model:
+                model_id = first_provider.model
+            logger.trace(
+                f"Available LLM providers: {list(llms)}. None specified, defaulting to '{first_provider_name}'"
+            )
+            print(
+                f"\n🤖 Using LLM (default): {first_provider_name} (model: {model_id})\n"
+            )
             return first_provider
         else:
             logger.trace("No LLM is available. Please check your .env configuration.")
             return None
 
     if provider_name in llms:
+        provider = llms[provider_name]
+        # Get the model ID for the provider
+        model_id = "unknown"
+        if hasattr(provider, "model") and provider.model:
+            model_id = provider.model
         logger.trace(f"Using specified LLM provider: {provider_name}")
-        return llms[provider_name]
+        print(f"\n🤖 Using LLM: {provider_name} (model: {model_id})\n")
+        return provider
 
     logger.debug(
         f"LLM provider '{provider_name}' is not available. Please check your .env configuration."

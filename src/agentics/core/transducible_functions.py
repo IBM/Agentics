@@ -1,23 +1,19 @@
-import types
-from typing import Any, Callable, Optional
-
-from dotenv import load_dotenv
-from pydantic import BaseModel
-
-from agentics.core.agentics import AG
-from agentics.core.utils import (
-    import_last_function_from_code,
-    import_pydantic_from_code,
-)
-
-load_dotenv()
 import functools
 import inspect
 import logging
-from typing import Any, Callable, Tuple, get_args
+import types
+from typing import Any, Callable, Optional, Tuple, get_args
 
+from pydantic import BaseModel
+
+from agentics.core.agentics import AG
 from agentics.core.default_types import GeneratedAtype
-from agentics.core.utils import get_function_io_types, percent_non_empty_fields
+from agentics.core.utils import (
+    get_function_io_types,
+    import_last_function_from_code,
+    import_pydantic_from_code,
+    percent_non_empty_fields,
+)
 
 logging.getLogger("huggingface_hub.utils._http").setLevel(logging.ERROR)
 
@@ -70,6 +66,17 @@ class TransductionResult:
 
     def __repr__(self):
         return f"TransductionResult(value={self.value}, explanation={self.explanation})"
+
+    def model_dump_json(self, **kwargs):
+        """Delegate to the underlying value's model_dump_json if it's a BaseModel"""
+        if isinstance(self.value, BaseModel):
+            return self.value.model_dump_json(**kwargs)
+        # Fallback for non-BaseModel values
+        import json
+
+        return json.dumps(
+            {"value": str(self.value), "explanation": self.explanation}, **kwargs
+        )
 
 
 # ============================================================

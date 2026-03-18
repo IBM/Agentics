@@ -6,9 +6,10 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>AGstream Manager - Define Types & Transductions v2.0</title>
+    <title>AGstream Manager - Define Types & Transductions v2.2</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/monokai.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -145,6 +146,7 @@
             <button class="main-nav-btn" onclick="switchMainSection('topics')">📨 Manage Topics</button>
             <button class="main-nav-btn" onclick="switchMainSection('transductions')">⚡ Define Transductions</button>
             <button class="main-nav-btn" onclick="switchMainSection('listeners')">🎧 Manage Listeners</button>
+            <button class="main-nav-btn" onclick="switchMainSection('flinksql')">🔍 Flink SQL</button>
         </div>
 
         <!-- Define Types Section -->
@@ -152,8 +154,11 @@
             <div class="main-content">
                 <div class="sidebar">
                     <h2 style="margin-bottom: 15px; color: #1f2937;">Registered Types</h2>
-                    <button class="btn btn-primary" onclick="showCreateNewSchema()" style="width: 100%; margin-bottom: 15px;">
+                    <button class="btn btn-primary" onclick="showCreateNewSchema()" style="width: 100%; margin-bottom: 10px;">
                         ➕ Create New Type
+                    </button>
+                    <button class="btn" onclick="deleteAllTypes()" style="width: 100%; margin-bottom: 15px; background: #ef4444; color: white;">
+                        🗑️ Delete All Types
                     </button>
                     <div id="schemaTypeList" class="loading"><div class="spinner"></div><p>Loading types...</p></div>
                 </div>
@@ -209,7 +214,10 @@
             <div class="main-content">
                 <div class="sidebar">
                     <h2 style="margin-bottom: 15px; color: #1f2937;">Transductions</h2>
-                    <button class="btn btn-primary" onclick="showCreateNewFunction()" style="width: 100%; margin-bottom: 15px;">➕ Create Transduction</button>
+                    <button class="btn btn-primary" onclick="showCreateNewFunction()" style="width: 100%; margin-bottom: 10px;">➕ Create Transduction</button>
+                    <button class="btn" onclick="deleteAllTransductions()" style="width: 100%; margin-bottom: 15px; background: #ef4444; color: white;">
+                        🗑️ Delete All Transductions
+                    </button>
                     <div id="functionList" class="loading"><div class="spinner"></div><p>Loading transductions...</p></div>
                 </div>
                 <div class="content-area">
@@ -260,7 +268,10 @@
             <div class="main-content">
                 <div class="sidebar">
                     <h2 style="margin-bottom: 15px; color: #1f2937;">Listeners</h2>
-                    <button class="btn btn-primary" onclick="showStartNewListener()" style="width: 100%; margin-bottom: 15px;">➕ Start New Listener</button>
+                    <button class="btn btn-primary" onclick="showCreateNewListener()" style="width: 100%; margin-bottom: 10px;">➕ Create New Listener</button>
+                    <button class="btn" onclick="deleteAllListeners()" style="width: 100%; margin-bottom: 15px; background: #ef4444; color: white;">
+                        🗑️ Delete All Listeners
+                    </button>
                     <div id="listenerList" class="loading"><div class="spinner"></div><p>Loading listeners...</p></div>
                 </div>
                 <div class="content-area">
@@ -321,18 +332,30 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="listenerParallelism">Parallelism (PyFlink Threads) *</label>
-                            <input type="number" id="listenerParallelism" value="1" min="1" max="100" placeholder="1">
+                            <label for="listenerParallelism">Parallelism (Concurrent Workers)</label>
+                            <input type="number" id="listenerParallelism" value="4" min="1" max="100" placeholder="4">
                             <small style="color: #6b7280; display: block; margin-top: 5px;">
-                                <strong>1:</strong> Single-threaded (simple, good for development)<br>
-                                <strong>2-10:</strong> Multi-threaded (better performance, moderate workloads)<br>
-                                <strong>10+:</strong> High parallelism (production, high-throughput scenarios)<br>
-                                Higher values use more CPU and memory but process messages faster.
+                                🚀 Number of parallel workers for processing messages (1-100). Higher values increase throughput but consume more resources. Recommended: 4-8 for most workloads. Limited by Kafka topic partitions.
                             </small>
                         </div>
 
+                        <div class="form-group">
+                            <div style="padding: 12px; background: #e0f2fe; border-left: 4px solid #0284c7; border-radius: 6px;">
+                                <p style="margin: 0; color: #0c4a6e; font-weight: 600;">
+                                    ✅ Avro Format Enabled (Flink SQL Compatible)
+                                </p>
+                                <p style="margin: 8px 0 0 0; color: #075985; font-size: 0.9em; line-height: 1.5;">
+                                    All listeners use Avro serialization for full Flink SQL compatibility.
+                                    Messages are directly queryable with SELECT statements.
+                                </p>
+                            </div>
+                            <!-- Hidden input to always send use_avro=true -->
+                            <input type="hidden" id="listenerUseAvro" value="true">
+                        </div>
+
                         <div class="action-buttons">
-                            <button class="btn btn-success" onclick="createListener()">▶️ Create & Start Listener</button>
+                            <button class="btn btn-success" onclick="createListener(true)">▶️ Create & Start</button>
+                            <button class="btn btn-primary" onclick="createListener(false)">📝 Create (Stopped)</button>
                             <button class="btn btn-secondary" onclick="cancelListenerStart()">Cancel</button>
                         </div>
                     </div>
@@ -352,11 +375,14 @@
             <div class="main-content">
                 <div class="sidebar">
                     <h2 style="margin-bottom: 15px; color: #1f2937;">Kafka Topics</h2>
-                    <button class="btn btn-primary" onclick="showCreateNewTopic()" style="width: 100%; margin-bottom: 15px;">
+                    <button class="btn btn-primary" onclick="showCreateNewTopic()" style="width: 100%; margin-bottom: 10px;">
                         ➕ Create New Topic
                     </button>
-                    <button class="btn btn-secondary" onclick="refreshTopicList()" style="width: 100%; margin-bottom: 15px;">
+                    <button class="btn btn-secondary" onclick="refreshTopicList()" style="width: 100%; margin-bottom: 10px;">
                         🔄 Refresh Topics
+                    </button>
+                    <button class="btn" onclick="deleteAllTopics()" style="width: 100%; margin-bottom: 15px; background: #ef4444; color: white;">
+                        🗑️ Delete All Topics
                     </button>
                     <div id="topicList" class="loading"><div class="spinner"></div><p>Loading topics...</p></div>
                 </div>
@@ -381,7 +407,10 @@
                         </div>
                         <div class="form-group">
                             <label for="topicPartitions">Number of Partitions</label>
-                            <input type="number" id="topicPartitions" value="1" min="1">
+                            <input type="number" id="topicPartitions" value="4" min="1" max="100">
+                            <small style="color: #6b7280; display: block; margin-top: 5px;">
+                                🚀 Higher partition counts enable better parallelism. Recommended: 4-8 for most workloads.
+                            </small>
                         </div>
                         <div class="form-group">
                             <label for="topicReplication">Replication Factor</label>
@@ -393,62 +422,116 @@
                         </div>
                     </div>
                     <div id="topicViewScreen" style="display: none;">
-                        <div id="topicDetailsContainer"></div>
+                        <!-- Topic Details at the top (full width) -->
+                        <div id="topicDetailsContainer" style="margin-bottom: 20px;"></div>
 
-                        <!-- Send Message Section -->
-                        <h3 style="margin-top: 30px; margin-bottom: 15px;">📤 Send Message</h3>
-                        <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 30px;">
-                            <div class="form-group">
-                                <label for="sendMessageType">Type (auto-detected for this topic)</label>
-                                <select id="sendMessageType" onchange="updateMessageFields()">
-                                    <option value="">Loading...</option>
-                                </select>
+                        <!-- Two-column layout below topic details -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <!-- Left Column: Send Message & Generate Data -->
+                            <div>
+                                <!-- Send Message Section -->
+                                <h3 style="margin-bottom: 15px;">📤 Send Message</h3>
+                                <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 20px;">
+                                    <div class="form-group" style="margin-bottom: 10px;">
+                                        <label for="sendMessageType" style="font-size: 13px;">Type</label>
+                                        <select id="sendMessageType" onchange="updateMessageFields()" style="padding: 8px; font-size: 13px;">
+                                            <option value="">Loading...</option>
+                                        </select>
+                                    </div>
+                                    <div id="sendMessageFieldsContainer" style="display: none;">
+                                        <div id="sendMessageFields"></div>
+                                        <button class="btn btn-primary" onclick="sendMessage()" style="margin-top: 10px; width: 100%;">📨 Send Message</button>
+                                    </div>
+                                    <div id="sendMessageStatus" style="margin-top: 10px;"></div>
+                                </div>
+
+                                <!-- Generate Fake Data Section -->
+                                <h3 style="margin-bottom: 15px;">🎲 Generate Fake Data</h3>
+                                <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 20px;">
+                                    <p style="color: #6b7280; margin-bottom: 10px; font-size: 13px;">Generate and send N fake instances using AI</p>
+                                    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px; margin-bottom: 10px;">
+                                        <div class="form-group" style="margin-bottom: 0;">
+                                            <label for="generateCount" style="font-size: 13px;">Count</label>
+                                            <input type="number" id="generateCount" value="10" min="1" max="100" placeholder="1-100" style="padding: 8px; font-size: 13px;">
+                                        </div>
+                                        <div class="form-group" style="margin-bottom: 0;">
+                                            <label for="generateInstructions" style="font-size: 13px;">Instructions (optional)</label>
+                                            <input type="text" id="generateInstructions" placeholder="e.g., tech companies" style="padding: 8px; font-size: 13px;">
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-success" onclick="generateAndSendFakeData()" style="width: 100%;">🎲 Generate & Send</button>
+                                    <div id="generateStatus" style="margin-top: 10px;"></div>
+                                </div>
+
+                                <div class="action-buttons">
+                                    <button class="btn btn-danger" onclick="deleteTopic()">🗑️ Delete Topic</button>
+                                </div>
                             </div>
-                            <div id="sendMessageFieldsContainer" style="display: none;">
-                                <div id="sendMessageFields"></div>
-                                <button class="btn btn-primary" onclick="sendMessage()" style="margin-top: 15px;">📨 Send Message</button>
+
+                            <!-- Right Column: Recent Messages (Auto-updating) -->
+                            <div>
+                                <h3 style="margin-bottom: 15px;">📥 Recent Messages (Auto-updating)</h3>
+                                <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb;">
+                                    <div style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center;">
+                                        <div style="flex: 1;">
+                                            <label for="messageLimit" style="font-size: 12px; margin-bottom: 4px;">Show Last</label>
+                                            <input type="number" id="messageLimit" value="10" min="1" max="100" style="padding: 6px; font-size: 13px;">
+                                        </div>
+                                        <div style="flex: 1;">
+                                            <label for="messageSortOrder" style="font-size: 12px; margin-bottom: 4px;">Sort</label>
+                                            <select id="messageSortOrder" style="padding: 6px; font-size: 13px;">
+                                                <option value="newest">Newest First</option>
+                                                <option value="oldest">Oldest First</option>
+                                            </select>
+                                        </div>
+                                        <button class="btn btn-secondary" onclick="loadTopicMessages()" style="margin-top: 18px; padding: 6px 12px; font-size: 13px;">🔄 Refresh</button>
+                                    </div>
+                                    <div id="topicMessagesContainer" style="background: #f9fafb; padding: 12px; border-radius: 6px; max-height: 600px; overflow-y: auto; min-height: 200px;">
+                                        <p style="color: #6b7280; text-align: center;">Loading messages...</p>
+                                    </div>
+                                </div>
                             </div>
-                            <div id="sendMessageStatus" style="margin-top: 15px;"></div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-                        <h3 style="margin-top: 30px; margin-bottom: 15px;">📥 Messages</h3>
-                        <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 15px;">
-                            <div class="form-group" style="margin-bottom: 0;">
-                                <label for="messageLimit">Max Messages</label>
-                                <input type="number" id="messageLimit" value="50" min="1" max="1000">
-                            </div>
-                            <div class="form-group" style="margin-bottom: 0;">
-                                <label for="messageOffset">Mode</label>
-                                <select id="messageOffset">
-                                    <option value="earliest">All (from beginning)</option>
-                                    <option value="latest">New (wait for new)</option>
-                                    <option value="recent" selected>Recent N</option>
-                                </select>
-                            </div>
-                            <div class="form-group" style="margin-bottom: 0;">
-                                <label for="messageSortOrder">Sort Order</label>
-                                <select id="messageSortOrder">
-                                    <option value="newest">Newest First</option>
-                                    <option value="oldest">Oldest First</option>
-                                </select>
-                            </div>
-                            <div class="form-group" style="margin-bottom: 0;">
-                                <label for="messageTimeout">Timeout (sec)</label>
-                                <input type="number" id="messageTimeout" value="10" min="1" max="60">
-                            </div>
-                            <div class="form-group" style="margin-bottom: 0; grid-column: span 2;">
-                                <label for="messageSearch">Search Content</label>
-                                <input type="text" id="messageSearch" placeholder="Search in message content...">
+        <!-- Flink SQL Section -->
+        <div id="flinkSqlSection" class="main-section">
+            <div class="main-content" style="grid-template-columns: 1fr;">
+                <div class="content-area">
+                    <div id="flinkSqlAlertContainer"></div>
+                    <h2 style="margin-bottom: 20px;">🔍 Flink SQL Interactive Shell</h2>
+
+                    <div style="background: #f9fafb; padding: 20px; border-radius: 8px; border-left: 4px solid #667eea; margin-bottom: 20px;">
+                        <h3 style="margin-bottom: 10px; color: #1f2937;">About Flink SQL Shell</h3>
+                        <p style="color: #6b7280; margin-bottom: 10px;">
+                            Interactive SQL interface to query and analyze your Kafka topics in real-time.
+                            All registered types are automatically loaded as Flink tables.
+                        </p>
+                        <div id="flinkStatusContainer" style="margin-top: 15px;">
+                            <p style="color: #6b7280;">Checking Flink status...</p>
+                        </div>
+                    </div>
+
+                    <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h3 style="margin: 0; color: #1f2937;">Flink SQL Terminal</h3>
+                            <div style="display: flex; gap: 10px;">
+                                <button class="btn btn-success" onclick="startFlinkTerminal()" id="startTerminalBtn">▶️ Start Terminal</button>
+                                <button class="btn btn-danger" onclick="stopFlinkTerminal()" id="stopTerminalBtn" style="display: none;">⏹️ Stop Terminal</button>
+                                <button class="btn btn-secondary" onclick="clearFlinkTerminal()">🗑️ Clear</button>
                             </div>
                         </div>
-                        <button class="btn btn-primary" onclick="loadTopicMessages()" style="margin-bottom: 15px;">🔍 Load Messages</button>
-
-                        <div id="topicMessagesContainer" style="background: #f9fafb; padding: 15px; border-radius: 6px; max-height: 500px; overflow-y: auto;">
-                            <p style="color: #6b7280; text-align: center;">Click "Load Messages" to view topic messages</p>
-                        </div>
-
-                        <div class="action-buttons">
-                            <button class="btn btn-danger" onclick="deleteTopic()">🗑️ Delete Topic</button>
+                        <div id="flinkTerminal" style="height: 500px; background: #1e1e1e; border-radius: 6px; overflow: hidden;"></div>
+                        <div style="margin-top: 10px; padding: 10px; background: #f9fafb; border-radius: 6px;">
+                            <p style="font-size: 12px; color: #6b7280; margin-bottom: 5px;"><strong>Quick Commands:</strong></p>
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <button class="btn btn-secondary" style="font-size: 11px; padding: 5px 10px;" onclick="sendFlinkCommand('SHOW TABLES;')">SHOW TABLES</button>
+                                <button class="btn btn-secondary" style="font-size: 11px; padding: 5px 10px;" onclick="sendFlinkCommand('SHOW FUNCTIONS;')">SHOW FUNCTIONS</button>
+                                <button class="btn btn-secondary" style="font-size: 11px; padding: 5px 10px;" onclick="sendFlinkCommand('HELP;')">HELP</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -458,10 +541,14 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/python/python.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
     <script>
         const API_URL = 'http://localhost:5003/api';
         let currentSchema = null, isSchemaEditMode = false, schemaCodeEditor = null;
         let currentFunction = null, currentListener = null, isFunctionEditMode = false;
+        let flinkTerminal = null, flinkFitAddon = null, flinkWs = null;
+        let topicMessageRefreshInterval = null;
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
@@ -478,6 +565,16 @@
                 const listenersSection = document.getElementById('listenersSection');
                 if (listenersSection && listenersSection.classList.contains('active')) {
                     loadListeners();
+                }
+            }, 5000);
+
+            // Auto-refresh topic messages every 5 seconds when viewing a topic
+            setInterval(() => {
+                const topicsSection = document.getElementById('topicsSection');
+                const topicViewScreen = document.getElementById('topicViewScreen');
+                if (topicsSection && topicsSection.classList.contains('active') &&
+                    topicViewScreen && topicViewScreen.style.display !== 'none' && currentTopic) {
+                    loadTopicMessagesAuto();
                 }
             }, 5000);
         });
@@ -498,7 +595,165 @@
             } else if (section === 'topics') {
                 document.getElementById('topicsSection').classList.add('active');
                 loadTopics();
+            } else if (section === 'flinksql') {
+                document.getElementById('flinkSqlSection').classList.add('active');
+                checkFlinkStatus();
+                initFlinkTerminal();
             }
+        }
+
+        // Flink SQL Functions
+        async function checkFlinkStatus() {
+            const statusContainer = document.getElementById('flinkStatusContainer');
+            statusContainer.innerHTML = '<p style="color: #6b7280;">Checking Flink status...</p>';
+
+            try {
+                const response = await fetch(`${API_URL}/flink/status`);
+                const data = await response.json();
+
+                if (data.running) {
+                    statusContainer.innerHTML = `
+                        <div style="padding: 10px; background: #d1fae5; border-radius: 6px; border-left: 4px solid #10b981;">
+                            <p style="color: #065f46; margin: 0;"><strong>✓ Flink JobManager is running</strong> - Ready to use</p>
+                        </div>
+                    `;
+                } else {
+                    statusContainer.innerHTML = `
+                        <div style="padding: 10px; background: #fee2e2; border-radius: 6px; border-left: 4px solid #ef4444;">
+                            <p style="color: #991b1b; margin: 0;"><strong>✗ Flink not running</strong> - Start with: <code>docker compose -f docker-compose-karapace-flink.yml up -d</code></p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                statusContainer.innerHTML = `
+                    <div style="padding: 10px; background: #fee2e2; border-radius: 6px; border-left: 4px solid #ef4444;">
+                        <p style="color: #991b1b; margin: 0;"><strong>✗ Error:</strong> ${escapeHtml(error.message)}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function initFlinkTerminal() {
+            if (flinkTerminal) return;
+
+            flinkTerminal = new Terminal({
+                cursorBlink: true,
+                fontSize: 14,
+                fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+                theme: {
+                    background: '#1e1e1e',
+                    foreground: '#d4d4d4',
+                    cursor: '#ffffff',
+                    selection: '#264f78'
+                },
+                rows: 25,
+                convertEol: true,
+                disableStdin: false,
+                // Let the PTY handle all echoing - don't echo locally
+                localEcho: false
+            });
+
+            flinkFitAddon = new FitAddon.FitAddon();
+            flinkTerminal.loadAddon(flinkFitAddon);
+
+            const terminalElement = document.getElementById('flinkTerminal');
+            flinkTerminal.open(terminalElement);
+            flinkFitAddon.fit();
+
+            flinkTerminal.writeln('\x1b[1;36m╔════════════════════════════════════════════════════════════╗\x1b[0m');
+            flinkTerminal.writeln('\x1b[1;36m║          Flink SQL Interactive Shell (Web Terminal)       ║\x1b[0m');
+            flinkTerminal.writeln('\x1b[1;36m╚════════════════════════════════════════════════════════════╝\x1b[0m');
+            flinkTerminal.writeln('');
+            flinkTerminal.writeln('\x1b[33mClick "Start Terminal" to connect to Flink SQL...\x1b[0m');
+            flinkTerminal.writeln('');
+
+            window.addEventListener('resize', () => {
+                if (flinkFitAddon) flinkFitAddon.fit();
+            });
+        }
+
+        async function startFlinkTerminal() {
+            if (!flinkTerminal) initFlinkTerminal();
+
+            if (flinkWs && flinkWs.readyState === WebSocket.OPEN) {
+                flinkTerminal.writeln('\x1b[33mTerminal already connected!\x1b[0m');
+                return;
+            }
+
+            document.getElementById('startTerminalBtn').style.display = 'none';
+            document.getElementById('stopTerminalBtn').style.display = 'inline-block';
+
+            flinkTerminal.writeln('\x1b[36mConnecting to Flink SQL shell...\x1b[0m');
+
+            try {
+                const wsUrl = `ws://localhost:5003/api/flink/terminal`;
+                flinkWs = new WebSocket(wsUrl);
+
+                flinkWs.onopen = () => {
+                    flinkTerminal.writeln('\x1b[32m✓ Connected to Flink SQL!\x1b[0m');
+                    flinkTerminal.writeln('');
+
+                    // Set up input handler after connection
+                    flinkTerminal.onData(data => {
+                        if (flinkWs && flinkWs.readyState === WebSocket.OPEN) {
+                            flinkWs.send(JSON.stringify({ type: 'input', data: data }));
+                        }
+                    });
+                };
+
+                flinkWs.onmessage = (event) => {
+                    const msg = JSON.parse(event.data);
+                    if (msg.type === 'output') {
+                        flinkTerminal.write(msg.data);
+                    } else if (msg.type === 'error') {
+                        flinkTerminal.writeln(`\x1b[31m✗ Error: ${msg.data}\x1b[0m`);
+                    }
+                };
+
+                flinkWs.onerror = (error) => {
+                    flinkTerminal.writeln(`\x1b[31m✗ WebSocket error\x1b[0m`);
+                    stopFlinkTerminal();
+                };
+
+                flinkWs.onclose = () => {
+                    flinkTerminal.writeln('');
+                    flinkTerminal.writeln('\x1b[33m✗ Connection closed\x1b[0m');
+                    stopFlinkTerminal();
+                };
+
+            } catch (error) {
+                flinkTerminal.writeln(`\x1b[31m✗ Error: ${error.message}\x1b[0m`);
+                stopFlinkTerminal();
+            }
+        }
+
+        function stopFlinkTerminal() {
+            if (flinkWs) {
+                flinkWs.close();
+                flinkWs = null;
+            }
+            document.getElementById('startTerminalBtn').style.display = 'inline-block';
+            document.getElementById('stopTerminalBtn').style.display = 'none';
+        }
+
+        function clearFlinkTerminal() {
+            if (flinkTerminal) {
+                flinkTerminal.clear();
+            }
+        }
+
+        function sendFlinkCommand(command) {
+            if (!flinkWs || flinkWs.readyState !== WebSocket.OPEN) {
+                if (flinkTerminal) {
+                    flinkTerminal.writeln('\x1b[33m✗ Not connected. Click "Start Terminal" first.\x1b[0m');
+                }
+                return;
+            }
+
+            if (flinkTerminal) {
+                flinkTerminal.writeln(command);
+            }
+            flinkWs.send(JSON.stringify({ type: 'input', data: command + '\n' }));
         }
 
         // Schema Manager Functions
@@ -626,7 +881,7 @@
             showStartNewListener(currentFunction.name);
         }
 
-        function showStartNewListener(preselectedFunction = null) {
+        function showCreateNewListener(preselectedFunction = null) {
             document.getElementById('listenerWelcomeScreen').style.display = 'none';
             document.getElementById('listenerViewScreen').style.display = 'none';
             document.getElementById('listenerStartScreen').style.display = 'block';
@@ -1012,16 +1267,14 @@
                 if (listeners.length > 0) {
                     console.log(`Rendering ${listeners.length} listener(s)`);
                     listenerList.innerHTML = listeners.map(listener => {
-                        const parallelism = listener.parallelism || 1;
-                        const parallelismIcon = parallelism === 1 ? '🔹' : '⚡';
-                        const parallelismLabel = parallelism === 1 ? 'Single-threaded' : `${parallelism} threads`;
+                        const formatLabel = listener.use_avro ? 'Avro (Flink SQL)' : 'JSON';
                         return `
                         <div class="listener-card ${listener.status === 'stopped' ? 'stopped' : ''}">
                             <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
                                 <div style="flex: 1; min-width: 0;" onclick="viewListener('${listener.listener_id}')">
                                     <div class="item-name">${listener.listener_name || listener.listener_id}</div>
                                     <div class="item-meta">${listener.function_name}: ${listener.input_topic} → ${listener.output_topic}</div>
-                                    <div class="item-meta" style="margin-top: 4px;">${parallelismIcon} ${parallelismLabel}</div>
+                                    <div class="item-meta" style="margin-top: 4px;">📝 Format: ${formatLabel}</div>
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 8px;">
                                     <span class="status-badge status-${listener.status}">${listener.status}</span>
@@ -1150,9 +1403,7 @@
 
                 const statusBadge = listener ? `<span class="status-badge status-${listener.status}">${listener.status}</span>` : '';
 
-                const parallelism = listener?.parallelism || 1;
-                const parallelismIcon = parallelism === 1 ? '🔹' : '⚡';
-                const parallelismLabel = parallelism === 1 ? 'Single-threaded' : `${parallelism} threads (PyFlink)`;
+                const formatLabel = listener?.use_avro ? 'Avro (Flink SQL Compatible)' : 'JSON';
 
                 document.getElementById('listenerDetailsContainer').innerHTML = `
                     <h2>Listener: ${currentListener} ${statusBadge}</h2>
@@ -1161,12 +1412,30 @@
                         <p><strong>Function:</strong> ${listener.function_name}</p>
                         <p><strong>Input Topic:</strong> ${listener.input_topic}</p>
                         <p><strong>Output Topic:</strong> ${listener.output_topic}</p>
-                        <p><strong>Parallelism:</strong> ${parallelismIcon} ${parallelismLabel}</p>
+                        <p><strong>Format:</strong> ${formatLabel}</p>
                         <p><strong>Lookback Messages:</strong> ${listener.lookback_messages}</p>
                         <p><strong>Created:</strong> ${listener.created_at}</p>
                     </div>
                     ` : ''}
-                    <div class="details-box"><h3>Logs</h3><div class="logs-container">${logsData.logs.join('') || 'No logs yet...'}</div></div>
+
+                    <div class="tab-buttons">
+                        <button class="tab-btn active" onclick="switchListenerTab('logs')">Logs</button>
+                        <button class="tab-btn" onclick="switchListenerTab('messages')">Messages</button>
+                    </div>
+
+                    <div id="logsTab" class="tab-content active">
+                        <div class="details-box">
+                            <h3>Logs</h3>
+                            <div class="logs-container">${logsData.logs.join('') || 'No logs yet...'}</div>
+                        </div>
+                    </div>
+
+                    <div id="messagesTab" class="tab-content">
+                        <div class="details-box">
+                            <h3>Input/Output Messages</h3>
+                            <div id="messagesContainer">Loading messages...</div>
+                        </div>
+                    </div>
                 `;
 
                 // Show/hide buttons based on status
@@ -1180,9 +1449,186 @@
                     stopBtn.style.display = 'none';
                     restartBtn.style.display = 'inline-block';
                 }
+
+                // Load messages for the messages tab
+                await refreshListenerMessages();
             } catch (error) {
                 showTransductionAlert('Error loading logs: ' + error.message, 'error');
             }
+        }
+
+        function switchListenerTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+
+            if (tabName === 'logs') {
+                document.getElementById('logsTab').classList.add('active');
+            } else if (tabName === 'messages') {
+                document.getElementById('messagesTab').classList.add('active');
+            }
+        }
+
+        let messageDisplayLimit = 10;
+        let messageSortOrder = 'newest'; // 'newest' or 'oldest'
+        let allMessagePairs = [];
+
+        async function refreshListenerMessages() {
+            if (!currentListener) return;
+            try {
+                const response = await fetch(`${API_URL}/transductions/listeners/${currentListener}/messages`);
+                const data = await response.json();
+
+                const messagesContainer = document.getElementById('messagesContainer');
+                if (!messagesContainer) return;
+
+                // Check for errors in response
+                if (data.error) {
+                    messagesContainer.innerHTML = `
+                        <div style="color: #ef4444; padding: 16px; background: #fee; border-radius: 8px;">
+                            <strong>Error:</strong> ${data.error}
+                            ${data.traceback ? `<pre style="margin-top: 8px; font-size: 0.85em; overflow-x: auto;">${data.traceback}</pre>` : ''}
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Ensure message_pairs exists and is an array
+                allMessagePairs = data.message_pairs || [];
+
+                if (allMessagePairs.length === 0) {
+                    messagesContainer.innerHTML = `
+                        <p style="color: #666;">No messages yet...</p>
+                        <p style="color: #999; font-size: 0.9em;">
+                            Total input messages: ${data.total_input || 0}<br>
+                            Total output messages: ${data.total_output || 0}
+                        </p>
+                    `;
+                    return;
+                }
+
+                renderMessages();
+
+            } catch (error) {
+                const messagesContainer = document.getElementById('messagesContainer');
+                if (messagesContainer) {
+                    messagesContainer.innerHTML = `
+                        <div style="color: #ef4444; padding: 16px; background: #fee; border-radius: 8px;">
+                            <strong>Error loading messages:</strong> ${error.message}
+                        </div>
+                    `;
+                }
+                console.error('Error in refreshListenerMessages:', error);
+            }
+        }
+
+        function renderMessages() {
+            const messagesContainer = document.getElementById('messagesContainer');
+            if (!messagesContainer) return;
+
+            // Sort messages
+            let sortedPairs = [...allMessagePairs];
+            if (messageSortOrder === 'newest') {
+                sortedPairs.sort((a, b) => b.input.timestamp - a.input.timestamp);
+            } else {
+                sortedPairs.sort((a, b) => a.input.timestamp - b.input.timestamp);
+            }
+
+            // Limit messages
+            const displayPairs = sortedPairs.slice(0, messageDisplayLimit);
+
+            let html = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding: 12px; background: white; border-radius: 8px; border: 1px solid #e5e7eb;">
+                    <div style="display: flex; gap: 16px; align-items: center;">
+                        <div>
+                            <label style="font-size: 0.9em; color: #666; margin-right: 8px;">Sort:</label>
+                            <select id="messageSortSelect" onchange="changeSortOrder(this.value)" style="padding: 6px 12px; border: 1px solid #e5e7eb; border-radius: 4px; font-size: 0.9em;">
+                                <option value="newest" ${messageSortOrder === 'newest' ? 'selected' : ''}>Newest First</option>
+                                <option value="oldest" ${messageSortOrder === 'oldest' ? 'selected' : ''}>Oldest First</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.9em; color: #666; margin-right: 8px;">Show:</label>
+                            <select id="messageLimitSelect" onchange="changeDisplayLimit(this.value)" style="padding: 6px 12px; border: 1px solid #e5e7eb; border-radius: 4px; font-size: 0.9em;">
+                                <option value="10" ${messageDisplayLimit === 10 ? 'selected' : ''}>10 messages</option>
+                                <option value="25" ${messageDisplayLimit === 25 ? 'selected' : ''}>25 messages</option>
+                                <option value="50" ${messageDisplayLimit === 50 ? 'selected' : ''}>50 messages</option>
+                                <option value="100" ${messageDisplayLimit === 100 ? 'selected' : ''}>100 messages</option>
+                                <option value="all" ${messageDisplayLimit === 'all' ? 'selected' : ''}>All messages</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="font-size: 0.9em; color: #666;">
+                        Showing ${displayPairs.length} of ${allMessagePairs.length} messages
+                    </div>
+                </div>
+                <div style="max-height: 600px; overflow-y: auto;">
+            `;
+
+            displayPairs.forEach((pair, index) => {
+                    const inputTime = new Date(pair.input.timestamp).toLocaleString();
+                    const outputTime = pair.output ? new Date(pair.output.timestamp).toLocaleString() : 'N/A';
+
+                    // Extract only the first state from the 'states' array, or show full value if no states
+                    let inputDisplay = pair.input.value;
+                    if (typeof pair.input.value === 'object' && Array.isArray(pair.input.value.states) && pair.input.value.states.length > 0) {
+                        inputDisplay = pair.input.value.states[0];
+                    }
+
+                    let outputDisplay = pair.output?.value;
+                    if (pair.output && typeof pair.output.value === 'object' && Array.isArray(pair.output.value.states) && pair.output.value.states.length > 0) {
+                        outputDisplay = pair.output.value.states[0];
+                    }
+
+                    html += `
+                        <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin-bottom: 12px; background: #f9fafb; width: 100%;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <strong style="color: #667eea; font-size: 0.95em;">Message #${index + 1}</strong>
+                                <span style="color: #666; font-size: 0.85em;">Key: ${pair.key.substring(0, 8)}...</span>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%;">
+                                <div style="background: white; padding: 10px; border-radius: 6px; border-left: 3px solid #667eea; min-width: 0;">
+                                    <div style="font-weight: bold; color: #667eea; margin-bottom: 6px; font-size: 0.9em;">📥 Input</div>
+                                    <div style="font-size: 0.8em; color: #666; margin-bottom: 6px;">
+                                        ${inputTime.split(',')[1] || inputTime}
+                                    </div>
+                                    <pre style="background: #f3f4f6; padding: 6px; border-radius: 4px; overflow-x: auto; font-size: 0.8em; margin: 0; color: #000; max-height: 100px; overflow-y: auto; word-wrap: break-word; white-space: pre-wrap;">${typeof inputDisplay === 'string' ? inputDisplay : JSON.stringify(inputDisplay, null, 2)}</pre>
+                                </div>
+
+                                <div style="background: white; padding: 10px; border-radius: 6px; border-left: 3px solid #10b981; min-width: 0;">
+                                    <div style="font-weight: bold; color: #10b981; margin-bottom: 6px; font-size: 0.9em;">📤 Output</div>
+                                    ${pair.output ? `
+                                        <div style="font-size: 0.8em; color: #666; margin-bottom: 6px;">
+                                            ${outputTime.split(',')[1] || outputTime}
+                                        </div>
+                                        <pre style="background: #f3f4f6; padding: 6px; border-radius: 4px; overflow-x: auto; font-size: 0.8em; margin: 0; color: #000; max-height: 100px; overflow-y: auto; word-wrap: break-word; white-space: pre-wrap;">${typeof outputDisplay === 'string' ? outputDisplay : JSON.stringify(outputDisplay, null, 2)}</pre>
+                                    ` : '<p style="color: #666; font-style: italic; font-size: 0.85em;">No output yet</p>'}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+            });
+
+            html += '</div>';
+            messagesContainer.innerHTML = html;
+        }
+
+        function changeSortOrder(order) {
+            messageSortOrder = order;
+            renderMessages();
+        }
+
+        function changeDisplayLimit(limit) {
+            messageDisplayLimit = limit === 'all' ? allMessagePairs.length : parseInt(limit);
+            renderMessages();
         }
 
         function editCurrentFunction() {
@@ -1254,13 +1700,14 @@
             document.querySelectorAll('.item').forEach(item => item.classList.remove('active'));
         }
 
-        async function createListener() {
+        async function createListener(autoStart = true) {
             const listenerName = document.getElementById('listenerName').value.trim();
             const functionName = document.getElementById('listenerFunction').value;
             const inputTopic = document.getElementById('listenerInputTopic').value.trim();
             const outputTopic = document.getElementById('listenerOutputTopic').value.trim();
             const lookback = parseInt(document.getElementById('listenerLookback').value) || 0;
-            const parallelism = parseInt(document.getElementById('listenerParallelism').value) || 1;
+            const parallelism = parseInt(document.getElementById('listenerParallelism').value) || 4;
+            const useAvro = true;  // Always use Avro format
 
             if (!listenerName) {
                 showListenerAlert('Please enter a listener name', 'error');
@@ -1288,9 +1735,14 @@
             }
 
             try {
-                console.log('Creating listener:', { listenerName, functionName, inputTopic, outputTopic, lookback, parallelism });
+                console.log('Creating listener:', { listenerName, functionName, inputTopic, outputTopic, lookback, parallelism, useAvro, autoStart });
 
-                const response = await fetch(`${API_URL}/transductions/listeners`, {
+                // Choose endpoint based on autoStart parameter
+                const endpoint = autoStart ?
+                    `${API_URL}/transductions/listeners` :
+                    `${API_URL}/transductions/listeners/create`;
+
+                const response = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1299,7 +1751,8 @@
                         input_topic: inputTopic,
                         output_topic: outputTopic,
                         lookback: lookback,
-                        parallelism: parallelism
+                        parallelism: parallelism,
+                        use_avro: useAvro
                     })
                 });
 
@@ -1307,7 +1760,10 @@
                 console.log('Create listener response:', data);
 
                 if (data.success) {
-                    showListenerAlert(`✓ Listener created and started: ${data.listener_id}`, 'success');
+                    const statusMsg = autoStart ?
+                        `✓ Listener created and started: ${data.listener_id}` :
+                        `✓ Listener created (stopped): ${data.listener_id}. Use 'Start' button to begin processing.`;
+                    showListenerAlert(statusMsg, 'success');
                     clearListenerForm();
                     await loadListeners();
                     // Hide the start screen and show welcome screen
@@ -1328,6 +1784,8 @@
             document.getElementById('listenerInputTopic').value = '';
             document.getElementById('listenerOutputTopic').value = '';
             document.getElementById('listenerLookback').value = '0';
+            document.getElementById('listenerParallelism').value = '4';
+            // Avro is now always enabled (no checkbox)
         }
 
         async function stopListener() {
@@ -1469,6 +1927,178 @@
             }
         }
 
+        async function deleteAllTopics() {
+            const topicsData = await fetch(`${API_URL}/topics`).then(r => r.json()).then(data => data.topics || []);
+
+            if (topicsData.length === 0) {
+                showTopicAlert('No topics to delete', 'info');
+                return;
+            }
+
+            if (!confirm(`⚠️ WARNING: This will delete ALL ${topicsData.length} topics!\n\nThis action cannot be undone. Are you absolutely sure?`)) {
+                return;
+            }
+
+            let deleted = 0;
+            let failed = 0;
+
+            for (const topicData of topicsData) {
+                const topicName = topicData.name || topicData;
+                try {
+                    const response = await fetch(`${API_URL}/topics/${encodeURIComponent(topicName)}`, {
+                        method: 'DELETE'
+                    });
+                    if (response.ok) {
+                        deleted++;
+                        console.log(`✓ Deleted topic: ${topicName}`);
+                    } else {
+                        failed++;
+                        console.error(`✗ Failed to delete topic ${topicName}: ${response.status}`);
+                    }
+                } catch (error) {
+                    failed++;
+                    console.error(`✗ Error deleting topic ${topicName}:`, error);
+                }
+            }
+
+            showTopicAlert(`✓ Deleted ${deleted} topics${failed > 0 ? `, ${failed} failed` : ''}`, deleted > 0 ? 'success' : 'error');
+            currentTopic = null;
+            document.getElementById('topicViewScreen').style.display = 'none';
+            document.getElementById('topicWelcomeScreen').style.display = 'block';
+            await loadTopics();
+        }
+
+        async function deleteAllTypes() {
+            const typesData = await fetch(`${API_URL}/schemas/types`).then(r => r.json()).then(data => data.types || []);
+
+            if (typesData.length === 0) {
+                showSchemaAlert('No types to delete', 'info');
+                return;
+            }
+
+            if (!confirm(`⚠️ WARNING: This will delete ALL ${typesData.length} types!\n\nThis action cannot be undone. Are you absolutely sure?`)) {
+                return;
+            }
+
+            let deleted = 0;
+            let failed = 0;
+            const errors = [];
+
+            for (const typeObj of typesData) {
+                const typeName = typeObj.name || typeObj;
+                try {
+                    const response = await fetch(`${API_URL}/schemas/types/${encodeURIComponent(typeName)}`, {
+                        method: 'DELETE'
+                    });
+                    if (response.ok) {
+                        deleted++;
+                        console.log(`✓ Deleted type: ${typeName}`);
+                    } else {
+                        failed++;
+                        const errorData = await response.json().catch(() => ({}));
+                        console.error(`✗ Failed to delete ${typeName}: ${response.status}`, errorData);
+                        errors.push(`${typeName}: ${errorData.error || response.statusText}`);
+                    }
+                } catch (error) {
+                    failed++;
+                    console.error(`✗ Error deleting ${typeName}:`, error);
+                    errors.push(`${typeName}: ${error.message}`);
+                }
+            }
+
+            let message = `✓ Deleted ${deleted} types${failed > 0 ? `, ${failed} failed` : ''}`;
+            if (errors.length > 0 && errors.length <= 5) {
+                message += '\n\nErrors:\n' + errors.join('\n');
+            }
+            showSchemaAlert(message, deleted > 0 ? 'success' : 'error');
+            currentSchemaType = null;
+            document.getElementById('schemaEditorScreen').style.display = 'none';
+            document.getElementById('schemaWelcomeScreen').style.display = 'block';
+            await loadSchemaTypes();
+        }
+
+        async function deleteAllTransductions() {
+            const functionsData = await fetch(`${API_URL}/transductions/functions`).then(r => r.json()).then(data => data.functions || []);
+
+            if (functionsData.length === 0) {
+                showTransductionAlert('No transductions to delete', 'info');
+                return;
+            }
+
+            if (!confirm(`⚠️ WARNING: This will delete ALL ${functionsData.length} transductions!\n\nThis action cannot be undone. Are you absolutely sure?`)) {
+                return;
+            }
+
+            let deleted = 0;
+            let failed = 0;
+
+            for (const funcData of functionsData) {
+                const funcName = funcData.name || funcData;
+                try {
+                    const response = await fetch(`${API_URL}/transductions/functions/${encodeURIComponent(funcName)}`, {
+                        method: 'DELETE'
+                    });
+                    if (response.ok) {
+                        deleted++;
+                        console.log(`✓ Deleted transduction: ${funcName}`);
+                    } else {
+                        failed++;
+                        console.error(`✗ Failed to delete transduction ${funcName}: ${response.status}`);
+                    }
+                } catch (error) {
+                    failed++;
+                    console.error(`✗ Error deleting transduction ${funcName}:`, error);
+                }
+            }
+
+            showTransductionAlert(`✓ Deleted ${deleted} transductions${failed > 0 ? `, ${failed} failed` : ''}`, deleted > 0 ? 'success' : 'error');
+            currentFunction = null;
+            document.getElementById('functionEditorScreen').style.display = 'none';
+            document.getElementById('transductionWelcomeScreen').style.display = 'block';
+            await loadTransductions();
+        }
+
+        async function deleteAllListeners() {
+            const listenersData = await fetch(`${API_URL}/transductions/listeners`).then(r => r.json()).then(data => data.listeners || []);
+
+            if (listenersData.length === 0) {
+                showListenerAlert('No listeners to delete', 'info');
+                return;
+            }
+
+            if (!confirm(`⚠️ WARNING: This will PERMANENTLY DELETE ALL ${listenersData.length} listeners!\n\nThis action cannot be undone. Are you absolutely sure?`)) {
+                return;
+            }
+
+            let deleted = 0;
+            let failed = 0;
+
+            for (const listenerData of listenersData) {
+                const listenerId = listenerData.listener_id || listenerData.id || listenerData;
+                try {
+                    const response = await fetch(`${API_URL}/transductions/listeners/${encodeURIComponent(listenerId)}?permanent=true`, {
+                        method: 'DELETE'
+                    });
+                    if (response.ok) {
+                        deleted++;
+                        console.log(`✓ Deleted listener: ${listenerId}`);
+                    } else {
+                        failed++;
+                        console.error(`✗ Failed to delete listener ${listenerId}: ${response.status}`);
+                    }
+                } catch (error) {
+                    failed++;
+                    console.error(`✗ Error deleting listener ${listenerId}:`, error);
+                }
+            }
+
+            showListenerAlert(`✓ Deleted ${deleted} listeners${failed > 0 ? `, ${failed} failed` : ''}`, deleted > 0 ? 'success' : 'error');
+            currentListener = null;
+            document.getElementById('listenerViewScreen').style.display = 'none';
+            document.getElementById('listenerWelcomeScreen').style.display = 'block';
+            await loadListeners();
+        }
+
         async function restartListener() {
             if (!currentListener) return;
             if (!confirm('Are you sure you want to restart this listener?')) return;
@@ -1577,12 +2207,21 @@
                                 <div class="item-name">${escapeHtml(topic)}</div>
                                 <div class="item-meta">Type: ${escapeHtml(associatedType)}</div>
                             </div>
-                            <button class="btn-icon-delete" onclick="event.stopPropagation(); deleteKafkaTopic('${escapeHtml(topic)}')" title="Delete topic">🗑️</button>
+                            <button class="btn-icon-delete" data-topic="${escapeHtml(topic)}" title="Delete topic">🗑️</button>
                         </div>
                     `;
                 }).join('');
 
                 document.getElementById('topicList').innerHTML = listHtml || '<p style="padding: 20px; text-align: center; color: #6b7280;">No topics found</p>';
+
+                // Add event listeners to delete buttons
+                document.querySelectorAll('.btn-icon-delete').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const topicName = button.getAttribute('data-topic');
+                        deleteKafkaTopic(topicName);
+                    });
+                });
             } catch (error) {
                 console.error('Error loading topics:', error);
                 document.getElementById('topicList').innerHTML = '<p style="padding: 20px; color: #ef4444;">Error loading topics</p>';
@@ -1600,7 +2239,7 @@
             document.getElementById('topicViewScreen').style.display = 'none';
             document.getElementById('topicCreateScreen').style.display = 'block';
             document.getElementById('topicName').value = '';
-            document.getElementById('topicPartitions').value = '1';
+            document.getElementById('topicPartitions').value = '4';
             document.getElementById('topicReplication').value = '1';
 
             // Load available types for dropdown
@@ -1669,6 +2308,10 @@
             document.getElementById('topicCreateScreen').style.display = 'none';
             document.getElementById('topicViewScreen').style.display = 'block';
 
+            // Clear the messages container immediately to show we're loading a new topic
+            const container = document.getElementById('topicMessagesContainer');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading messages...</p></div>';
+
             try {
                 // Rebuild the topic-to-type map to ensure it's up to date
                 await buildTopicToTypeMap();
@@ -1692,6 +2335,9 @@
 
                 // Load and auto-select the type for this topic
                 await loadSendMessageTypes();
+
+                // Load messages immediately when viewing a topic
+                await loadTopicMessages();
             } catch (error) {
                 console.error('Error loading topic details:', error);
                 document.getElementById('topicDetailsContainer').innerHTML = '<p style="color: #ef4444;">Error loading topic details</p>';
@@ -1730,35 +2376,38 @@
         async function loadTopicMessages() {
             if (!currentTopic) return;
 
-            const limit = parseInt(document.getElementById('messageLimit').value) || 50;
-            const mode = document.getElementById('messageOffset').value;
+            const limit = parseInt(document.getElementById('messageLimit').value) || 10;
             const sortOrder = document.getElementById('messageSortOrder').value;
-            const timeout = parseInt(document.getElementById('messageTimeout').value) || 10;
-            const search = document.getElementById('messageSearch').value.trim();
 
             const container = document.getElementById('topicMessagesContainer');
             container.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading messages...</p></div>';
 
+            await loadTopicMessagesInternal(limit, sortOrder, container, false);
+        }
+
+        // Silent auto-refresh function (doesn't show loading spinner)
+        async function loadTopicMessagesAuto() {
+            if (!currentTopic) return;
+
+            const limit = parseInt(document.getElementById('messageLimit').value) || 10;
+            const sortOrder = document.getElementById('messageSortOrder').value;
+            const container = document.getElementById('topicMessagesContainer');
+
+            await loadTopicMessagesInternal(limit, sortOrder, container, true);
+        }
+
+        // Internal function to load messages
+        async function loadTopicMessagesInternal(limit, sortOrder, container, silent) {
             try {
-                // For "recent" mode, we need to get the latest N messages
-                // This requires seeking to end - N and reading forward
-                let offsetMode = mode;
-                let seekToEnd = false;
-
-                if (mode === 'recent') {
-                    // Use earliest to read from beginning, but we'll get all and take last N
-                    offsetMode = 'earliest';
-                }
-
+                // Always use "recent" mode to get the last N messages
                 const response = await fetch(`${API_URL}/kafka/collect-messages`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
                         topic: currentTopic,
-                        max_messages: mode === 'recent' ? 10000 : limit, // Get more for recent mode
-                        offset_mode: offsetMode,
-                        content_search: search || undefined,
-                        timeout: timeout
+                        max_messages: 10000, // Get more messages to ensure we get the last N
+                        offset_mode: 'earliest',
+                        timeout: 5
                     })
                 });
 
@@ -1767,8 +2416,8 @@
                 if (response.ok && data.success) {
                     let messages = data.messages || [];
 
-                    // For "recent" mode, take only the last N messages
-                    if (mode === 'recent' && messages.length > limit) {
+                    // Take only the last N messages
+                    if (messages.length > limit) {
                         messages = messages.slice(-limit);
                     }
 
@@ -1784,7 +2433,8 @@
                         return;
                     }
 
-                    let html = `<div style="margin-bottom: 10px; font-weight: 600; color: #1f2937;">Found ${messages.length} message(s)${mode === 'recent' ? ' (most recent)' : ''} - Sorted: ${sortOrder === 'newest' ? 'Newest First' : 'Oldest First'}</div>`;
+                    const now = new Date();
+                    let html = `<div style="margin-bottom: 10px; font-weight: 600; color: #1f2937; font-size: 12px;">Last ${messages.length} message(s) - Updated: ${now.toLocaleTimeString()}</div>`;
 
                     messages.forEach((msg, idx) => {
                         // Parse value if it's JSON string
@@ -1811,24 +2461,24 @@
                             stateFieldsHtml = Object.entries(stateContent).map(([key, value]) => {
                                 const displayValue = typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value);
                                 return `
-                                    <div style="margin-bottom: 8px;">
-                                        <div style="font-weight: 600; color: #4f46e5; margin-bottom: 4px;">${escapeHtml(key)}:</div>
-                                        <div style="padding-left: 12px; color: #1f2937;">${escapeHtml(displayValue)}</div>
+                                    <div style="margin-bottom: 6px;">
+                                        <div style="font-weight: 600; color: #4f46e5; margin-bottom: 2px; font-size: 12px;">${escapeHtml(key)}:</div>
+                                        <div style="padding-left: 10px; color: #1f2937; font-size: 12px;">${escapeHtml(displayValue)}</div>
                                     </div>
                                 `;
                             }).join('');
                         } else {
-                            stateFieldsHtml = `<div style="color: #1f2937;">${escapeHtml(String(stateContent))}</div>`;
+                            stateFieldsHtml = `<div style="color: #1f2937; font-size: 12px;">${escapeHtml(String(stateContent))}</div>`;
                         }
 
                         html += `
-                            <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 12px; border-left: 4px solid #667eea; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb; font-size: 12px; color: #6b7280;">
-                                    <span><strong>Partition:</strong> ${msg.partition} | <strong>Offset:</strong> ${msg.offset}</span>
-                                    <span><strong>Time:</strong> ${escapeHtml(timestamp)}</span>
+                            <div style="background: white; padding: 12px; border-radius: 6px; margin-bottom: 10px; border-left: 3px solid #667eea; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid #e5e7eb; font-size: 11px; color: #6b7280;">
+                                    <span><strong>P:</strong> ${msg.partition} | <strong>O:</strong> ${msg.offset}</span>
+                                    <span>${escapeHtml(timestamp)}</span>
                                 </div>
-                                ${msg.key ? `<div style="margin-bottom: 12px; padding: 8px; background: #f3f4f6; border-radius: 4px; font-size: 13px;"><strong>Key:</strong> ${escapeHtml(msg.key)}</div>` : ''}
-                                <div style="font-size: 14px;">
+                                ${msg.key ? `<div style="margin-bottom: 8px; padding: 6px; background: #f3f4f6; border-radius: 4px; font-size: 11px;"><strong>Key:</strong> ${escapeHtml(msg.key)}</div>` : ''}
+                                <div style="font-size: 12px;">
                                     ${stateFieldsHtml}
                                 </div>
                             </div>
@@ -1837,11 +2487,15 @@
 
                     container.innerHTML = html;
                 } else {
-                    container.innerHTML = `<p style="color: #ef4444; padding: 20px;">Error: ${data.error || 'Failed to load messages'}</p>`;
+                    if (!silent) {
+                        container.innerHTML = `<p style="color: #ef4444; padding: 20px;">Error: ${data.error || 'Failed to load messages'}</p>`;
+                    }
                 }
             } catch (error) {
                 console.error('Error loading messages:', error);
-                container.innerHTML = `<p style="color: #ef4444; padding: 20px;">Error loading messages: ${error.message}</p>`;
+                if (!silent) {
+                    container.innerHTML = `<p style="color: #ef4444; padding: 20px;">Error loading messages: ${error.message}</p>`;
+                }
             }
         }
 
@@ -2019,15 +2673,68 @@
                             fieldElement.value = '';
                         }
                     }
-                    // Optionally reload messages
+                    // Reload messages immediately
+                    await loadTopicMessages();
+                    // Clear status after delay
                     setTimeout(() => {
                         statusDiv.innerHTML = '';
-                    }, 5000);
+                    }, 3000);
                 } else {
                     statusDiv.innerHTML = `<p style="color: #ef4444;">✗ Error: ${escapeHtml(data.error || 'Failed to send message')}</p>`;
                 }
             } catch (error) {
                 console.error('Error sending message:', error);
+                statusDiv.innerHTML = `<p style="color: #ef4444;">✗ Error: ${escapeHtml(error.message)}</p>`;
+            }
+        }
+
+        async function generateAndSendFakeData() {
+            const typeName = document.getElementById('sendMessageType').value;
+            const nInstances = parseInt(document.getElementById('generateCount').value);
+            const instructions = document.getElementById('generateInstructions').value.trim();
+            const statusDiv = document.getElementById('generateStatus');
+
+            if (!typeName || !currentTopic) {
+                statusDiv.innerHTML = '<p style="color: #ef4444;">Please select a type first</p>';
+                return;
+            }
+
+            if (!nInstances || nInstances < 1 || nInstances > 100) {
+                statusDiv.innerHTML = '<p style="color: #ef4444;">Number of instances must be between 1 and 100</p>';
+                return;
+            }
+
+            try {
+                statusDiv.innerHTML = '<p style="color: #667eea;">🎲 Generating fake data using AI... This may take a moment...</p>';
+
+                const response = await fetch(`${API_URL}/kafka/generate_and_produce`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        topic: currentTopic,
+                        type_name: typeName,
+                        n_instances: nInstances,
+                        instructions: instructions || null
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    statusDiv.innerHTML = `<p style="color: #10b981;">✓ Successfully generated and sent ${data.count} fake instances to topic '${escapeHtml(currentTopic)}'!</p>`;
+                    // Clear the instructions field
+                    document.getElementById('generateInstructions').value = '';
+                    // Reload messages immediately
+                    await loadTopicMessages();
+                    // Clear status after delay
+                    setTimeout(() => {
+                        statusDiv.innerHTML = '';
+                    }, 3000);
+                } else {
+                    statusDiv.innerHTML = `<p style="color: #ef4444;">✗ Error: ${escapeHtml(data.error || 'Failed to generate and send messages')}</p>`;
+                }
+            } catch (error) {
+                console.error('Error generating fake data:', error);
                 statusDiv.innerHTML = `<p style="color: #ef4444;">✗ Error: ${escapeHtml(error.message)}</p>`;
             }
         }

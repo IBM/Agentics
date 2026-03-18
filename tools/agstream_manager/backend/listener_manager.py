@@ -40,8 +40,20 @@ def make_listener_manager(registry_client: RegistryClient) -> ListenerManager:
         output_topic: str,
         source_atype_name: Optional[str] = None,
         target_atype_name: Optional[str] = None,
+        use_avro: bool = False,
         **_kw,
     ):
+        if use_avro:
+            # Use AGStreamSQL for Avro/Flink SQL compatibility
+            # Note: AGStreamSQL requires a single topic and atype
+            # For listeners, we'll use the output topic and target type
+            if target_atype_name:
+                return registry_client.make_agstream_sql(
+                    topic=output_topic,
+                    atype_name=target_atype_name,
+                )
+            # Fallback to regular AGStream if no target type specified
+
         return registry_client.make_agstream(
             input_topic=input_topic,
             output_topic=output_topic,

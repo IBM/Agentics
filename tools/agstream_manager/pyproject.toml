@@ -1,0 +1,22 @@
+[project]
+name = "agstream-manager"
+version = "0.1.0"
+description = "AGStream Manager - Web UI for managing Kafka streams, schemas, and Flink SQL"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "agentics-py",
+    "flask>=3.0.0",
+    "flask-cors>=5.0.0",
+    "flask-sock>=0.7.0",
+    "streamlit>=1.45.1",
+    "psutil>=6.1.0",
+    "requests>=2.32.0",
+    "pydantic>=2.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+package = false

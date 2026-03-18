@@ -34,7 +34,6 @@ from pydantic import BaseModel, Field, ValidationError, create_model
 
 from agentics.core.async_executor import (
     PydanticTransducerCrewAI,
-    PydanticTransducerMellea,
     PydanticTransducerVLLM,
     aMap,
 )
@@ -598,13 +597,11 @@ class AG(BaseModel, Generic[T]):
 
         # Perform Transduction
         transducer_class = (
-            PydanticTransducerCrewAI
-            if isinstance(self.llm, BaseLLM)
-            else PydanticTransducerMellea if type(self.llm) == str else None
+            PydanticTransducerCrewAI if isinstance(self.llm, BaseLLM) else None
         )
         if not transducer_class:
             raise TypeError(
-                "Provided llm object is neither a crew ai llm nor a string (for mellea's llm)"
+                "Provided llm object must be a crew ai llm (BaseLLM instance)"
             )
         try:
             transduced_type = (
@@ -771,33 +768,33 @@ class AG(BaseModel, Generic[T]):
     #         await self.apply(func, first_n=first_n)
     #     return self
 
-    # async def self_transduction(
-    #     self,
-    #     source_fields: List[str] | None = None,
-    #     target_fields: List[str] | None = None,
-    #     instructions: str = None,
-    # ):
-    #     target = self.clone()
-    #     # if not source_fields and not target_fields:
-    #     #     return await self.amap(self._single_self_transduction)
+    async def self_transduction(
+        self,
+        source_fields: List[str] | None = None,
+        target_fields: List[str] | None = None,
+        instructions: str = None,
+    ):
+        target = self.clone()
+        # if not source_fields and not target_fields:
+        #     return await self.amap(self._single_self_transduction)
 
-    #     if not source_fields:
-    #         self.transduce_fields = get_active_fields(self[0])
-    #     else:
-    #         self.transduce_fields = source_fields
+        if not source_fields:
+            self.transduce_fields = get_active_fields(self[0])
+        else:
+            self.transduce_fields = source_fields
 
-    #     target.instructions = instructions or target.instructions
-    #     if not target_fields:
-    #         target.transduce_fields = list(
-    #             {x["name"] for x in get_pydantic_fields(self.atype)}
-    #             - get_active_fields(self[0])
-    #         )
-    #     else:
-    #         target.transduce_fields = target_fields
+        target.instructions = instructions or target.instructions
+        if not target_fields:
+            target.transduce_fields = list(
+                {x["name"] for x in get_pydantic_fields(self.atype)}
+                - get_active_fields(self[0])
+            )
+        else:
+            target.transduce_fields = target_fields
 
-    #     output_process = target << self
-    #     output = await output_process
-    #     return output
+        output_process = target << self
+        output = await output_process
+        return output
 
     ##################################
     ##### Import Functionalities #####
@@ -1220,7 +1217,8 @@ class AG(BaseModel, Generic[T]):
         Returns:
             AG: a new Agentics object with states of type `new_atype`.
         """
-        new_ag = deepcopy(self)
+        # Use the existing clone method which does shallow copy to avoid pickle issues
+        new_ag = self.clone()
         new_ag.atype = new_atype
         new_ag.states = []
 

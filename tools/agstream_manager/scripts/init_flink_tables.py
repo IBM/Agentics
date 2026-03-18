@@ -1,0 +1,109 @@
+#!/usr/bin/env python3
+"""
+Generate Flink SQL CREATE TABLE statements for AGStream Manager channels
+This script queries AGStream Manager and generates SQL statements that can be
+executed in the Flink SQL client to register all Kafka topics as tables.
+"""
+
+import sys
+from typing import Dict, List
+
+import requests
+
+
+def get_all_channels(manager_url: str = "http://localhost:5003") -> List[Dict]:
+    """Fetch all registered channels from AGStream Manager."""
+    try:
+        response = requests.get(f"{manager_url}/api/channels", timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        return data.get("channels", [])
+    except Exception as e:
+        print(f"✗ Error fetching channels: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+def python_type_to_flink_type(py_type: str) -> str:
+    """Convert Python type string to Flink SQL type."""
+    type_mapping = {
+        "str": "STRING",
+        "int": "BIGINT",
+        "float": "DOUBLE",
+        "bool": "BOOLEAN",
+        "list": "ARRAY<STRING>",
+        "dict": "MAP<STRING, STRING>",
+        "datetime": "TIMESTAMP(3)",
+    }
+    return type_mapping.get(py_type, "STRING")
+
+
+def generate_create_table_sql(
+    channel: Dict,
+    kafka_server: str = "kafka:29092",
+    schema_registry_url: str = "http://karapace-schema-registry:8081",
+) -> str:
+    """Generate CREATE TABLE statement for a channel."""
+    topic = channel["topic"]
+    schema = channel["schema"]
+
+    # Build field definitions
+    fields = []
+    for field_name, field_type in schema.items():
+        flink_type = python_type_to_flink_type(field_type)
+        fields.append(f"  `{field_name}` {flink_type}")
+
+    fields_str = ",\n".join(fields)
+
+    # Generate CREATE TABLE statement
+    sql = f"""CREATE TABLE IF NOT EXISTS `{topic}` (
+{fields_str}
+) WITH (
+  'connector' = 'kafka',
+  'topic' = '{topic}',
+  'properties.bootstrap.servers' = '{kafka_server}',
+  'scan.startup.mode' = 'earliest-offset',
+  'format' = 'avro-confluent',
+  'avro-confluent.url' = '{schema_registry_url}'
+);"""
+    return sql
+
+
+def main():
+    """Generate SQL statements for all channels."""
+    manager_url = "http://localhost:5003"
+    kafka_server = "kafka:29092"
+    schema_registry_url = "http://karapace-schema-registry:8081"
+
+    print("-- Flink SQL Table Initialization Script", file=sys.stderr)
+    print("-- Generated from AGStream Manager channels", file=sys.stderr)
+    print("", file=sys.stderr)
+
+    channels = get_all_channels(manager_url)
+
+    if not channels:
+        print("✗ No channels found in AGStream Manager", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"-- Found {len(channels)} channels", file=sys.stderr)
+    print("", file=sys.stderr)
+
+    # Generate SQL statements
+    print("-- Copy and paste these statements into Flink SQL Client")
+    print(
+        "-- Or pipe this script output: ./init_flink_tables.py | docker exec -i flink-jobmanager ./bin/sql-client.sh"
+    )
+    print("")
+
+    for channel in channels:
+        sql = generate_create_table_sql(channel, kafka_server, schema_registry_url)
+        print(sql)
+        print("")
+
+    print("-- All tables created! You can now query them:", file=sys.stderr)
+    print("-- Example: SELECT * FROM Questions LIMIT 10;", file=sys.stderr)
+
+
+if __name__ == "__main__":
+    main()
+
+# Made with Bob

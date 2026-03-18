@@ -1,79 +1,56 @@
 #!/bin/bash
-# Flink SQL Client Wrapper for AGStream Manager
-# Uses the Flink SQL client from the Docker container
+# Flink SQL Client Launcher
+# This script mimics what the AGStream Manager UI does to start the Flink SQL shell
 
-set -e
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
-# Colors for output
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
-echo "========================================================================"
-echo "🚀 Flink SQL Client for AGStream Manager"
-echo "========================================================================"
-echo "Kafka Bootstrap: kafka:9092 (inside container)"
-echo "Schema Registry: http://schema-registry:8081 (inside container)"
-echo "========================================================================"
+echo "🚀 Starting Flink SQL Client..."
 echo ""
 
-# Check if Flink container is running
-if ! docker ps | grep -q flink-jobmanager; then
-    echo -e "${RED}✗ Flink JobManager container is not running!${NC}"
-    echo "Start services with: ./manage_services.sh start"
-    exit 1
+# Step 1: Generate SQL initialization file
+echo "📝 Generating table initialization SQL..."
+INIT_SCRIPT="$SCRIPT_DIR/init_flink_tables.py"
+SQL_FILE="/tmp/flink_init_tables.sql"
+
+if [ -f "$INIT_SCRIPT" ]; then
+    # Try to run the init script
+    cd "$PROJECT_ROOT"
+    if python3 "$INIT_SCRIPT" 2>/dev/null > "$SQL_FILE"; then
+        echo "✅ Generated initialization SQL"
+        echo "   Tables will be auto-created from AGStream Manager channels"
+    else
+        echo "⚠️  Warning: Could not generate init SQL (AGStream Manager may not be running)"
+        echo "   Starting SQL client without pre-loaded tables..."
+        echo "-- No initialization SQL" > "$SQL_FILE"
+    fi
+else
+    echo "⚠️  Warning: init_flink_tables.py not found"
+    echo "   Starting SQL client without pre-loaded tables..."
+    echo "-- No initialization SQL" > "$SQL_FILE"
 fi
 
-echo -e "${GREEN}✓ Flink JobManager is running${NC}"
+# Step 2: Copy SQL file to Flink container or create empty one
+echo ""
+echo "📋 Copying initialization SQL to Flink container..."
+if docker cp "$SQL_FILE" flink-jobmanager:/tmp/init_tables.sql 2>/dev/null; then
+    echo "✅ Initialization SQL copied successfully"
+else
+    echo "⚠️  Creating empty init file in container"
+    docker exec flink-jobmanager bash -c "echo '-- No initialization SQL' > /tmp/init_tables.sql"
+fi
+
+# Step 3: Start Flink SQL Client
+echo ""
+echo "🎯 Starting Flink SQL Client..."
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-echo -e "${BLUE}📋 Quick Start Guide:${NC}"
-echo ""
-echo "⚠️  IMPORTANT: Execute ONE statement at a time, press Enter after each semicolon"
-echo ""
-echo "1. Create a table for a Kafka topic (copy line by line):"
-echo "   CREATE TABLE Q ("
-echo "     question STRING,"
-echo "     \`timestamp\` BIGINT"
-echo "   ) WITH ("
-echo "     'connector' = 'kafka',"
-echo "     'topic' = 'Q',"
-echo "     'properties.bootstrap.servers' = 'kafka:9092',"
-echo "     'properties.group.id' = 'flink-sql-client',"
-echo "     'scan.startup.mode' = 'earliest-offset',"
-echo "     'format' = 'json'"
-echo "   );"
-echo "   [Press Enter after the semicolon]"
-echo ""
-echo "2. Then query the topic (separate statement):"
-echo "   SELECT * FROM Q LIMIT 10;"
-echo "   [Press Enter]"
-echo ""
-echo "3. For Avro topics with Schema Registry, use:"
-echo "     'format' = 'avro-confluent',"
-echo "     'avro-confluent.url' = 'http://schema-registry:8081'"
-echo ""
-echo "4. Reserved keywords (use backticks):"
-echo "   timestamp, time, date, order, value, key, etc."
-echo "   Example: \`timestamp\` BIGINT, \`order\` STRING"
-echo ""
-echo "5. Other useful commands:"
-echo "   SHOW TABLES;     -- List all tables"
-echo "   HELP;            -- Show help"
-echo "   Press Ctrl+D     -- Exit the client"
-echo ""
-echo "========================================================================"
-echo ""
-
-echo -e "${YELLOW}📝 Starting Flink SQL Client...${NC}"
-echo ""
-
-# Run SQL client in the container
-docker exec -it flink-jobmanager /opt/flink/bin/sql-client.sh
+# Start SQL client with init file
+docker exec -it flink-jobmanager bash -c "cd /opt/flink && ./bin/sql-client.sh -i /tmp/init_tables.sql"
 
 echo ""
-echo -e "${GREEN}👋 Flink SQL Client closed${NC}"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "👋 Flink SQL Client closed"
 
 # Made with Bob

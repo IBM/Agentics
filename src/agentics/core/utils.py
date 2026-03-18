@@ -26,7 +26,6 @@ from typing import (
 
 import httpx
 import pandas as pd
-from dotenv import load_dotenv
 from loguru import logger
 from numerize.numerize import numerize
 from openai import APIStatusError, AsyncOpenAI
@@ -46,8 +45,6 @@ from rich.progress import (
 )
 
 A = TypeVar("A", bound=BaseModel)
-
-load_dotenv()
 
 
 def scan_directory_recursively(path: str) -> List[str]:

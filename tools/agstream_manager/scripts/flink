@@ -1,0 +1,69 @@
+#!/bin/bash
+# Flink SQL with auto-loaded tables using -i initialization flag
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Colors
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
+echo -e "${BLUE}  Flink SQL - Auto-Loading Tables${NC}"
+echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
+echo ""
+
+# Check Flink
+if ! docker ps | grep -q flink-jobmanager; then
+    echo -e "${RED}✗${NC} Flink JobManager not running"
+    echo "  Start with: docker compose -f docker-compose-karapace-flink.yml up -d"
+    exit 1
+fi
+
+echo -e "${GREEN}✓${NC} Flink JobManager is running"
+echo ""
+
+# Generate SQL file
+echo -e "${BLUE}Generating table definitions...${NC}"
+SQL_FILE="/tmp/flink_init_tables.sql"
+
+"$SCRIPT_DIR/init_flink_tables.py" 2>/dev/null | grep -v "^--" | grep -v "^$" > "$SQL_FILE"
+
+if [ ! -s "$SQL_FILE" ]; then
+    echo -e "${RED}✗${NC} Could not generate SQL"
+    exit 1
+fi
+
+TABLE_COUNT=$(grep -c "CREATE TABLE" "$SQL_FILE" || echo "0")
+echo -e "${GREEN}✓${NC} Generated $TABLE_COUNT table definitions"
+echo ""
+
+# Copy SQL file to container
+echo -e "${BLUE}Copying SQL file to Flink container...${NC}"
+docker cp "$SQL_FILE" flink-jobmanager:/tmp/init_tables.sql
+
+if [ $? -ne 0 ]; then
+    echo -e "${RED}✗${NC} Failed to copy file to container"
+    exit 1
+fi
+
+echo -e "${GREEN}✓${NC} SQL file ready in container"
+echo ""
+
+echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
+echo -e "${GREEN}✓ Loading tables and opening Flink SQL Client...${NC}"
+echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
+echo ""
+echo -e "${BLUE}Tables will be auto-loaded!${NC}"
+echo ""
+sleep 2
+
+# Enter container and run SQL client with auto-loaded tables
+# This approach ensures proper TTY for keyboard input
+docker exec -it flink-jobmanager bash -c "cd /opt/flink && ./bin/sql-client.sh -i /tmp/init_tables.sql"
+
+# Cleanup
+rm -f "$SQL_FILE"

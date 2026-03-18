@@ -43,6 +43,16 @@ start_services() {
 
     cd "$PROJECT_ROOT"
 
+    # Check Python dependencies
+    print_info "Checking Python dependencies..."
+    if ! python3 -c "import flask_sock" 2>/dev/null; then
+        print_warn "Installing missing dependency: flask-sock"
+        pip install flask-sock || {
+            print_error "Failed to install flask-sock"
+            exit 1
+        }
+    fi
+
     # Start Docker services (Kafka + Karapace)
     print_info "Starting Kafka and Karapace Schema Registry..."
     docker compose -f "$COMPOSE_FILE" up -d
@@ -52,8 +62,11 @@ start_services() {
 
     cd "$AGSTREAM_DIR/backend"
 
-    # Kill existing AGStream Manager process
+    # Kill ALL existing AGStream Manager processes (not just port 5003)
+    print_info "Stopping any existing AGStream Manager processes..."
+    pkill -f "agstream_manager_service.py" 2>/dev/null || true
     kill_port 5003
+    sleep 2
 
     # Start AGStream Manager (unified service)
     print_info "Starting AGStream Manager (Port 5003)..."
@@ -85,12 +98,17 @@ start_services() {
 stop_services() {
     print_header "Stopping AGStream Manager"
 
-    # Stop AGStream Manager
+    # Stop ALL AGStream Manager processes
+    print_info "Stopping all AGStream Manager processes..."
+    pkill -f "agstream_manager_service.py" 2>/dev/null || true
+
+    # Clean up PID file
     if [ -f /tmp/agstream_manager.pid ]; then
-        print_info "Stopping AGStream Manager..."
-        kill $(cat /tmp/agstream_manager.pid) 2>/dev/null || true
         rm /tmp/agstream_manager.pid
     fi
+
+    # Also kill any process on port 5003
+    kill_port 5003
 
     # Stop Docker services
     cd "$PROJECT_ROOT"

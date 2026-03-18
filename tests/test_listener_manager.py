@@ -13,7 +13,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from agentics.core.listener_manager import ListenerInfo, ListenerManager
+from agentics.core.streaming.listener_manager import ListenerInfo, ListenerManager
 
 # ---------------------------------------------------------------------------
 # Mock AGStream for testing
