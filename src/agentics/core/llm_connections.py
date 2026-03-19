@@ -125,12 +125,17 @@ def get_available_llms() -> dict[str, LLM | AsyncOpenAI]:
 
     # Gemini LLM
     if os.getenv("GEMINI_API_KEY"):
-        gemini_llm = LLM(
-            model=os.getenv("GEMINI_MODEL_ID", "gemini/gemini-2.0-flash"),
-            temperature=0.7,
-        )
-        llms["gemini"] = gemini_llm
-        _llms_env_vars["gemini"] = ["GEMINI_API_KEY", "GEMINI_MODEL_ID"]
+        try:
+            gemini_llm = LLM(
+                model=os.getenv("GEMINI_MODEL_ID", "gemini/gemini-2.0-flash"),
+                temperature=0.7,
+            )
+            llms["gemini"] = gemini_llm
+            _llms_env_vars["gemini"] = ["GEMINI_API_KEY", "GEMINI_MODEL_ID"]
+        except ImportError as e:
+            # Gemini provider not available (missing crewai[google-genai])
+            logger.debug(f"Gemini LLM not available: {e}")
+            pass
 
     # Ollama LLM
     if _check_env("OLLAMA_MODEL_ID"):

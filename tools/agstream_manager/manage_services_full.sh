@@ -187,6 +187,63 @@ start_services() {
     print_info "Waiting for services to initialize (20 seconds)..."
     sleep 20
 
+    # Auto-install Agentics and UDFs if enabled
+    AUTO_INSTALL_ON_STARTUP="${AUTO_INSTALL_ON_STARTUP:-true}"
+
+    if [ "$AUTO_INSTALL_ON_STARTUP" = "true" ]; then
+        print_info "Auto-installing components to Flink containers..."
+
+        # Copy .env file to Flink containers for API keys
+        if [ -f "$PROJECT_DIR/../../.env" ]; then
+            print_info "Copying .env file to Flink containers..."
+            docker cp "$PROJECT_DIR/../../.env" flink-taskmanager:/opt/flink/.env 2>/dev/null || print_warn "Could not copy .env to TaskManager"
+            docker cp "$PROJECT_DIR/../../.env" flink-jobmanager:/opt/flink/.env 2>/dev/null || print_warn "Could not copy .env to JobManager"
+        else
+            print_warn ".env file not found at $PROJECT_DIR/../../.env"
+            print_warn "UDFs may not have access to API keys"
+        fi
+
+        # Check if Agentics is already installed (skip heavy reinstall)
+        print_info "Checking if Agentics is already installed..."
+        AGENTICS_INSTALLED=$(docker exec flink-taskmanager bash -c "python3 -c 'import agentics; print(\"installed\")' 2>/dev/null" || echo "not_installed")
+
+        if [ "$AGENTICS_INSTALLED" = "installed" ]; then
+            print_info "✓ Agentics already installed, skipping heavy reinstall"
+            print_info "  (Use 'cd scripts && ./install_agentics_in_flink.sh --force' to force reinstall)"
+        else
+            # Install Agentics
+            if [ -f "$PROJECT_DIR/scripts/install_agentics_in_flink.sh" ]; then
+                print_info "Installing Agentics package..."
+                bash "$PROJECT_DIR/scripts/install_agentics_in_flink.sh" || {
+                    print_warn "Failed to install Agentics automatically"
+                    print_warn "You can install manually with: cd scripts && ./install_agentics_in_flink.sh"
+                }
+            else
+                print_warn "Agentics install script not found, skipping"
+            fi
+        fi
+
+        # Always install UDFs (they're lightweight)
+        if [ -f "$PROJECT_DIR/scripts/install_udfs.sh" ]; then
+            print_info "Installing UDFs..."
+            bash "$PROJECT_DIR/scripts/install_udfs.sh" || {
+                print_warn "Failed to install UDFs automatically"
+                print_warn "You can install manually with: cd scripts && ./install_udfs.sh"
+            }
+        else
+            print_warn "UDF install script not found, skipping"
+        fi
+
+        print_info "Auto-installation complete!"
+        echo ""
+    else
+        print_info "Auto-installation disabled (set AUTO_INSTALL_ON_STARTUP=true in .env to enable)"
+        print_info "To install manually:"
+        print_info "  - Agentics: cd scripts && ./install_agentics_in_flink.sh"
+        print_info "  - UDFs: cd scripts && ./install_udfs.sh"
+        echo ""
+    fi
+
     print_info "Starting Function Persistence Service..."
     # Run persistence service locally
     nohup $PYTHON_CMD backend/persistent_function_store.py > /tmp/persistence.log 2>&1 &
@@ -284,9 +341,33 @@ clean_restart() {
     start_services
 }
 
+# Function to clean Flink resources
+clean_flink_resources() {
+    print_info "Cleaning Flink resources..."
+
+    # Check if Flink containers are running
+    if docker ps --format '{{.Names}}' | grep -q "flink-jobmanager"; then
+        print_info "Cancelling all running Flink jobs..."
+        # Get all running job IDs and cancel them
+        docker exec flink-jobmanager bash -c "flink list 2>/dev/null | grep -oP '[0-9a-f]{32}' | xargs -I {} flink cancel {} 2>/dev/null" || true
+
+        print_info "Clearing Flink checkpoints and savepoints..."
+        docker exec flink-jobmanager bash -c "rm -rf /tmp/flink-checkpoints/* /tmp/flink-savepoints/* 2>/dev/null" || true
+        docker exec flink-taskmanager bash -c "rm -rf /tmp/flink-checkpoints/* /tmp/flink-savepoints/* 2>/dev/null" || true
+
+        print_info "Flink resources cleaned"
+    else
+        print_warn "Flink containers not running, skipping resource cleanup"
+    fi
+}
+
 # Function to restart services
 restart_services() {
     print_info "Restarting all services..."
+
+    # Clean Flink resources before stopping
+    clean_flink_resources
+
     stop_services
     sleep 2
     start_services
@@ -501,6 +582,9 @@ case "$1" in
     clean-restart)
         clean_restart
         ;;
+    clean-flink)
+        clean_flink_resources
+        ;;
     status)
         show_status
         ;;
@@ -548,13 +632,14 @@ case "$1" in
     *)
         echo "Agentics Services Manager (Full Stack with Flink)"
         echo ""
-        echo "Usage: $0 {start|stop|restart|clean-restart|status|logs|flink-sql|start-persistence|stop-persistence|persistence-logs|start-agstream-manager|stop-agstream-manager|agstream-manager-logs|start-streamlit|stop-streamlit|streamlit-logs|dashboard}"
+        echo "Usage: $0 {start|stop|restart|clean-restart|clean-flink|status|logs|flink-sql|start-persistence|stop-persistence|persistence-logs|start-agstream-manager|stop-agstream-manager|agstream-manager-logs|start-streamlit|stop-streamlit|streamlit-logs|dashboard}"
         echo ""
         echo "Commands:"
         echo "  start                          - Start all services (Kafka, Flink, UIs, Managers, Persistence) and open dashboard"
         echo "  stop                           - Stop all services"
-        echo "  restart                        - Restart all services"
+        echo "  restart                        - Restart all services (with Flink resource cleanup)"
         echo "  clean-restart                  - Stop services, clear Kafka data, and restart (fixes topic deletion issues)"
+        echo "  clean-flink                    - Clean Flink resources (cancel jobs, clear checkpoints)"
         echo "  status                         - Show Docker service status"
         echo "  logs [service]                 - Show Docker logs (optionally for specific service)"
         echo "  flink-sql                      - Start Flink SQL Client (interactive)"
@@ -572,7 +657,9 @@ case "$1" in
         echo "Examples:"
         echo "  $0 start                         # Start everything (with Flink)"
         echo "  $0 flink-sql                     # Open Flink SQL Client"
+        echo "  $0 restart                       # Restart with Flink cleanup"
         echo "  $0 clean-restart                 # Clean restart (clears Kafka data)"
+        echo "  $0 clean-flink                   # Clean Flink resources only"
         echo "  $0 logs kafka                    # View Kafka logs"
         echo "  $0 logs flink-jobmanager         # View Flink JobManager logs"
         echo "  $0 start-persistence             # Start just persistence service"

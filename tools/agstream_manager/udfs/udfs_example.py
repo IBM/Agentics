@@ -4,8 +4,113 @@ Example Python UDFs for Flink SQL
 Place this file in a location accessible to the Flink container
 """
 
+import asyncio
+import os
+import sys
+from typing import Optional
+
+# Load environment variables from .env file
+from dotenv import load_dotenv
+from pydantic import BaseModel, Field
 from pyflink.table import DataTypes
 from pyflink.table.udf import udf
+
+from agentics import AG
+
+# Try to load from common locations
+for env_path in ["/opt/flink/.env", "../agentics911/agentics/.env", ".env"]:
+    if os.path.exists(env_path):
+        load_dotenv(env_path)
+        print(f"Loaded .env from {env_path}", file=sys.stderr)
+        break
+
+
+class Sentiment(BaseModel):
+    sentiment_label: Optional[str] = Field(
+        None,
+        description="Sentiment Label for the input text (Positive Negative or Neutral)",
+    )
+
+
+# Global AG instance (reused across calls for efficiency)
+_ag_sentiment = None
+
+
+def get_ag_sentiment():
+    """Get or create AG instance - uses default LLM config from environment"""
+    global _ag_sentiment
+    if _ag_sentiment is None:
+        # Check if we have API keys
+        api_key = os.getenv("OPENAI_API_KEY") or os.getenv("ANTHROPIC_API_KEY")
+        if not api_key:
+            raise ValueError(
+                "No API key found in environment. Please set OPENAI_API_KEY or ANTHROPIC_API_KEY"
+            )
+
+        # AG will use environment variables for LLM configuration
+        _ag_sentiment = AG(atype=Sentiment)
+        print(f"Created AG instance with API key: {api_key[:10]}...", file=sys.stderr)
+    return _ag_sentiment
+
+
+def run_async(coro):
+    """Run async coroutine in sync context, handling existing event loops"""
+    try:
+        # Try to create a new event loop for this thread
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            return loop.run_until_complete(coro)
+        finally:
+            loop.close()
+    except Exception as e:
+        print(f"Error running async: {e}", file=sys.stderr)
+        raise
+
+
+@udf(result_type=DataTypes.STRING())
+def generate_sentiment(text):
+    """Generate sentiment label using Agentics AG"""
+    if text is None:
+        return None
+
+    try:
+        # Get AG instance with LLM config
+        target = get_ag_sentiment()
+
+        # Execute async operation synchronously
+        ag_result = run_async(target << text)
+
+        # Debug: Log what we received
+        print(f"DEBUG: Received AG result type: {type(ag_result)}", file=sys.stderr)
+
+        # Extract states from AG object
+        if hasattr(ag_result, "states") and ag_result.states:
+            states = ag_result.states
+            print(f"DEBUG: Found states: {states}", file=sys.stderr)
+
+            if isinstance(states, list) and len(states) > 0:
+                result = states[0]
+                print(f"DEBUG: First state: {result}", file=sys.stderr)
+
+                if hasattr(result, "sentiment_label") and result.sentiment_label:
+                    label = result.sentiment_label
+                    print(f"DEBUG: sentiment_label value: {label}", file=sys.stderr)
+                    return label.upper()  # Normalize to uppercase
+
+        # If we got here, couldn't extract sentiment
+        print(
+            f"DEBUG: Could not extract sentiment_label, returning NEUTRAL",
+            file=sys.stderr,
+        )
+        return "NEUTRAL"  # Default fallback
+    except Exception as e:
+        # Log error with details
+        import traceback
+
+        error_msg = f"Error in generate_sentiment: {e}\n{traceback.format_exc()}"
+        print(error_msg, file=sys.stderr)
+        return f"ERROR: {str(e)[:50]}"
 
 
 @udf(result_type=DataTypes.STRING())
@@ -114,6 +219,20 @@ def calculate_percentage(value, total):
     if value is None or total is None or total == 0:
         return 0.0
     return (float(value) / float(total)) * 100.0
+
+
+@udf(result_type=DataTypes.STRING())
+def sentiment_label(score):
+    """Convert numeric sentiment score to label"""
+    if score is None:
+        return "NEUTRAL"
+    score_val = float(score)
+    if score_val > 0.6:
+        return "POSITIVE"
+    elif score_val < 0.4:
+        return "NEGATIVE"
+    else:
+        return "NEUTRAL"
 
 
 @udf(result_type=DataTypes.STRING())

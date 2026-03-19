@@ -13,7 +13,7 @@ from typing import Optional
 # Add agentics to path
 sys.path.insert(0, "/opt/flink")
 
-# Load environment variables from .env file BEFORE importing agentics
+# Load environment variables from .env file
 from dotenv import load_dotenv
 
 # Try to load from common locations
@@ -27,12 +27,6 @@ else:
         "⚠ Warning: No .env file found. LLM API keys may not be available.",
         file=sys.stderr,
     )
-
-# Disable Gemini if not available to avoid import errors
-# This is a workaround for missing crewai[google-genai] dependency
-if not os.getenv("GEMINI_API_KEY"):
-    # Set a dummy value to prevent Gemini initialization
-    os.environ["GEMINI_API_KEY"] = ""
 
 from typing import Union
 
@@ -53,29 +47,13 @@ def run_async_operation(coro):
     Run an async operation synchronously.
 
     Handles event loop creation for Flink's synchronous UDF context.
-    Properly cleans up async resources to avoid warnings.
     """
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            result = loop.run_until_complete(coro)
-            # Clean up any pending async tasks
-            pending = asyncio.all_tasks(loop)
-            for task in pending:
-                task.cancel()
-            # Run loop one more time to handle cancellations
-            if pending:
-                loop.run_until_complete(
-                    asyncio.gather(*pending, return_exceptions=True)
-                )
-            return result
+            return loop.run_until_complete(coro)
         finally:
-            try:
-                # Shutdown async generators
-                loop.run_until_complete(loop.shutdown_asyncgens())
-            except:
-                pass
             loop.close()
     except Exception as e:
         print(f"✗ Error running async operation: {e}", file=sys.stderr)
@@ -174,7 +152,7 @@ def run_transduction(
     # Create transduction function using << operator
     transduce_fn = output_model << input_model
 
-    # Run async function in sync context with proper cleanup
+    # Run async function in sync context
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
@@ -187,15 +165,50 @@ def run_transduction(
         # Convert to dict
         return result.model_dump() if hasattr(result, "model_dump") else result
     finally:
-        try:
-            # Clean up async resources
-            loop.run_until_complete(loop.shutdown_asyncgens())
-        except:
-            pass
         loop.close()
 
 
-# NOTE: run_row_transduction removed - analyze_row_sentiment uses AG directly which is more efficient
+def run_row_transduction(
+    row_json: str, input_model: type[BaseModel], output_model: type[BaseModel]
+) -> dict:
+    """
+    Run an agentics transduction on an entire row object synchronously.
+
+    Args:
+        row_json: JSON string representing the entire row
+        input_model: Pydantic model for input (should match row structure)
+        output_model: Pydantic model for output
+
+    Returns:
+        Dictionary representation of the output model
+    """
+    # Lazy import to avoid loading heavy dependencies at module level
+    from agentics.core import transducible_functions
+
+    # Parse JSON and create input instance
+    try:
+        row_data = json.loads(row_json) if isinstance(row_json, str) else row_json
+        input_obj = input_model(**row_data)
+    except Exception as e:
+        raise ValueError(f"Failed to parse row data: {str(e)}")
+
+    # Create transduction function using << operator
+    transduce_fn = output_model << input_model
+
+    # Run async function in sync context
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        result = loop.run_until_complete(transduce_fn(input_obj))
+
+        # Handle TransductionResult - extract the value
+        if hasattr(result, "value"):
+            result = result.value
+
+        # Convert to dict
+        return result.model_dump() if hasattr(result, "model_dump") else result
+    finally:
+        loop.close()
 
 
 # ============================================================================

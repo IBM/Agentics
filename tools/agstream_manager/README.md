@@ -61,6 +61,29 @@ The unified orchestration service that provides:
 3. **Python 3.8+** with Agentics library
 4. **Environment variables** (see `.env_sample`)
 
+### Configuration
+
+Copy the example configuration file and customize as needed:
+
+```bash
+cp .env.example .env
+```
+
+Key configuration options in `.env`:
+
+- **`UDF_FOLDER`**: Directory containing Python UDF files (default: `udfs`)
+  - Can be relative path: `udfs`, `custom_udfs`, `../../../my_project/udfs`
+  - Can be absolute path: `/absolute/path/to/udfs`
+
+- **`AUTO_INSTALL_ON_STARTUP`**: Auto-install Agentics and UDFs on Flink startup (default: `true`)
+  - Set to `false` to disable automatic installation
+
+- **`AGSTREAM_BACKENDS`**: Directory for Kafka data and saved functions (default: `./agstream-backends`)
+
+- **`FLINK_JOBMANAGER_CONTAINER`**: Flink JobManager container name (default: `flink-jobmanager`)
+
+- **`FLINK_TASKMANAGER_CONTAINER`**: Flink TaskManager container name (default: `flink-taskmanager`)
+
 ### Starting Services
 
 Use the unified management script:
@@ -88,6 +111,20 @@ This will:
 ./scripts/manage_agstream.sh clean-restart # Clear Kafka data and restart
 ./scripts/manage_agstream.sh logs          # View service logs
 ```
+
+## Flink SQL and Python UDFs
+
+For comprehensive documentation on Flink SQL integration, Python UDFs, sentiment analysis, and troubleshooting, see:
+
+**📖 [Complete AGStream Manager Guide](docs/AGSTREAM_MANAGER_GUIDE.md)**
+
+This guide covers:
+- Installation & Setup
+- Resource Management
+- UDF Development
+- Sentiment Analysis (single-field and row-level)
+- Troubleshooting
+- Performance Optimization
 
 ## Workflow
 
