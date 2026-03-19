@@ -189,13 +189,13 @@ start_services() {
 
     print_info "Starting Function Persistence Service..."
     # Run persistence service locally
-    nohup $PYTHON_CMD examples/streaming_agent/function_persistence_service.py > /tmp/persistence.log 2>&1 &
+    nohup $PYTHON_CMD backend/persistent_function_store.py > /tmp/persistence.log 2>&1 &
     echo $! > /tmp/persistence.pid
     sleep 2
 
     print_info "Starting AGstream Manager (Unified Schema + Transduction + Listener Management)..."
     # Run AGstream manager locally
-    nohup $PYTHON_CMD tools/agstream_manager/backend/agstream_manager_service.py > /tmp/agstream_manager.log 2>&1 &
+    nohup $PYTHON_CMD backend/agstream_manager_service.py > /tmp/agstream_manager.log 2>&1 &
     echo $! > /tmp/agstream_manager.pid
     sleep 2
 
