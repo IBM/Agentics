@@ -20,9 +20,9 @@ from typing import Dict, List, Optional, Tuple, Type
 import requests
 from pydantic import BaseModel
 
-from agentics.core.agstream_sql import AGStreamSQL
-from agentics.core.streaming import AGStream
-from agentics.core.streaming_utils import get_atype_from_registry
+from agentics.core.streaming.agstream_sql import AGStreamSQL
+from agentics.core.streaming.streaming import AGStream
+from agentics.core.streaming.streaming_utils import get_atype_from_registry
 
 # ---------------------------------------------------------------------------
 # RegistryClient

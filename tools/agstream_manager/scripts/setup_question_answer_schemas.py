@@ -8,7 +8,7 @@ that will be used consistently by both UI and listeners.
 
 from pydantic import BaseModel, Field
 
-from agentics.core.streaming_utils import register_atype_schema
+from agentics.core.streaming.streaming_utils import register_atype_schema
 
 
 # Define Question and Answer with full class names

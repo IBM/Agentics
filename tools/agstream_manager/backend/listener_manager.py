@@ -15,7 +15,7 @@ from typing import Optional
 
 from registry_client import RegistryClient
 
-from agentics.core.listener_manager import ListenerInfo, ListenerManager
+from agentics.core.streaming.listener_manager import ListenerInfo, ListenerManager
 
 __all__ = ["ListenerInfo", "ListenerManager", "make_listener_manager"]
 

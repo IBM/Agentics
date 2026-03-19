@@ -48,7 +48,7 @@ from typing import Any, Dict, List, Optional
 
 from function_store import FunctionStore
 
-from agentics.core.streaming_utils import (
+from agentics.core.streaming.streaming_utils import (
     get_atype_from_registry,
     register_atype_schema,
 )

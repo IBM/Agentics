@@ -14,7 +14,7 @@ sys.path.insert(0, backend_path)
 from atypes import ChatInput, ConversationHistory, UserMessage
 from dotenv import load_dotenv
 
-from agentics.core.streaming import AGStream
+from agentics.core.streaming.streaming import AGStream
 
 load_dotenv()
 

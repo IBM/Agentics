@@ -33,8 +33,8 @@ from flask_cors import CORS
 from flask_sock import Sock
 from pydantic import BaseModel, Field, create_model
 
-from agentics.core.flink_listener_manager import FlinkListenerManager
-from agentics.core.streaming_utils import (
+from agentics.core.streaming.flink_listener_manager import FlinkListenerManager
+from agentics.core.streaming.streaming_utils import (
     get_atype_from_registry,
     list_schema_versions,
     register_atype_schema,
@@ -620,12 +620,12 @@ Format: {format_type}
 """
 
 import os
-from agentics.core.streaming_utils import get_atype_from_registry, register_atype_schema
+from agentics.core.streaming.streaming_utils import get_atype_from_registry, register_atype_schema
 from agentics.core.transducible_functions import make_transducible_function
 '''
 
     # ALWAYS use Avro format - hardcoded
-    code += f'''from agentics.core.agstream_sql import AGStreamSQL
+    code += f'''from agentics.core.streaming.agstream_sql import AGStreamSQL
 import asyncio
 
 # Configuration
@@ -1401,7 +1401,10 @@ def start_transduction_listener():
         source_type = function_data.get("source_type")
         target_type = function_data.get("target_type")
 
-        from agentics.core.streaming_utils import create_kafka_topic, kafka_topic_exists
+        from agentics.core.streaming.streaming_utils import (
+            create_kafka_topic,
+            kafka_topic_exists,
+        )
 
         # Create input topic and register schema if needed
         # Use parallelism value for partition count to enable parallel processing
@@ -1639,7 +1642,10 @@ def create_transduction_listener_stopped():
         source_type = function_data.get("source_type")
         target_type = function_data.get("target_type")
 
-        from agentics.core.streaming_utils import create_kafka_topic, kafka_topic_exists
+        from agentics.core.streaming.streaming_utils import (
+            create_kafka_topic,
+            kafka_topic_exists,
+        )
 
         # Create topics if needed (same logic as start endpoint)
         if not kafka_topic_exists(input_topic, KAFKA_BOOTSTRAP_SERVERS):
@@ -1803,7 +1809,10 @@ def restart_transduction_listener(listener_id: str):
         return jsonify({"error": f"Function '{function_name}' not found"}), 400
 
     try:
-        from agentics.core.streaming_utils import create_kafka_topic, kafka_topic_exists
+        from agentics.core.streaming.streaming_utils import (
+            create_kafka_topic,
+            kafka_topic_exists,
+        )
 
         # Ensure topics exist
         if not kafka_topic_exists(input_topic, KAFKA_BOOTSTRAP_SERVERS):
@@ -1944,7 +1953,7 @@ def get_listener_messages(listener_id: str):
 
     from kafka import KafkaConsumer
 
-    from agentics.core.avro_utils import avro_deserialize
+    from agentics.core.streaming.avro_utils import avro_deserialize
 
     # Check if listener exists
     if listener_id not in listeners_store:
@@ -2105,8 +2114,8 @@ def produce_kafka_message():
                 400,
             )
 
-        from agentics.core.agstream_sql import AGStreamSQL
-        from agentics.core.streaming_utils import (
+        from agentics.core.streaming.agstream_sql import AGStreamSQL
+        from agentics.core.streaming.streaming_utils import (
             get_atype_from_registry,
             register_atype_schema,
         )
@@ -2170,8 +2179,8 @@ def generate_and_produce_messages():
 
         import asyncio
 
-        from agentics.core.agstream_sql import AGStreamSQL
-        from agentics.core.streaming_utils import (
+        from agentics.core.streaming.agstream_sql import AGStreamSQL
+        from agentics.core.streaming.streaming_utils import (
             get_atype_from_registry,
             register_atype_schema,
         )
@@ -2236,7 +2245,10 @@ def collect_kafka_messages():
 
         from kafka import KafkaConsumer
 
-        from agentics.core.avro_utils import avro_deserialize, detect_message_format
+        from agentics.core.streaming.avro_utils import (
+            avro_deserialize,
+            detect_message_format,
+        )
 
         data = request.json
         topic = data.get("topic")
@@ -2342,7 +2354,7 @@ def get_topics():
 def get_topic_details(topic_name: str):
     """Get details about a specific Kafka topic with auto-detected schema type"""
     try:
-        from agentics.core.streaming_utils import (
+        from agentics.core.streaming.streaming_utils import (
             get_topic_partition_count,
             kafka_topic_exists,
         )
@@ -2442,7 +2454,10 @@ def get_topic_details(topic_name: str):
 def create_topic():
     """Create a new Kafka topic and optionally register its schema"""
     try:
-        from agentics.core.streaming_utils import create_kafka_topic, kafka_topic_exists
+        from agentics.core.streaming.streaming_utils import (
+            create_kafka_topic,
+            kafka_topic_exists,
+        )
 
         data = request.json
         topic_name = data.get("name")
@@ -2558,7 +2573,7 @@ def delete_topic(topic_name: str):
 
         from kafka.admin import KafkaAdminClient
 
-        from agentics.core.streaming_utils import kafka_topic_exists
+        from agentics.core.streaming.streaming_utils import kafka_topic_exists
 
         # Check if topic exists
         if not kafka_topic_exists(topic_name, KAFKA_BOOTSTRAP_SERVERS):
