@@ -108,6 +108,32 @@ docker exec -u root flink-jobmanager pip install hnswlib scikit-learn
 
 echo ""
 
+# Copy .env file to Flink containers
+echo "📋 Copying .env file to Flink containers..."
+# Try root .env first (has API keys), then agstream_manager .env
+ROOT_ENV_FILE="$AGENTICS_DIR/.env"
+LOCAL_ENV_FILE="$SCRIPT_DIR/../.env"
+
+if [ -f "$ROOT_ENV_FILE" ]; then
+    echo "  Found root .env at: $ROOT_ENV_FILE"
+    docker cp "$ROOT_ENV_FILE" flink-taskmanager:/opt/flink/.env
+    docker cp "$ROOT_ENV_FILE" flink-jobmanager:/opt/flink/.env
+    echo "  ✅ Root .env copied to both containers"
+elif [ -f "$LOCAL_ENV_FILE" ]; then
+    echo "  Found local .env at: $LOCAL_ENV_FILE"
+    docker cp "$LOCAL_ENV_FILE" flink-taskmanager:/opt/flink/.env
+    docker cp "$LOCAL_ENV_FILE" flink-jobmanager:/opt/flink/.env
+    echo "  ✅ Local .env copied to both containers"
+else
+    echo "  ⚠️  Warning: No .env file found"
+    echo "  Checked: $ROOT_ENV_FILE"
+    echo "  Checked: $LOCAL_ENV_FILE"
+    echo "  UDFs may not work without API keys"
+    echo "  Create .env from .env.example and rerun this script"
+fi
+
+echo ""
+
 # Verify installation
 echo "🧪 Verifying installation..."
 echo ""

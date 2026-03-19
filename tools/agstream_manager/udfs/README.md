@@ -8,8 +8,10 @@ Python User-Defined Functions (UDFs) for Flink SQL with Agentics integration.
 udfs/
 ├── README.md                          # This file
 ├── UDF_GUIDE.md                       # Complete UDF documentation
+├── AGSTREAM_UTILITIES_GUIDE.md        # AGStream utilities documentation
 ├── semantic_operators.py              # Main UDF implementations
 ├── generic_semantic_udf.py            # Generic semantic UDF with schema registry
+├── agstream_utilities.py              # Schema Registry query utilities
 ├── udfs_example.py                    # Simple example UDFs
 └── examples/
     ├── sentiment_analysis_example.py  # Sentiment analysis example
@@ -70,6 +72,16 @@ Main UDF implementations including:
 
 ### generic_semantic_udf.py
 Generic semantic UDF with schema registry integration for flexible transformations.
+
+### agstream_utilities.py
+Utility UDFs for interacting with AGStream environment:
+- `list_registered_types()` - List all registered types in Schema Registry
+- `get_type_schema(type_name)` - Get complete schema for a type
+- `get_type_fields(type_name)` - Get field names and types
+- `type_exists(type_name)` - Check if a type is registered
+- `schema_registry_info()` - Get Schema Registry connection info
+
+See [AGSTREAM_UTILITIES_GUIDE.md](AGSTREAM_UTILITIES_GUIDE.md) for detailed documentation.
 
 ### udfs_example.py
 Simple example UDFs for learning:
