@@ -6,6 +6,7 @@ import pytest
 from invoke.runners import Result
 
 
+@pytest.mark.core
 def test_install_in_venv_as_folder(venv, ctx, tmp_path, git_root):
     """
     Checks that uv pip install /path/to/repo works
@@ -15,6 +16,7 @@ def test_install_in_venv_as_folder(venv, ctx, tmp_path, git_root):
         ctx.run("uv pip list | grep agentics", in_stream=False)
 
 
+@pytest.mark.core
 def test_dist_install(wheel, tmp_path_factory, ctx, venv):
     """
     Verifies that the wheel version of the package installs without errors

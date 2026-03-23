@@ -177,6 +177,9 @@ Restart the cluster:
 ## 📚 More Information
 
 - **Full Documentation**: [README.md](README.md)
+- **Dynamic UDF Guide**: [AGMAP_DYNAMIC_UDF_GUIDE.md](AGMAP_DYNAMIC_UDF_GUIDE.md) - Extract fields on-the-fly
+- **Row UDF Guide**: [AGMAP_ROW_QUICKSTART.md](AGMAP_ROW_QUICKSTART.md) - Work with row data
+- **Flink SQL Usage**: [FLINK_SQL_USAGE.md](FLINK_SQL_USAGE.md) - General SQL guide
 - **Auto-Installation Details**: [docs/AUTO_INSTALLATION.md](docs/AUTO_INSTALLATION.md)
 - **UDF Examples**: [udfs/udfs_example.py](udfs/udfs_example.py)
 

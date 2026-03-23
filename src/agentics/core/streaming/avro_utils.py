@@ -117,6 +117,10 @@ def _pydantic_field_to_avro(
 
     field_def = {"name": field_name, "type": avro_type}
 
+    # Add description from Pydantic Field to Avro doc field
+    if field_info.description and field_info.description.strip():
+        field_def["doc"] = field_info.description
+
     # Add default value if present (skip PydanticUndefined)
     if (
         field_info.default is not None

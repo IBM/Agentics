@@ -44,3 +44,9 @@ class ChatInput(BaseModel):
             self.conversation_history = ConversationHistory(**self.conversation_history)
 
         return self
+
+
+class GeneratedJoke(BaseModel):
+    generated_joke: str = Field(
+        ..., description="A generated joke based on the input question or topic"
+    )

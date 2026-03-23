@@ -4,6 +4,7 @@ import papermill as pm
 import pytest
 
 
+@pytest.mark.core
 @pytest.mark.skip(reason="User input not mocked")
 @pytest.mark.parametrize(
     "notebook",

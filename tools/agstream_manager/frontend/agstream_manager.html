@@ -519,6 +519,36 @@
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                             <h3 style="margin: 0; color: #1f2937;">Flink SQL Terminal</h3>
                             <div style="display: flex; gap: 10px;">
+                                <button class="btn btn-warning" onclick="restartFlink()" id="restartFlinkBtn" title="Restart Flink to clean up stuck jobs">🔄 Restart Flink</button>
+                                <button class="btn btn-info" onclick="rebuildUdfs()" id="rebuildUdfsBtn" title="Rebuild UDFs from Schema Registry types">🔨 Rebuild UDFs</button>
+                                <div class="btn-group" role="group">
+                                    <select class="form-select" id="udfSelector" style="max-width: 300px;">
+                                        <option value="">Select UDF to Register...</option>
+                                        <optgroup label="Core UDFs">
+                                            <option value="agmap">agmap (Dynamic Map)</option>
+                                            <option value="agreduce">agreduce (Aggregate Reduce)</option>
+                                        </optgroup>
+                                        <optgroup label="Registry UDTFs (Row-by-row)">
+                                            <option value="agmap_sentiment">agmap_sentiment</option>
+                                            <option value="agmap_productreview">agmap_productreview</option>
+                                            <option value="agmap_pr">agmap_pr</option>
+                                            <option value="agmap_s">agmap_s</option>
+                                            <option value="agmap_test_generation">agmap_test_generation</option>
+                                            <option value="agmap_electronics_reviews">agmap_electronics_reviews</option>
+                                            <option value="agmap_product_reviews">agmap_product_reviews</option>
+                                        </optgroup>
+                                        <optgroup label="Registry UDAFs (Aggregation)">
+                                            <option value="agreduce_sentiment">agreduce_sentiment</option>
+                                            <option value="agreduce_productreview">agreduce_productreview</option>
+                                            <option value="agreduce_pr">agreduce_pr</option>
+                                            <option value="agreduce_s">agreduce_s</option>
+                                            <option value="agreduce_test_generation">agreduce_test_generation</option>
+                                            <option value="agreduce_electronics_reviews">agreduce_electronics_reviews</option>
+                                            <option value="agreduce_product_reviews">agreduce_product_reviews</option>
+                                        </optgroup>
+                                    </select>
+                                    <button class="btn btn-primary" onclick="registerSelectedUdf()" id="registerUdfBtn" title="Register selected UDF">Register</button>
+                                </div>
                                 <button class="btn btn-success" onclick="startFlinkTerminal()" id="startTerminalBtn">▶️ Start Terminal</button>
                                 <button class="btn btn-danger" onclick="stopFlinkTerminal()" id="stopTerminalBtn" style="display: none;">⏹️ Stop Terminal</button>
                                 <button class="btn btn-secondary" onclick="clearFlinkTerminal()">🗑️ Clear</button>
@@ -527,9 +557,21 @@
                         <div id="flinkTerminal" style="height: 500px; background: #1e1e1e; border-radius: 6px; overflow: hidden;"></div>
                         <div style="margin-top: 10px; padding: 10px; background: #f9fafb; border-radius: 6px;">
                             <p style="font-size: 12px; color: #6b7280; margin-bottom: 5px;"><strong>Quick Commands:</strong></p>
-                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
                                 <button class="btn btn-secondary" style="font-size: 11px; padding: 5px 10px;" onclick="sendFlinkCommand('SHOW TABLES;')">SHOW TABLES</button>
                                 <button class="btn btn-secondary" style="font-size: 11px; padding: 5px 10px;" onclick="sendFlinkCommand('SHOW FUNCTIONS;')">SHOW FUNCTIONS</button>
+                                <button class="btn btn-primary" style="font-size: 11px; padding: 5px 10px;" onclick="sendFlinkCommand('CREATE TEMPORARY SYSTEM FUNCTION agmap AS \'ag_operators.agmap\' LANGUAGE PYTHON;')">📝 Register agmap</button>
+                                <button class="btn btn-success" style="font-size: 11px; padding: 5px 10px;" onclick="sendFlinkCommand('CREATE TEMPORARY SYSTEM FUNCTION agreduce AS \'agreduce.agreduce\' LANGUAGE PYTHON;')">🔄 Register agreduce</button>
+                                <div style="display: flex; gap: 5px; align-items: center;">
+                                    <label style="font-size: 11px; margin: 0;">⚡ Parallelism:</label>
+                                    <input type="number" id="parallelismInput" value="1" min="1" max="100" style="width: 60px; font-size: 11px; padding: 4px;" />
+                                    <button class="btn btn-success" style="font-size: 11px; padding: 5px 10px;" onclick="setParallelism()">Set</button>
+                                </div>
+                                <div style="display: flex; gap: 5px; align-items: center;">
+                                    <label style="font-size: 11px; margin: 0;">📏 Col Width:</label>
+                                    <input type="number" id="columnWidthInput" value="100" min="20" max="1000" style="width: 60px; font-size: 11px; padding: 4px;" />
+                                    <button class="btn btn-success" style="font-size: 11px; padding: 5px 10px;" onclick="setColumnWidth()">Set</button>
+                                </div>
                                 <button class="btn btn-secondary" style="font-size: 11px; padding: 5px 10px;" onclick="sendFlinkCommand('HELP;')">HELP</button>
                             </div>
                         </div>
@@ -742,6 +784,183 @@
             }
         }
 
+        async function restartFlink() {
+            const btn = document.getElementById('restartFlinkBtn');
+            const originalText = btn.innerHTML;
+
+            if (!confirm('⚠️ This will restart Flink containers and cancel all running jobs. Continue?')) {
+                return;
+            }
+
+            try {
+                btn.disabled = true;
+                btn.innerHTML = '🔄 Restarting...';
+
+                if (flinkTerminal) {
+                    flinkTerminal.writeln('\x1b[33m🔄 Restarting Flink containers...\x1b[0m');
+                }
+
+                const response = await fetch(`${API_URL}/flink/restart`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    if (flinkTerminal) {
+                        flinkTerminal.writeln('\x1b[32m✓ Flink restarted successfully!\x1b[0m');
+                        flinkTerminal.writeln('\x1b[36mℹ️ Please reconnect the terminal.\x1b[0m');
+                    }
+                    showFlinkSqlAlert('✓ Flink restarted successfully! Reconnect the terminal to continue.', 'success');
+
+                    // Stop current terminal connection
+                    stopFlinkTerminal();
+
+                    // Refresh Flink status
+                    setTimeout(() => checkFlinkStatus(), 3000);
+                } else {
+                    throw new Error(data.error || 'Failed to restart Flink');
+                }
+            } catch (error) {
+                console.error('Error restarting Flink:', error);
+                if (flinkTerminal) {
+                    flinkTerminal.writeln(`\x1b[31m✗ Error: ${error.message}\x1b[0m`);
+                }
+                showFlinkSqlAlert(`✗ Error restarting Flink: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+
+        async function rebuildUdfs() {
+            const btn = document.getElementById('rebuildUdfsBtn');
+            if (!btn) return;
+
+            const originalText = btn.innerHTML;
+
+            if (!confirm('This will regenerate all UDFs from Schema Registry types, rebuild the Flink image, and restart Flink. This may take 3-4 minutes. Continue?')) {
+                return;
+            }
+
+            try {
+                btn.disabled = true;
+                btn.innerHTML = '🔨 Rebuilding...';
+
+                if (flinkTerminal) {
+                    flinkTerminal.writeln('\x1b[33m🔨 Starting UDF rebuild process...\x1b[0m');
+                    flinkTerminal.writeln('\x1b[33m⏳ This will take 3-4 minutes. Please wait...\x1b[0m');
+                    flinkTerminal.writeln('\x1b[90m   Step 1: Generate UDFs from Schema Registry\x1b[0m');
+                    flinkTerminal.writeln('\x1b[90m   Step 2: Rebuild Docker image\x1b[0m');
+                    flinkTerminal.writeln('\x1b[90m   Step 3: Restart Flink\x1b[0m');
+                }
+
+                // Create AbortController with 5 minute timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes
+
+                const response = await fetch(`${API_URL}/flink/rebuild-udfs`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    if (flinkTerminal) {
+                        flinkTerminal.writeln('\x1b[32m✓ UDF rebuild started in background!\x1b[0m');
+                        flinkTerminal.writeln('\x1b[33m⏳ Process running: Generate → Build → Restart (3-4 min)\x1b[0m');
+                        flinkTerminal.writeln('\x1b[36mℹ️ Wait 3-4 minutes, then reconnect the terminal.\x1b[0m');
+                        flinkTerminal.writeln('\x1b[90m   You can continue using the terminal while this runs.\x1b[0m');
+                    }
+                    showFlinkSqlAlert('✓ UDF rebuild started! Wait 3-4 minutes, then reconnect terminal.', 'success');
+                } else {
+                    throw new Error(data.error || 'Failed to rebuild UDFs');
+                }
+            } catch (error) {
+                console.error('Error rebuilding UDFs:', error);
+                if (flinkTerminal) {
+                    flinkTerminal.writeln(`\x1b[31m✗ Error: ${error.message}\x1b[0m`);
+                }
+                showFlinkSqlAlert(`✗ Error rebuilding UDFs: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+        // Mapping of UDF names to their CREATE FUNCTION statements
+        const udfStatements = {
+            // Core UDFs
+            'agmap': "CREATE TEMPORARY SYSTEM FUNCTION agmap AS 'ag_operators.agmap' LANGUAGE PYTHON;",
+            'agreduce': "CREATE TEMPORARY SYSTEM FUNCTION agreduce AS 'agreduce.agreduce' LANGUAGE PYTHON;",
+            // Registry UDTFs (row-by-row mapping)
+            'agmap_sentiment': "CREATE TEMPORARY SYSTEM FUNCTION agmap_sentiment AS 'agmap_registry.agmap_sentiment' LANGUAGE PYTHON;",
+            'agmap_productreview': "CREATE TEMPORARY SYSTEM FUNCTION agmap_productreview AS 'agmap_registry.agmap_productreview' LANGUAGE PYTHON;",
+            'agmap_pr': "CREATE TEMPORARY SYSTEM FUNCTION agmap_pr AS 'agmap_registry.agmap_pr' LANGUAGE PYTHON;",
+            'agmap_s': "CREATE TEMPORARY SYSTEM FUNCTION agmap_s AS 'agmap_registry.agmap_s' LANGUAGE PYTHON;",
+            'agmap_test_generation': "CREATE TEMPORARY SYSTEM FUNCTION agmap_test_generation AS 'agmap_registry.agmap_test_generation' LANGUAGE PYTHON;",
+            'agmap_electronics_reviews': "CREATE TEMPORARY SYSTEM FUNCTION agmap_electronics_reviews AS 'agmap_registry.agmap_electronics_reviews' LANGUAGE PYTHON;",
+            'agmap_product_reviews': "CREATE TEMPORARY SYSTEM FUNCTION agmap_product_reviews AS 'agmap_registry.agmap_product_reviews' LANGUAGE PYTHON;",
+            // Registry UDAFs (aggregation)
+            'agreduce_sentiment': "CREATE TEMPORARY SYSTEM FUNCTION agreduce_sentiment AS 'agreduce_registry.agreduce_sentiment' LANGUAGE PYTHON;",
+            'agreduce_productreview': "CREATE TEMPORARY SYSTEM FUNCTION agreduce_productreview AS 'agreduce_registry.agreduce_productreview' LANGUAGE PYTHON;",
+            'agreduce_pr': "CREATE TEMPORARY SYSTEM FUNCTION agreduce_pr AS 'agreduce_registry.agreduce_pr' LANGUAGE PYTHON;",
+            'agreduce_s': "CREATE TEMPORARY SYSTEM FUNCTION agreduce_s AS 'agreduce_registry.agreduce_s' LANGUAGE PYTHON;",
+            'agreduce_test_generation': "CREATE TEMPORARY SYSTEM FUNCTION agreduce_test_generation AS 'agreduce_registry.agreduce_test_generation' LANGUAGE PYTHON;",
+            'agreduce_electronics_reviews': "CREATE TEMPORARY SYSTEM FUNCTION agreduce_electronics_reviews AS 'agreduce_registry.agreduce_electronics_reviews' LANGUAGE PYTHON;",
+            'agreduce_product_reviews': "CREATE TEMPORARY SYSTEM FUNCTION agreduce_product_reviews AS 'agreduce_registry.agreduce_product_reviews' LANGUAGE PYTHON;"
+        };
+
+        function registerSelectedUdf() {
+            const selector = document.getElementById('udfSelector');
+            const selectedUdf = selector.value;
+
+            if (!selectedUdf) {
+                if (flinkTerminal) {
+                    flinkTerminal.writeln('\x1b[33m✗ Please select a UDF first.\x1b[0m');
+                }
+                return;
+            }
+
+            // Get the SQL statement for the selected UDF
+            const sql = udfStatements[selectedUdf];
+
+            if (!sql) {
+                if (flinkTerminal) {
+                    flinkTerminal.writeln(`\x1b[31m✗ Unknown UDF: ${selectedUdf}\x1b[0m`);
+                }
+                return;
+            }
+
+            // Send the command exactly like the "Register agmap" button does
+            sendFlinkCommand(sql);
+
+            // Reset selector
+            selector.value = '';
+        }
+
+        // Legacy function kept for compatibility - now simplified
+        async function registerSelectedUdfOld() {
+            const selector = document.getElementById('udfSelector');
+            const btn = document.getElementById('registerUdfBtn');
+            const selectedUdf = selector.value;
+
+            if (!selectedUdf) {
+                return;
+            }
+
+            const sql = udfStatements[selectedUdf];
+            if (sql) {
+                sendFlinkCommand(sql);
+                selector.value = '';
+            }
+        }
+
+
         function sendFlinkCommand(command) {
             if (!flinkWs || flinkWs.readyState !== WebSocket.OPEN) {
                 if (flinkTerminal) {
@@ -754,6 +973,36 @@
                 flinkTerminal.writeln(command);
             }
             flinkWs.send(JSON.stringify({ type: 'input', data: command + '\n' }));
+        }
+
+        function setParallelism() {
+            const input = document.getElementById('parallelismInput');
+            const value = parseInt(input.value);
+
+            if (isNaN(value) || value < 1 || value > 100) {
+                if (flinkTerminal) {
+                    flinkTerminal.writeln('\x1b[31m✗ Invalid parallelism value. Must be between 1 and 100.\x1b[0m');
+                }
+                return;
+            }
+
+            const command = `SET 'parallelism.default' = '${value}';`;
+            sendFlinkCommand(command);
+        }
+
+        function setColumnWidth() {
+            const input = document.getElementById('columnWidthInput');
+            const value = parseInt(input.value);
+
+            if (isNaN(value) || value < 20 || value > 1000) {
+                if (flinkTerminal) {
+                    flinkTerminal.writeln('\x1b[31m✗ Invalid column width. Must be between 20 and 1000.\x1b[0m');
+                }
+                return;
+            }
+
+            const command = `SET 'sql-client.display.max-column-width' = '${value}';`;
+            sendFlinkCommand(command);
         }
 
         // Schema Manager Functions
@@ -2741,6 +2990,15 @@
 
         function showTopicAlert(message, type) {
             const container = document.getElementById('topicAlertContainer');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            container.appendChild(alert);
+            setTimeout(() => alert.remove(), 5000);
+        }
+
+        function showFlinkSqlAlert(message, type) {
+            const container = document.getElementById('flinkSqlAlertContainer');
             const alert = document.createElement('div');
             alert.className = `alert alert-${type}`;
             alert.textContent = message;

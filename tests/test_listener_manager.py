@@ -13,6 +13,8 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
+pytestmark = pytest.mark.core
+
 from agentics.core.streaming.listener_manager import ListenerInfo, ListenerManager
 
 # ---------------------------------------------------------------------------

@@ -12,6 +12,23 @@ dependencies = [
     "psutil>=6.1.0",
     "requests>=2.32.0",
     "pydantic>=2.0.0",
+    "kafka-python-ng>=2.2.0",
+    "python-dotenv>=1.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.0",
+    "pytest-asyncio>=1.0.0",
+    "pytest-html>=4.1.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--html=report.html --self-contained-html"
+markers = [
+    "agstream: AGStream integration tests (requires Kafka/Schema Registry)",
+    "flink: Tests requiring Flink Docker environment (pyflink, semantic_operators)",
 ]
 
 [build-system]

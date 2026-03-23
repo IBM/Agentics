@@ -1,233 +1,189 @@
 # AGStream Manager Tests
 
-Test suite for AGStream Manager UDFs and functionality.
+This directory contains tests for the AGStream Manager, organized into two categories:
 
-## 📁 Test Files
+## Flink Container Tests (Current Directory)
 
-### UDF Tests
+These tests **MUST** run inside the Flink Docker container because they require:
+- `pyflink` library (only available in Flink container)
+- Access to Flink's Table API and SQL environment
+- `semantic_operators` module from agentics
+- Real LLM API calls for AGMap/AGReduce operations
 
-#### `test_all_udfs.py`
-Comprehensive test suite for all UDFs. **Requires running Flink cluster.**
+### Test Files
 
-```bash
-cd tools/agstream_manager/tests
-python test_all_udfs.py
-```
+1. **`test_agmap_simple.py`** - Diagnostic test (1 test, ~5-10 seconds)
+   - Quick connectivity check with 30-second timeout
+   - Verifies API keys and imports
+   - Tests basic AGMap sentiment analysis
 
-Tests:
-- Sentiment analysis UDFs
-- Text processing UDFs
-- Row-level sentiment analysis
-- Universal transduction UDTF
-- Helper functions
+2. **`test_agmap_agreduce.py`** - Python function tests (18 tests, ~5-10 minutes)
+   - Tests AGMap dynamic mode (on-the-fly type generation)
+   - Tests AGMap registry mode (Schema Registry integration)
+   - Tests AGReduce aggregation operations
+   - Makes real LLM API calls (slow but thorough)
 
-#### `test_all_udfs_standalone.py`
-Standalone UDF tests that don't require Flink. **Fastest way to test UDF logic.**
+3. **`test_agmap_agreduce_sql.py`** - Flink SQL tests (10+ tests, ~3-5 minutes)
+   - Tests registered UDFs in Flink SQL
+   - End-to-end SQL query execution
+   - Tests both AGMap and AGReduce in SQL context
 
-```bash
-cd tools/agstream_manager/tests
-python test_all_udfs_standalone.py
-```
-
-Tests UDF functions directly in Python without Flink SQL overhead.
-
-#### `test_row_sentiment.py`
-Specific tests for row-level sentiment analysis UDF.
+### Running Flink Container Tests
 
 ```bash
-cd tools/agstream_manager/tests
-python test_row_sentiment.py
+# From tools/agstream_manager directory
+
+# Run all Flink tests
+./scripts/run_flink_tests.sh
+
+# Run specific test file
+./scripts/run_flink_tests.sh test_agmap_simple.py
+./scripts/run_flink_tests.sh test_agmap_agreduce.py
+./scripts/run_flink_tests.sh test_agmap_agreduce_sql.py
 ```
 
-#### `test_sentiment_standalone.py`
-Standalone sentiment analysis tests.
+### What the Script Does
+
+1. Checks if Flink container is running
+2. Installs pytest in container if needed
+3. Sets up environment (PYTHONPATH, symlinks)
+4. Copies test files to `/opt/flink/tests/`
+5. Runs tests with proper environment
+6. Cleans up after completion
+
+## Non-Flink Tests (non_flink_tests/ subdirectory)
+
+These are API and integration tests that don't require the Flink container:
+
+- `test_schema_enforcement.py` - Schema registry enforcement tests
+- `test_topic_deletion.py` - Kafka topic deletion tests
+- `test_create_listener.py` - Listener creation API tests
+- `test_listener_persistence.py` - Listener persistence tests
+- `test_listener_ui_fixed.py` - UI integration tests
+- `test_schema_manager.py` - Schema manager tests
+
+### Running Non-Flink Tests
+
+These tests require:
+- AGStream Manager backend service running on port 5003
+- Kafka/Schema Registry services running
 
 ```bash
-cd tools/agstream_manager/tests
-python test_sentiment_standalone.py
+# From project root
+cd tools/agstream_manager
+uv run pytest non_flink_tests/ -v
 ```
 
-#### `test_row_sentiment.sql`
-SQL test queries for row-level sentiment analysis. Use in Flink SQL client.
+## Test Markers
+
+- `@pytest.mark.flink` - Tests that run in Flink container
+- `@pytest.mark.agstream` - Tests that require Kafka/Flink services
+
+## Environment Requirements
+
+### Required Environment Variables
+
+Create a `.env` file in the project root with:
 
 ```bash
-# Copy to Flink and run
-cat test_row_sentiment.sql | ./manage_services_full.sh flink-sql
+OPENAI_API_KEY=your_key_here
+ANTHROPIC_API_KEY=your_key_here  # Optional
+GEMINI_API_KEY=your_key_here     # Optional
 ```
 
-### AGStream Manager Tests
+The Flink container automatically loads these from the project root `.env` file.
 
-#### `test_schema_manager.py`
-Tests for schema management functionality.
+### Required Services
 
-#### `test_schema_enforcement.py`
-Tests for schema validation and enforcement.
+Start services before running tests:
 
-#### `test_listener_persistence.py`
-Tests for listener persistence across restarts.
+```bash
+cd tools/agstream_manager
+./manage_services.sh start
 
-#### `test_create_listener.py`
-Tests for listener creation and management.
+# Verify services are running
+docker ps
+```
 
-#### `test_listener_ui_fixed.py`
-Tests for listener UI functionality.
+## Troubleshooting
 
-#### `test_topic_deletion.py`
-Tests for topic deletion and cleanup.
+### Tests Hang or Timeout
 
-## 🚀 Running Tests
+**Cause:** AGMap/AGReduce tests make real LLM API calls which can take 5-30 seconds each.
 
-### Prerequisites
+**Solutions:**
+- Use the diagnostic test first: `./scripts/run_flink_tests.sh test_agmap_simple.py`
+- Check API keys are set in `.env` file
+- Verify network connectivity to LLM providers
+- Be patient - 18 tests × 10 seconds = ~3 minutes minimum
 
-1. **Start AGStream Manager services:**
+### Import Errors (pyflink, semantic_operators)
+
+**Cause:** These modules only exist in the Flink container.
+
+**Solution:** Always use `run_flink_tests.sh` script to run these tests.
+
+### "Container not running" Error
+
+**Cause:** Flink services are not started.
+
+**Solution:**
+```bash
+cd tools/agstream_manager
+./manage_services.sh start
+```
+
+### Kafka Connection Errors
+
+**Cause:** Kafka/Schema Registry services not ready.
+
+**Solution:** Wait 30-60 seconds after starting services for full initialization.
+
+## Test Execution Times
+
+| Test File | Tests | Duration | Notes |
+|-----------|-------|----------|-------|
+| test_agmap_simple.py | 1 | ~10s | Diagnostic with timeout |
+| test_agmap_agreduce.py | 18 | ~5-10min | Real LLM calls |
+| test_agmap_agreduce_sql.py | 10+ | ~3-5min | SQL execution |
+| **Total** | **29+** | **~10-15min** | Full suite |
+
+## CI/CD Integration
+
+For continuous integration:
+
+```bash
+# Start services
+cd tools/agstream_manager
+./manage_services.sh start
+
+# Wait for services to be ready
+sleep 60
+
+# Run tests
+./scripts/run_flink_tests.sh
+
+# Stop services
+./manage_services.sh stop
+```
+
+## Development Tips
+
+1. **Use the diagnostic test first** to verify setup:
    ```bash
-   cd tools/agstream_manager
-   ./manage_services_full.sh start
+   ./scripts/run_flink_tests.sh test_agmap_simple.py
    ```
 
-2. **Ensure UDFs are installed:**
+2. **Run specific tests** during development:
    ```bash
-   ./scripts/install_udfs.sh
+   ./scripts/run_flink_tests.sh test_agmap_agreduce.py::TestAGMapDynamic::test_agmap_sentiment_string
    ```
 
-### Run All UDF Tests
+3. **Check logs** if tests fail:
+   ```bash
+   docker logs flink-jobmanager
+   ```
 
-```bash
-cd tools/agstream_manager/tests
-
-# With Flink (comprehensive)
-python test_all_udfs.py
-
-# Standalone (fast)
-python test_all_udfs_standalone.py
-```
-
-### Run Specific Tests
-
-```bash
-cd tools/agstream_manager/tests
-
-# Sentiment analysis
-python test_sentiment_standalone.py
-python test_row_sentiment.py
-
-# Schema management
-python test_schema_manager.py
-
-# Listener functionality
-python test_listener_persistence.py
-```
-
-### Run SQL Tests
-
-```bash
-cd tools/agstream_manager
-
-# Open Flink SQL client
-./manage_services_full.sh flink-sql
-
-# Then paste contents of test_row_sentiment.sql
-```
-
-## 📊 Test Categories
-
-### Unit Tests (Standalone)
-- `test_all_udfs_standalone.py`
-- `test_sentiment_standalone.py`
-
-**Pros:** Fast, no dependencies
-**Cons:** Doesn't test Flink integration
-
-### Integration Tests (Requires Flink)
-- `test_all_udfs.py`
-- `test_row_sentiment.py`
-
-**Pros:** Tests full stack
-**Cons:** Slower, requires running services
-
-### SQL Tests
-- `test_row_sentiment.sql`
-
-**Pros:** Tests actual SQL usage
-**Cons:** Manual execution
-
-## 🔧 Test Development
-
-### Adding New UDF Tests
-
-1. Create test file in this directory
-2. Import UDF functions from `../udfs/`
-3. Write test cases
-4. Run tests
-
-Example:
-```python
-import sys
-sys.path.insert(0, '../udfs')
-from semantic_operators import analyze_sentiment
-
-def test_sentiment():
-    result = analyze_sentiment("I love this!")
-    assert "POSITIVE" in result
-    print("✓ Test passed")
-
-if __name__ == "__main__":
-    test_sentiment()
-```
-
-### Best Practices
-
-1. **Use standalone tests for quick iteration**
-2. **Use integration tests for final validation**
-3. **Test edge cases** (None, empty strings, special characters)
-4. **Test error handling**
-5. **Document expected behavior**
-
-## 🆘 Troubleshooting
-
-### Tests Fail with "Module not found"
-
-```bash
-# Ensure you're in the tests directory
-cd tools/agstream_manager/tests
-
-# Check Python path
-python -c "import sys; print(sys.path)"
-```
-
-### Flink Tests Fail
-
-```bash
-# Check if Flink is running
-docker ps | grep flink
-
-# Restart if needed
-cd tools/agstream_manager
-./manage_services_full.sh restart
-```
-
-### UDF Not Found in Tests
-
-```bash
-# Reinstall UDFs
-cd tools/agstream_manager
-./scripts/install_udfs.sh
-```
-
-## 📖 Related Documentation
-
-- [UDF Guide](../udfs/UDF_GUIDE.md) - Complete UDF documentation
-- [AGStream Manager Guide](../docs/AGSTREAM_MANAGER_GUIDE.md) - Full system guide
-- [UDFs README](../udfs/README.md) - UDF directory overview
-
-## 🎯 Quick Test Commands
-
-```bash
-# Fast standalone tests
-cd tools/agstream_manager/tests && python test_all_udfs_standalone.py
-
-# Full integration tests
-cd tools/agstream_manager/tests && python test_all_udfs.py
-
-# Specific UDF test
-cd tools/agstream_manager/tests && python test_row_sentiment.py
+4. **Restart services** if needed:
+   ```bash
+   ./manage_services.sh restart

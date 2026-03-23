@@ -1,0 +1,36 @@
+# Runtime data directories
+kafka-data/
+agstream-backends/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Environment variables
+.env
+
+# Auto-generated registry files (can be regenerated)
+udfs/agmap_registry.py
+udfs/agreduce_registry.py

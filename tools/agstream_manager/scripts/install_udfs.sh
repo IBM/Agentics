@@ -63,7 +63,29 @@ if ! docker ps | grep -q "$FLINK_TASKMANAGER_CONTAINER"; then
     exit 1
 fi
 
-# Copy all UDF files to Flink containers
+# Step 1: Copy .env file with API keys
+echo "📋 Step 1: Copying .env file with API keys..."
+PROJECT_ROOT="$AGSTREAM_DIR/../.."
+ENV_FILE="$PROJECT_ROOT/.env"
+
+if [ -f "$ENV_FILE" ]; then
+    echo "   Found .env at: $ENV_FILE"
+    docker cp "$ENV_FILE" "$FLINK_JOBMANAGER_CONTAINER:/opt/flink/.env" 2>/dev/null && echo "   ✓ Copied to JobManager" || echo "   ⚠ Failed to copy to JobManager"
+    docker cp "$ENV_FILE" "$FLINK_TASKMANAGER_CONTAINER:/opt/flink/.env" 2>/dev/null && echo "   ✓ Copied to TaskManager" || echo "   ⚠ Failed to copy to TaskManager"
+elif [ -f "$AGSTREAM_DIR/.env" ]; then
+    echo "   Found .env at: $AGSTREAM_DIR/.env"
+    docker cp "$AGSTREAM_DIR/.env" "$FLINK_JOBMANAGER_CONTAINER:/opt/flink/.env" 2>/dev/null && echo "   ✓ Copied to JobManager" || echo "   ⚠ Failed to copy to JobManager"
+    docker cp "$AGSTREAM_DIR/.env" "$FLINK_TASKMANAGER_CONTAINER:/opt/flink/.env" 2>/dev/null && echo "   ✓ Copied to TaskManager" || echo "   ⚠ Failed to copy to TaskManager"
+else
+    echo "   ⚠ Warning: No .env file found"
+    echo "   Checked: $ENV_FILE"
+    echo "   Checked: $AGSTREAM_DIR/.env"
+    echo "   UDFs may not work without API keys (OPENAI_API_KEY or ANTHROPIC_API_KEY)"
+fi
+echo ""
+
+# Step 2: Copy all UDF files to Flink containers
+echo "📋 Step 2: Installing UDF files..."
 COPY_SUCCESS=true
 
 echo "$UDF_FILES" | while read -r udf_file; do
@@ -87,17 +109,55 @@ echo "$UDF_FILES" | while read -r udf_file; do
     echo ""
 done
 
+# Step 3: Verify installation
+echo "📋 Step 3: Verifying installation..."
+echo ""
+
+# Check if agmap.py is accessible
+echo "Checking agmap UDF..."
+if docker exec "$FLINK_TASKMANAGER_CONTAINER" test -f /opt/flink/agmap.py; then
+    echo "   ✓ agmap.py found in TaskManager"
+else
+    echo "   ✗ agmap.py not found in TaskManager"
+fi
+
+# Check if .env is accessible
+echo "Checking .env file..."
+if docker exec "$FLINK_TASKMANAGER_CONTAINER" test -f /opt/flink/.env; then
+    echo "   ✓ .env found in TaskManager"
+    # Check if API keys are present
+    if docker exec "$FLINK_TASKMANAGER_CONTAINER" grep -q "API_KEY" /opt/flink/.env 2>/dev/null; then
+        echo "   ✓ API keys found in .env"
+    else
+        echo "   ⚠ No API keys found in .env"
+    fi
+else
+    echo "   ✗ .env not found in TaskManager"
+fi
+
+# Check if agentics is importable
+echo "Checking Agentics installation..."
+if docker exec "$FLINK_TASKMANAGER_CONTAINER" python3 -c "from agentics import AG; import hnswlib" 2>/dev/null; then
+    echo "   ✓ Agentics and dependencies are installed"
+else
+    echo "   ✗ Agentics or dependencies missing"
+    echo "   Run: ./scripts/rebuild_flink_image.sh && ./manage_services_full.sh restart"
+fi
+
+echo ""
+
 if [ "$COPY_SUCCESS" = true ]; then
-    echo "✅ All UDFs installed successfully to both JobManager and TaskManager!"
+    echo "✅ Installation complete!"
     echo ""
-    echo "📝 Example: Register functions in Flink SQL:"
+    echo "📝 Quick Start - Register agmap UDF in Flink SQL:"
     echo ""
-    echo "   CREATE TEMPORARY SYSTEM FUNCTION generate_sentiment"
-    echo "   AS 'udfs_example.generate_sentiment'"
-    echo "   LANGUAGE PYTHON;"
+    echo "   CREATE TEMPORARY SYSTEM FUNCTION agmap"
+    echo "   AS 'agmap.agmap' LANGUAGE PYTHON;"
     echo ""
-    echo "🎯 Then use them in queries:"
-    echo "   SELECT text, generate_sentiment(text) as sentiment FROM Q LIMIT 10;"
+    echo "🎯 Then generate jokes:"
+    echo "   SELECT agmap('Joke', text) FROM Q LIMIT 3;"
+    echo ""
+    echo "📖 For more examples, see: GENERATE_JOKES_GUIDE.md"
 else
     echo "❌ Some UDFs failed to install"
     exit 1

@@ -142,7 +142,7 @@ tab_registry, tab_functions, tab_simple, tab_pipelines, tab_listeners, tab_send 
     st.tabs(
         [
             "📋 Registry",
-            "🔧 Functions",
+            " Functions",
             "⚡ Simple Listeners",
             "🔗 Pipelines",
             "📡 Listeners",

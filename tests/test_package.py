@@ -2,7 +2,10 @@ from io import StringIO
 from tempfile import NamedTemporaryFile
 from textwrap import dedent
 
+import pytest
 
+
+@pytest.mark.core
 def test_import(wheel, tmp_path_factory, ctx, venv):
     """Checks that main Agentics class has no import issues"""
 

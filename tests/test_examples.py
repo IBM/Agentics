@@ -8,6 +8,7 @@ from pytest_subtests.plugin import SubTests
 
 
 # TODO: @gliozzo provide small and fast to run examples
+@pytest.mark.core
 @pytest.mark.parametrize(
     "file_to_test",
     [

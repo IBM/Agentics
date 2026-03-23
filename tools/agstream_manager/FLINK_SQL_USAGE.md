@@ -28,7 +28,7 @@ cd tools/agstream_manager/scripts
 ./show_table_sql.sh
 
 # Open SQL client
-./flink_sql_client.sh
+./flink_sql.sh
 
 # Paste the SQL, then query
 ```
@@ -38,7 +38,7 @@ Open without pre-loaded tables:
 
 ```bash
 cd tools/agstream_manager/scripts
-./flink_sql_client.sh
+./flink_sql.sh
 ```
 
 Then manually create tables as needed.
@@ -173,7 +173,7 @@ CREATE TABLE my_topic (
 
 ## Why Use Containerized Flink SQL Client?
 
-The containerized Flink SQL client (accessed via `flink_sql_auto.sh` or `flink_sql_client.sh`) is more reliable than PyFlink because:
+The containerized Flink SQL client (accessed via `flink_sql_auto.sh` or `flink_sql.sh`) is more reliable than PyFlink because:
 
 1. ✅ **Pre-configured**: All JARs (Kafka connector, Avro format) are already loaded
 2. ✅ **Version Compatibility**: No Python/Java version conflicts

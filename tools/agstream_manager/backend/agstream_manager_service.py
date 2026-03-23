@@ -16,6 +16,7 @@ import pty
 import select
 import struct
 import subprocess
+import sys
 import tempfile
 import termios
 import threading
@@ -28,6 +29,7 @@ from typing import Any, Dict, List, Optional
 
 import psutil
 import requests
+from dotenv import load_dotenv
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 from flask_sock import Sock
@@ -39,6 +41,29 @@ from agentics.core.streaming.streaming_utils import (
     list_schema_versions,
     register_atype_schema,
 )
+
+# Load environment variables from root .env file
+# Find the agentics root by looking for pyproject.toml
+current_dir = Path(__file__).resolve().parent
+while current_dir != current_dir.parent:
+    if (current_dir / "pyproject.toml").exists():
+        ROOT_DIR = current_dir
+        break
+    current_dir = current_dir.parent
+else:
+    # Fallback: assume we're in tools/agstream_manager/backend
+    ROOT_DIR = Path(__file__).resolve().parent.parent.parent
+
+ENV_FILE = ROOT_DIR / ".env"
+if ENV_FILE.exists():
+    load_dotenv(ENV_FILE, override=True)
+    print(f"✓ Loaded environment from {ENV_FILE}")
+    # Verify critical env vars are loaded
+    if os.getenv("OPENAI_API_KEY"):
+        api_key = os.getenv("OPENAI_API_KEY")
+        print(f"✓ OPENAI_API_KEY loaded (length: {len(api_key) if api_key else 0})")
+else:
+    print(f"⚠ Warning: .env file not found at {ENV_FILE}")
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for frontend access
@@ -54,6 +79,8 @@ KAFKA_BOOTSTRAP_SERVERS = os.getenv(
 FLINK_JOBMANAGER_URL = os.getenv("FLINK_JOBMANAGER_URL", "http://localhost:8085")
 # Execution mode: "local" (PyFlink embedded) or "cluster" (Flink cluster via REST API)
 LISTENER_EXECUTION_MODE = os.getenv("LISTENER_EXECUTION_MODE", "local")
+# Max instances that can be generated in a single request
+MAX_GENERATE_INSTANCES = int(os.getenv("MAX_GENERATE_INSTANCES", "100"))
 
 # Get the directory where this script is located
 SCRIPT_DIR = Path(__file__).parent
@@ -386,26 +413,45 @@ def create_pydantic_from_fields(
         field_name = field["name"]
         field_type_str = field.get("type", "str")
         field_type = type_mapping.get(field_type_str, str)
-        description = field.get("description", "")
+        description = field.get("description", "").strip()
         required = field.get("required", False)
         default_value = field.get("default")
 
+        # Only include description in Field if it's not empty
         if required:
-            field_definitions[field_name] = (
-                field_type,
-                Field(description=description),
-            )
-        else:
-            if default_value is not None:
+            if description:
                 field_definitions[field_name] = (
-                    Optional[field_type],
-                    Field(default=default_value, description=description),
+                    field_type,
+                    Field(description=description),
                 )
             else:
                 field_definitions[field_name] = (
-                    Optional[field_type],
-                    Field(default=None, description=description),
+                    field_type,
+                    Field(),
                 )
+        else:
+            if default_value is not None:
+                if description:
+                    field_definitions[field_name] = (
+                        Optional[field_type],
+                        Field(default=default_value, description=description),
+                    )
+                else:
+                    field_definitions[field_name] = (
+                        Optional[field_type],
+                        Field(default=default_value),
+                    )
+            else:
+                if description:
+                    field_definitions[field_name] = (
+                        Optional[field_type],
+                        Field(default=None, description=description),
+                    )
+                else:
+                    field_definitions[field_name] = (
+                        Optional[field_type],
+                        Field(default=None),
+                    )
 
     return create_model(type_name, **field_definitions)
 
@@ -435,6 +481,8 @@ def create_pydantic_from_code(code: str) -> type[BaseModel]:
 
 def pydantic_to_field_list(model: type[BaseModel]) -> List[Dict[str, Any]]:
     """Convert a Pydantic model to a list of field definitions"""
+    from pydantic_core import PydanticUndefined
+
     fields = []
     for field_name, field_info in model.model_fields.items():
         field_type = str(field_info.annotation)
@@ -450,15 +498,22 @@ def pydantic_to_field_list(model: type[BaseModel]) -> List[Dict[str, Any]]:
                 .replace(" | None", "")
             )
 
+        # Handle default value - check for PydanticUndefined
+        default_value = field_info.default
+        if (
+            default_value is None
+            or default_value is PydanticUndefined
+            or default_value is ...
+        ):
+            default_value = None
+
         fields.append(
             {
                 "name": field_name,
                 "type": field_type,
                 "description": field_info.description or "",
                 "required": field_info.is_required(),
-                "default": (
-                    field_info.default if field_info.default is not None else None
-                ),
+                "default": default_value,
             }
         )
     return fields
@@ -2171,9 +2226,17 @@ def generate_and_produce_messages():
                 400,
             )
 
-        if not isinstance(n_instances, int) or n_instances < 1 or n_instances > 100:
+        if (
+            not isinstance(n_instances, int)
+            or n_instances < 1
+            or n_instances > MAX_GENERATE_INSTANCES
+        ):
             return (
-                jsonify({"error": "n_instances must be an integer between 1 and 100"}),
+                jsonify(
+                    {
+                        "error": f"n_instances must be an integer between 1 and {MAX_GENERATE_INSTANCES}"
+                    }
+                ),
                 400,
             )
 
@@ -2820,6 +2883,229 @@ def check_flink_status():
         )
     except Exception as e:
         return jsonify({"running": False, "error": str(e)}), 500
+
+
+@app.route("/api/flink/restart", methods=["POST"])
+def restart_flink():
+    """Restart Flink containers to clean up stuck jobs"""
+    try:
+        import os
+
+        # Get the path to the restart script
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        agstream_dir = os.path.join(script_dir, "..")
+        restart_script = os.path.join(agstream_dir, "scripts", "restart_flink.sh")
+
+        # Check if script exists
+        if not os.path.exists(restart_script):
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": f"Restart script not found at {restart_script}",
+                    }
+                ),
+                404,
+            )
+
+        # Execute the restart script
+        result = subprocess.run(
+            ["bash", restart_script],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            cwd=agstream_dir,
+        )
+
+        if result.returncode == 0:
+            return jsonify(
+                {
+                    "success": True,
+                    "message": "Flink containers restarted successfully",
+                    "output": result.stdout,
+                }
+            )
+        else:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "Failed to restart Flink",
+                        "output": result.stderr,
+                    }
+                ),
+                500,
+            )
+
+    except subprocess.TimeoutExpired:
+        return jsonify({"success": False, "error": "Restart operation timed out"}), 500
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/flink/rebuild-udfs", methods=["POST"])
+def rebuild_udfs():
+    """Rebuild UDFs from Schema Registry types and restart Flink (runs in background)"""
+    try:
+        import os
+        import threading
+
+        # Get the path to the scripts
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        agstream_dir = os.path.join(script_dir, "..")
+        generate_script = os.path.join(
+            agstream_dir, "scripts", "generate_registry_udfs.py"
+        )
+        rebuild_script = os.path.join(agstream_dir, "scripts", "rebuild_flink_image.sh")
+        restart_script = os.path.join(agstream_dir, "scripts", "restart_flink.sh")
+
+        # Check if scripts exist
+        if not os.path.exists(generate_script):
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": f"Generate script not found at {generate_script}",
+                    }
+                ),
+                404,
+            )
+
+        if not os.path.exists(rebuild_script):
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": f"Rebuild script not found at {rebuild_script}",
+                    }
+                ),
+                404,
+            )
+
+        if not os.path.exists(restart_script):
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": f"Restart script not found at {restart_script}",
+                    }
+                ),
+                404,
+            )
+
+        # Run the rebuild process in a background thread
+        def run_rebuild():
+            try:
+                # Step 1: Generate UDFs
+                subprocess.run(
+                    ["python", generate_script],
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
+                    cwd=agstream_dir,
+                )
+
+                # Step 2: Rebuild image
+                subprocess.run(
+                    ["bash", rebuild_script],
+                    capture_output=True,
+                    text=True,
+                    timeout=300,
+                    cwd=agstream_dir,
+                )
+
+                # Step 3: Restart Flink
+                subprocess.run(
+                    ["bash", restart_script],
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
+                    cwd=agstream_dir,
+                )
+            except Exception as e:
+                import sys as _sys
+
+                print(f"Error in background rebuild: {e}", file=_sys.stderr)
+
+        # Start background thread
+        thread = threading.Thread(target=run_rebuild, daemon=True)
+        thread.start()
+
+        # Return immediately
+        return jsonify(
+            {
+                "success": True,
+                "message": "UDF rebuild started in background. Flink will restart automatically when complete.",
+            }
+        )
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/flink/register-udfs", methods=["POST"])
+def register_udfs():
+    """Auto-register all AGMap UDFs in the current Flink SQL session"""
+    try:
+        import os
+
+        # Get the path to the auto-register script
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        agstream_dir = os.path.join(script_dir, "..")
+        register_script = os.path.join(agstream_dir, "scripts", "auto_register_udfs.py")
+
+        # Check if script exists
+        if not os.path.exists(register_script):
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": f"Registration script not found at {register_script}",
+                    }
+                ),
+                404,
+            )
+
+        # Run the script to generate SQL
+        result = subprocess.run(
+            ["python", register_script],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            cwd=agstream_dir,
+        )
+
+        if result.returncode != 0:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "Failed to generate registration SQL",
+                        "output": result.stderr,
+                    }
+                ),
+                500,
+            )
+
+        # Extract SQL statements (stdout contains the SQL)
+        sql_statements = result.stdout
+
+        return jsonify(
+            {
+                "success": True,
+                "message": "UDF registration SQL generated successfully",
+                "sql": sql_statements,
+                "summary": result.stderr,  # Summary goes to stderr
+            }
+        )
+
+    except subprocess.TimeoutExpired:
+        return (
+            jsonify({"success": False, "error": "Registration script timed out"}),
+            500,
+        )
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @app.route("/api/flink/launch-shell", methods=["POST"])

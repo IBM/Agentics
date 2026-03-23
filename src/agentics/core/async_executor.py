@@ -1,5 +1,17 @@
-import asyncio
+# CRITICAL: Disable CrewAI telemetry BEFORE any imports
 import os
+
+os.environ["CREWAI_TRACING_ENABLED"] = "false"
+os.environ["CREWAI_DISABLE_TELEMETRY"] = "true"
+os.environ["CREWAI_DISABLE_TRACING"] = "true"
+os.environ["CREWAI_TELEMETRY"] = "false"
+os.environ["OTEL_SDK_DISABLED"] = "true"
+os.environ["CREWAI_TRACING_DISABLED"] = "true"
+os.environ["CREWAI_SILENT"] = "true"
+os.environ["CREWAI_STORAGE_DIR"] = "/tmp/crewai"
+os.environ["CREWAI_ALLOW_STACK_TRACES"] = "false"  # Force disable stack traces
+
+import asyncio
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from typing import Any, Callable, List, Type, Union
@@ -242,7 +254,7 @@ class PydanticTransducerCrewAI(PydanticTransducer):
             agents=[agent],
             tasks=[task],
             process=Process.sequential,
-            verbose=verbose,
+            verbose=False,  # Force verbose=False to prevent stack traces
             manager_llm=self.llm,
             function_calling_llm=self.llm,
             chat_llm=self.llm,

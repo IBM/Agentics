@@ -92,7 +92,7 @@ class AG(BaseModel, Generic[T]):
         None,
         description="""Python code for the used type""",
     )
-    states: List[BaseModel] = []
+    states: List[BaseModel] = Field(default_factory=list)
     tools: Optional[List[Any]] = Field(None, exclude=True)
     transduce_fields: Optional[List[str]] = Field(
         None,
@@ -136,7 +136,7 @@ class AG(BaseModel, Generic[T]):
         20,
         description="The size of the bathes to be used when transduction type is amap",
     )
-    areduce_batches: List[BaseModel] = []
+    areduce_batches: List[BaseModel] = Field(default_factory=list)
     save_amap_batches_to_path: Optional[str] = None
 
     crew_prompt_params: Optional[Dict[str, str]] = Field(

@@ -95,8 +95,9 @@ cd examples/AGStream_Manager
 
 This will:
 1. Start Kafka and Karapace Schema Registry (Docker)
-2. Start AGStream Manager service (Port 5003)
-3. Open the web interface in your browser
+2. Start Flink SQL cluster with Python UDF support
+3. Start AGStream Manager service (Port 5003)
+4. Open the web interface in your browser
 
 ### Access Web Interface
 
@@ -216,13 +217,11 @@ AGStream_Manager/
 │   ├── debug_topic_messages.py
 │   ├── send_test_message.py
 │   └── ... (other utility scripts)
-├── tests/                             # Test files
-│   ├── test_agstream_manager_port5003.py
-│   ├── test_listener_persistence.py
-│   ├── test_schema_manager.py
-│   └── ... (other test files)
-└── agstream_manager/                  # Shared JavaScript modules
-    └── common.js                      # Common UI utilities
+└── tests/                             # Test files
+    ├── test_agstream_manager_port5003.py
+    ├── test_listener_persistence.py
+    ├── test_schema_manager.py
+    └── ... (other test files)
 ```
 
 ## Configuration
@@ -323,6 +322,63 @@ python3 test_schema_enforcement.py
 python3 test_listener_ui.py
 ```
 
+## Flink SQL UDFs
+
+AGStream Manager includes powerful Flink SQL UDFs for semantic operations:
+
+### agmap - Semantic Mapping (Row-by-Row)
+Transform each row using AI-powered semantic mapping:
+
+```sql
+-- Extract sentiment from each review
+SELECT T.sentiment
+FROM pr, LATERAL TABLE(agmap(customer_review, 'sentiment')) AS T(sentiment)
+LIMIT 5;
+```
+
+**Documentation:**
+- [AGMAP_DYNAMIC_UDF_GUIDE.md](AGMAP_DYNAMIC_UDF_GUIDE.md) - Complete guide
+- [AGMAP_QUICK_REFERENCE.md](AGMAP_QUICK_REFERENCE.md) - Quick reference
+- [sql/agmap_dynamic_examples.sql](sql/agmap_dynamic_examples.sql) - Examples
+
+### agreduce - Semantic Aggregation (All Rows)
+Aggregate all rows into a single result using AI-powered reduction:
+
+```sql
+-- Summarize all reviews into one result
+SELECT agreduce(
+    customer_review,
+    'summary',
+    'str',
+    'Summarize overall sentiment and key themes'
+) as summary
+FROM pr;
+```
+
+**Documentation:**
+- [AGREDUCE_UDF_GUIDE.md](AGREDUCE_UDF_GUIDE.md) - Complete guide
+- [AGREDUCE_QUICK_REFERENCE.md](AGREDUCE_QUICK_REFERENCE.md) - Quick reference
+- [sql/agreduce_examples.sql](sql/agreduce_examples.sql) - Examples
+
+### Key Differences
+
+| Feature | **agmap** | **agreduce** |
+|---------|-----------|--------------|
+| **Scope** | 1 row → 1 result | ALL rows → 1 result |
+| **Type** | UDTF (Table Function) | UDAF (Aggregate Function) |
+| **Use Case** | Extract, transform | Summarize, aggregate |
+| **Example** | Sentiment per review | Overall summary |
+
+### Registration
+
+```sql
+-- Register both UDFs
+CREATE TEMPORARY SYSTEM FUNCTION agmap AS 'ag_operators.agmap' LANGUAGE PYTHON;
+CREATE TEMPORARY SYSTEM FUNCTION agreduce AS 'agreduce.agreduce' LANGUAGE PYTHON;
+```
+
+Or use the registration script: [sql/register_udfs.sql](sql/register_udfs.sql)
+
 ## Best Practices
 
 1. **Create Topics First**: Always create topics before defining functions or starting listeners
@@ -330,6 +386,8 @@ python3 test_listener_ui.py
 3. **Monitor Listeners**: Check listener logs regularly for errors
 4. **Backup Schemas**: Use schema manager backup feature before major changes
 5. **Clean Restarts**: Use `./manage_services.sh clean-restart` to reset Kafka data
+6. **Use agmap for Row Operations**: Extract fields or transform individual rows
+7. **Use agreduce for Aggregations**: Summarize entire datasets or compute statistics
 
 ## Support
 

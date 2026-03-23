@@ -39,10 +39,13 @@ except ImportError:
     KAFKA_AVAILABLE = False
 
 # Skip entire module if kafka is not available
-pytestmark = pytest.mark.skipif(
-    not KAFKA_AVAILABLE,
-    reason="Kafka dependencies not installed. Install with: pip install kafka-python confluent-kafka",
-)
+pytestmark = [
+    pytest.mark.agstream,
+    pytest.mark.skipif(
+        not KAFKA_AVAILABLE,
+        reason="Kafka dependencies not installed. Install with: pip install kafka-python confluent-kafka",
+    ),
+]
 
 # Suppress Kafka connection warnings
 logging.getLogger("kafka").setLevel(logging.CRITICAL)

@@ -15,12 +15,23 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 # Copy Java include directory for pemja
 RUN cp -r /usr/lib/jvm/java-11-openjdk-*/include /opt/java/openjdk/
 
+# Set CrewAI environment variables BEFORE any Python package installation
+# This prevents telemetry/tracing prompts that cause 20-second delays
+ENV CREWAI_DISABLE_TELEMETRY=true
+ENV CREWAI_TRACING_ENABLED=false
+ENV OTEL_SDK_DISABLED=true
+ENV CREWAI_SILENT=true
+ENV CREWAI_ALLOW_STACK_TRACES=false
+ENV CREWAI_DISABLE_TRACING=true
+ENV CREWAI_TRACING_DISABLED=true
+ENV CREWAI_STORAGE_DIR=/tmp/crewai
+
 # Install PyFlink
 ENV JAVA_HOME=/opt/java/openjdk
 ENV PATH="/root/.local/bin:$PATH"
 RUN uv pip install --system apache-flink==1.18.1
 
-# Install essential dependencies for agentics core (excluding heavy/unnecessary ones)
+# Install essential dependencies for agentics core (including all required packages)
 RUN uv pip install --system \
     pydantic \
     openai \
@@ -38,7 +49,10 @@ RUN uv pip install --system \
     rich \
     jsonfinder \
     ddgs \
-    numerize
+    numerize \
+    hnswlib \
+    scikit-learn \
+    requests
 
 # Copy agentics core modules (without installing the full package)
 COPY src/agentics /opt/flink/agentics
@@ -47,7 +61,8 @@ ENV PYTHONPATH=/opt/flink:$PYTHONPATH
 # Create UDF directory
 RUN mkdir -p /opt/flink/udfs
 
-# Copy UDF files
+# Copy UDF files to both /opt/flink (for direct import) and /opt/flink/udfs (for organization)
+COPY tools/agstream_manager/udfs/*.py /opt/flink/
 COPY tools/agstream_manager/udfs/ /opt/flink/udfs/
 
 # Add Python configuration to Flink (clean file first to avoid duplicates)

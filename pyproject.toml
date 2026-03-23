@@ -87,6 +87,10 @@ dev = [
   "pytest-subtests>=0.15.0",
   "hunter>=3.9.0",
 ]
+agstream = [
+  "kafka-python-ng>=2.2.0",
+  "python-dotenv>=1.0.0",
+]
 docling = [
   "langchain-docling >=0.2.0,<0.3.0"
 ]
@@ -111,6 +115,10 @@ testpaths = ["tests"]
 # Force HTML report generation for debugging of test failures on long tests
 # i.e.: db2 docker instances
 addopts = "--html=report.html --self-contained-html"
+markers = [
+    "core: Core functionality tests (examples, packages, tutorials)",
+    "agstream: AGStream integration tests (requires Kafka/Schema Registry)",
+]
 
 [tool.codespell]
 ignore-words-list = ["ans" , "AGs"]

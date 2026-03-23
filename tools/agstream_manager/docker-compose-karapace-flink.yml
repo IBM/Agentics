@@ -118,8 +118,8 @@ services:
   # Apache Flink JobManager (with Python support)
   flink-jobmanager:
     build:
-      context: .
-      dockerfile: Dockerfile.flink-python
+      context: ../..
+      dockerfile: tools/agstream_manager/Dockerfile.flink-python
     image: flink-python:1.18.1
     hostname: flink-jobmanager
     container_name: flink-jobmanager
@@ -130,13 +130,22 @@ services:
       - |
         FLINK_PROPERTIES=
         jobmanager.rpc.address: flink-jobmanager
-        parallelism.default: 2
-        taskmanager.numberOfTaskSlots: 4
+        parallelism.default: 20
+        taskmanager.numberOfTaskSlots: 20
         python.executable: /usr/bin/python3
       - PYTHONPATH=/opt/flink/udfs
+      - CREWAI_TRACING_ENABLED=false
+      - CREWAI_DISABLE_TELEMETRY=true
+      - OTEL_SDK_DISABLED=true
+      - CREWAI_SILENT=true
+      - CREWAI_ALLOW_STACK_TRACES=false
+      - CREWAI_DISABLE_TRACING=true
+      - CREWAI_TRACING_DISABLED=true
     volumes:
       - ./flink-lib:/opt/flink-connectors
       - ./tools/agstream_manager/udfs:/opt/flink/udfs
+      - ../../.env:/opt/flink/.env:ro
+      - ../../src/agentics:/opt/flink/agentics:ro
     networks:
       - karapace
     depends_on:
@@ -145,8 +154,8 @@ services:
   # Apache Flink TaskManager (with Python support)
   flink-taskmanager:
     build:
-      context: .
-      dockerfile: Dockerfile.flink-python
+      context: ../..
+      dockerfile: tools/agstream_manager/Dockerfile.flink-python
     image: flink-python:1.18.1
     hostname: flink-taskmanager
     container_name: flink-taskmanager
@@ -158,13 +167,22 @@ services:
       - |
         FLINK_PROPERTIES=
         jobmanager.rpc.address: flink-jobmanager
-        taskmanager.numberOfTaskSlots: 4
-        parallelism.default: 2
+        taskmanager.numberOfTaskSlots: 20
+        parallelism.default: 20
         python.executable: /usr/bin/python3
       - PYTHONPATH=/opt/flink/udfs
+      - CREWAI_TRACING_ENABLED=false
+      - CREWAI_DISABLE_TELEMETRY=true
+      - OTEL_SDK_DISABLED=true
+      - CREWAI_SILENT=true
+      - CREWAI_ALLOW_STACK_TRACES=false
+      - CREWAI_DISABLE_TRACING=true
+      - CREWAI_TRACING_DISABLED=true
     volumes:
       - ./flink-lib:/opt/flink-connectors
       - ./tools/agstream_manager/udfs:/opt/flink/udfs
+      - ../../.env:/opt/flink/.env:ro
+      - ../../src/agentics:/opt/flink/agentics:ro
     networks:
       - karapace
 

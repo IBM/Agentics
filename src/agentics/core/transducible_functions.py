@@ -756,9 +756,32 @@ from agentics import AG
 async def generate_prototypical_instances(
     type: Type[BaseModel],
     n_instances: int = 10,
-    llm: Any = AG.get_llm_provider(),
+    llm: Any = None,
     instructions: str = None,
 ) -> list[BaseModel]:
+
+    # Get LLM provider - ensure it's a CrewAI LLM (BaseLLM)
+    if llm is None:
+        from crewai.llms.base_llm import BaseLLM
+
+        llm = AG.get_llm_provider()
+
+        # Validate that we got a CrewAI LLM, not AsyncOpenAI
+        if llm is not None and not isinstance(llm, BaseLLM):
+            # Try to get a CrewAI LLM specifically
+            from agentics.core.llm_connections import get_available_llms
+
+            available = get_available_llms()
+            # Find first CrewAI LLM
+            for provider_name, provider in available.items():
+                if isinstance(provider, BaseLLM):
+                    llm = provider
+                    break
+            else:
+                raise ValueError(
+                    "No CrewAI LLM provider available. Please configure OPENAI_API_KEY, "
+                    "ANTHROPIC_API_KEY, or another CrewAI-compatible LLM in your environment."
+                )
 
     DynamicModel = create_model(
         "ListOfObjectsOfGivenType",
