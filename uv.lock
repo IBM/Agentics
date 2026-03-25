@@ -49,12 +49,14 @@ name = "agentics-py"
 source = { editable = "." }
 dependencies = [
     { name = "aiosqlite" },
+    { name = "apscheduler" },
     { name = "async-lru" },
     { name = "crewai", extra = ["google-genai", "tools"] },
     { name = "crewai-tools", extra = ["mcp"] },
     { name = "datasets" },
     { name = "ddgs" },
     { name = "duckdb" },
+    { name = "fastapi-sso" },
     { name = "google" },
     { name = "hnswlib" },
     { name = "ipywidgets" },
@@ -108,6 +110,7 @@ rhel = [
 [package.metadata]
 requires-dist = [
     { name = "aiosqlite", specifier = ">=0.21.0" },
+    { name = "apscheduler", specifier = ">=3.10.0" },
     { name = "async-lru", specifier = ">=2.0.5" },
     { name = "crewai", extras = ["google-genai"] },
     { name = "crewai", extras = ["tools"] },
@@ -115,6 +118,7 @@ requires-dist = [
     { name = "datasets", specifier = ">=4.0.0,<5.0.0" },
     { name = "ddgs" },
     { name = "duckdb", specifier = ">=1.4.3" },
+    { name = "fastapi-sso", specifier = ">=0.10.0" },
     { name = "google", specifier = ">=3.0.0,<4.0.0" },
     { name = "hnswlib", specifier = ">=0.8.0" },
     { name = "ipywidgets", specifier = ">=8.1.7" },
@@ -317,6 +321,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/d7/d8/05696357e0311f5b5c316d7b95f46c669dd9c15aaeecbb48c7d0aeb88c40/appdirs-1.4.4.tar.gz", hash = "sha256:7d5d0167b2b1ba821647616af46a749d1c653740dd0d2415100fe26e27afdf41", size = 13470, upload-time = "2020-05-11T07:59:51.037Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/3b/00/2344469e2084fb287c2e0b57b72910309874c3245463acd6cf5e3db69324/appdirs-1.4.4-py2.py3-none-any.whl", hash = "sha256:a841dacd6b99318a741b166adb07e19ee71a274450e68237b4650ca1055ab128", size = 9566, upload-time = "2020-05-11T07:59:49.499Z" },
+]
+
+[[package]]
+name = "apscheduler"
+version = "3.11.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "tzlocal" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/07/12/3e4389e5920b4c1763390c6d371162f3784f86f85cd6d6c1bfe68eef14e2/apscheduler-3.11.2.tar.gz", hash = "sha256:2a9966b052ec805f020c8c4c3ae6e6a06e24b1bf19f2e11d91d8cca0473eef41", size = 108683, upload-time = "2025-12-22T00:39:34.884Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9f/64/2e54428beba8d9992aa478bb8f6de9e4ecaa5f8f513bcfd567ed7fb0262d/apscheduler-3.11.2-py3-none-any.whl", hash = "sha256:ce005177f741409db4e4dd40a7431b76feb856b9dd69d57e0da49d6715bfd26d", size = 64439, upload-time = "2025-12-22T00:39:33.303Z" },
 ]
 
 [[package]]
@@ -961,6 +977,15 @@ wheels = [
 ]
 
 [[package]]
+name = "dnspython"
+version = "2.8.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/8c/8b/57666417c0f90f08bcafa776861060426765fdb422eb10212086fb811d26/dnspython-2.8.0.tar.gz", hash = "sha256:181d3c6996452cb1189c4046c61599b84a5a86e099562ffde77d26984ff26d0f", size = 368251, upload-time = "2025-09-07T18:58:00.022Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ba/5a/18ad964b0086c6e62e2e7500f7edc89e3faa45033c71c1893d34eed2b2de/dnspython-2.8.0-py3-none-any.whl", hash = "sha256:01d9bbc4a2d76bf0db7c1f729812ded6d912bd318d3b1cf81d30c0f845dbf3af", size = 331094, upload-time = "2025-09-07T18:57:58.071Z" },
+]
+
+[[package]]
 name = "docker"
 version = "7.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1138,6 +1163,19 @@ wheels = [
 ]
 
 [[package]]
+name = "email-validator"
+version = "2.3.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "dnspython" },
+    { name = "idna" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f5/22/900cb125c76b7aaa450ce02fd727f452243f2e91a61af068b40adba60ea9/email_validator-2.3.0.tar.gz", hash = "sha256:9fc05c37f2f6cf439ff414f8fc46d917929974a82244c20eb10231ba60c54426", size = 51238, upload-time = "2025-08-26T13:09:06.831Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/de/15/545e2b6cf2e3be84bc1ed85613edd75b8aea69807a71c26f4ca6a9258e82/email_validator-2.3.0-py3-none-any.whl", hash = "sha256:80f13f623413e6b197ae73bb10bf4eb0908faf509ad8362c5edeb0be7fd450b4", size = 35604, upload-time = "2025-08-26T13:09:05.858Z" },
+]
+
+[[package]]
 name = "entrypoints"
 version = "0.4"
 source = { registry = "https://pypi.org/simple" }
@@ -1220,6 +1258,22 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/cd/21/ade3ff6745a82ea8ad88552b4139d27941549e4f19125879f848ac8f3c3d/fastapi-0.124.4.tar.gz", hash = "sha256:0e9422e8d6b797515f33f500309f6e1c98ee4e85563ba0f2debb282df6343763", size = 378460, upload-time = "2025-12-12T15:00:43.891Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/3e/57/aa70121b5008f44031be645a61a7c4abc24e0e888ad3fc8fda916f4d188e/fastapi-0.124.4-py3-none-any.whl", hash = "sha256:6d1e703698443ccb89e50abe4893f3c84d9d6689c0cf1ca4fad6d3c15cf69f15", size = 113281, upload-time = "2025-12-12T15:00:42.44Z" },
+]
+
+[[package]]
+name = "fastapi-sso"
+version = "0.21.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "httpx" },
+    { name = "oauthlib" },
+    { name = "pydantic", extra = ["email"] },
+    { name = "pyjwt" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/96/0a/81e67a78dd6562732cde9e68c9a483516d9de5bd2d5454ac465b66b4e97c/fastapi_sso-0.21.0.tar.gz", hash = "sha256:5fa596e28abb3c9d14567df8a2757f13a0fe4be8a2701fbf6853cf0cd297470b", size = 18029, upload-time = "2026-02-24T18:46:47.041Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/56/4f/22d8cfe4ac207b4718dfdd7a1fea0acdcdb61be2d546bde905ca6ce065a4/fastapi_sso-0.21.0-py3-none-any.whl", hash = "sha256:30e631277050c16e0eb03eb228867b586631e2f5155cc5574e27e28df73356ff", size = 29219, upload-time = "2026-02-24T18:46:47.821Z" },
 ]
 
 [[package]]
@@ -3818,6 +3872,11 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/5a/87/b70ad306ebb6f9b585f114d0ac2137d792b48be34d732d60e597c2f8465a/pydantic-2.12.5-py3-none-any.whl", hash = "sha256:e561593fccf61e8a20fc46dfc2dfe075b8be7d0188df33f221ad1f0139180f9d", size = 463580, upload-time = "2025-11-26T15:11:44.605Z" },
 ]
 
+[package.optional-dependencies]
+email = [
+    { name = "email-validator" },
+]
+
 [[package]]
 name = "pydantic-core"
 version = "2.41.5"
@@ -4870,7 +4929,7 @@ wheels = [
 
 [[package]]
 name = "streamlit"
-version = "1.52.1"
+version = "1.55.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "altair" },
@@ -4892,9 +4951,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "watchdog", marker = "sys_platform != 'darwin'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6f/ec/66ca1578587bbaaea5757a7f074d3f762fff8d782ffb4497a83c5722aa44/streamlit-1.52.1.tar.gz", hash = "sha256:b036a71866b893c97fdebaa2a2ebd21ebf2af7daea4b3abe783a57b26f55b3ca", size = 8582829, upload-time = "2025-12-05T18:55:42.006Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/92/8e/f2b8b4fa8ba65aae251170c54f8ce198fb588fc348301c2b624f8c63efac/streamlit-1.55.0.tar.gz", hash = "sha256:015e512bbd02d000f4047e51118dc086b70e7d9c46b4a11a33c2509731379626", size = 8612008, upload-time = "2026-03-03T22:26:02.149Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d0/d4/cdafd4cc940937410f465ca7a77dd34237182c2ddece624e08db959496f8/streamlit-1.52.1-py3-none-any.whl", hash = "sha256:97fee2c3421d350fd65548e45a20f506ec1b651d78f95ecacbc0c2f9f838081c", size = 9024748, upload-time = "2025-12-05T18:55:39.713Z" },
+    { url = "https://files.pythonhosted.org/packages/dc/e6/412c1e1f200ca8c32ecf10201839183e261ad61ced3ede34a66f6d4be3cf/streamlit-1.55.0-py3-none-any.whl", hash = "sha256:1e4a16449c6131696180f4ddb40ea8c51834e89c2a43e1b0362bc9b1cfd9b415", size = 9075714, upload-time = "2026-03-03T22:25:59.126Z" },
 ]
 
 [[package]]
@@ -5390,6 +5449,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/5e/a7/c202b344c5ca7daf398f3b8a477eeb205cf3b6f32e7ec3a6bac0629ca975/tzdata-2025.3.tar.gz", hash = "sha256:de39c2ca5dc7b0344f2eba86f49d614019d29f060fc4ebc8a417896a620b56a7", size = 196772, upload-time = "2025-12-13T17:45:35.667Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c7/b0/003792df09decd6849a5e39c28b513c06e84436a54440380862b5aeff25d/tzdata-2025.3-py2.py3-none-any.whl", hash = "sha256:06a47e5700f3081aab02b2e513160914ff0694bce9947d6b76ebd6bf57cfc5d1", size = 348521, upload-time = "2025-12-13T17:45:33.889Z" },
+]
+
+[[package]]
+name = "tzlocal"
+version = "5.3.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "tzdata", marker = "sys_platform == 'win32'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/8b/2e/c14812d3d4d9cd1773c6be938f89e5735a1f11a9f184ac3639b93cef35d5/tzlocal-5.3.1.tar.gz", hash = "sha256:cceffc7edecefea1f595541dbd6e990cb1ea3d19bf01b2809f362a03dd7921fd", size = 30761, upload-time = "2025-03-05T21:17:41.549Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c2/14/e2a54fabd4f08cd7af1c07030603c3356b74da07f7cc056e600436edfa17/tzlocal-5.3.1-py3-none-any.whl", hash = "sha256:eb1a66c3ef5847adf7a834f1be0800581b683b5608e74f86ecbcef8ab91bb85d", size = 18026, upload-time = "2025-03-05T21:17:39.857Z" },
 ]
 
 [[package]]
