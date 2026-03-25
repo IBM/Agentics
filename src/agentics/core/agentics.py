@@ -139,11 +139,11 @@ class AG(BaseModel, Generic[T]):
         20,
         description="The size of the bathes to be used when transduction type is amap",
     )
-    areduce_batches: List[BaseModel] = []
+    areduce_batches: List[BaseModel] = Field(default_factory=list)
     save_amap_batches_to_path: Optional[str] = None
 
     crew_prompt_params: Optional[Dict[str, str]] = Field(
-        {
+        default_factory=lambda: {
             "role": "Task Executor",
             "goal": "You execute tasks",
             "backstory": "You are always faithful and provide only fact based answers.",
@@ -1142,21 +1142,26 @@ class AG(BaseModel, Generic[T]):
 
     def merge_states(self, other: AG) -> AG:
         """
-        Merge states of two AGs pairwise
-
+        Merge states of two AGs pairwise.
+        
+        The 'other' AG's fields take precedence over 'self' fields when there are conflicts.
+        This ensures that newly generated data (other) overwrites existing data (self).
         """
         if len(self) == len(other):
             merged = self.clone()
             merged.states = []
             merged.explanations = []
+            # Put self.atype first so its fields appear first in the merged schema,
+            # but other.atype values will overwrite in the instance creation below
             merged.atype = merge_pydantic_models(
                 self.atype,
                 other.atype,
                 name=f"Merged{self.atype.__name__}#{other.atype.__name__}",
             )
+            # Create instances with self first, then other overwrites
             for self_state, other_state in zip(self, other):
                 merged.states.append(
-                    merged.atype(**other_state.model_dump(), **self_state.model_dump())
+                    merged.atype(**self_state.model_dump(), **other_state.model_dump())
                 )
             return merged
         else:

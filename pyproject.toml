@@ -43,6 +43,8 @@ dependencies = [
     "duckdb>=1.4.3",
     "pandas>=2",
     "async-lru>=2.0.5",
+    "apscheduler>=3.10.0",
+    "fastapi-sso>=0.10.0",
 ]
 
 
