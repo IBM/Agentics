@@ -65,13 +65,21 @@ async def structured_decoding_using_mellea(
     # At this point we're outside the `with`: session should be closed
 
     if mellea_output is None or mellea_output.content is None:
-        return targetAtype()
+        logging.warning(
+            f"Received None or empty response from LLM call. "
+            f"LLM: {llm}, Input length: {len(input)} chars. "
+            f"Check LLM configuration, API credentials, and model availability."
+        )
+        raise ValueError(
+            "Invalid response from LLM call - None or empty. "
+            "Please check your LLM configuration and API credentials."
+        )
 
     raw = mellea_output.content
     # If Mellea gave us a dict-like object:
     if isinstance(raw, dict):
         return targetAtype.model_validate(raw)
-    # If it’s a JSON string:
+    # If it's a JSON string:
     if isinstance(raw, str):
         return targetAtype.model_validate_json(raw)
 
