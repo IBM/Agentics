@@ -133,13 +133,14 @@ services:
         parallelism.default: 20
         taskmanager.numberOfTaskSlots: 20
         python.executable: /usr/bin/python3
-        jobmanager.memory.off-heap.size: 1024m
-        jobmanager.memory.jvm-metaspace.size: 512m
-        jobmanager.memory.jvm-overhead.max: 1024m
-        jobmanager.memory.process.size: 4096m
-        taskmanager.memory.jvm-metaspace.size: 512m
-        taskmanager.memory.jvm-overhead.max: 2048m
-        taskmanager.memory.process.size: 6144m
+        jobmanager.memory.off-heap.size: 4096m
+        jobmanager.memory.jvm-metaspace.size: 1024m
+        jobmanager.memory.jvm-overhead.max: 2048m
+        jobmanager.memory.process.size: 8192m
+        taskmanager.memory.jvm-metaspace.size: 1024m
+        taskmanager.memory.jvm-overhead.max: 3072m
+        taskmanager.memory.process.size: 8192m
+        taskmanager.memory.managed.size: 2048m
       - PYTHONPATH=/opt/flink/udfs
       - AGSTREAM_INDEX_PATH=/opt/flink/indexes
       - CREWAI_TRACING_ENABLED=false
@@ -179,9 +180,10 @@ services:
         taskmanager.numberOfTaskSlots: 20
         parallelism.default: 20
         python.executable: /usr/bin/python3
-        taskmanager.memory.jvm-metaspace.size: 512m
-        taskmanager.memory.jvm-overhead.max: 2048m
-        taskmanager.memory.process.size: 6144m
+        taskmanager.memory.jvm-metaspace.size: 1024m
+        taskmanager.memory.jvm-overhead.max: 3072m
+        taskmanager.memory.process.size: 8192m
+        taskmanager.memory.managed.size: 2048m
       - PYTHONPATH=/opt/flink/udfs
       - AGSTREAM_INDEX_PATH=/opt/flink/indexes
       - CREWAI_TRACING_ENABLED=false

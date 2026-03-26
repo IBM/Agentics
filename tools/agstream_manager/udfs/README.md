@@ -8,6 +8,7 @@ This comprehensive guide covers all User-Defined Functions (UDFs) available in A
 2. [Core UDFs](#core-udfs)
    - [agmap - Dynamic Mapping](#agmap---dynamic-mapping)
    - [agreduce - Aggregation](#agreduce---aggregation)
+   - [aggenerate - Instance Generation](#aggenerate---instance-generation)
 3. [Registry UDFs](#registry-udfs)
    - [agmap_registry - Auto-generated UDTFs](#agmap_registry---auto-generated-udtfs)
    - [agreduce_registry - Auto-generated UDAFs](#agreduce_registry---auto-generated-udafs)
@@ -28,6 +29,7 @@ AGStream provides several types of UDFs:
 1. **Core UDFs**: Manually defined functions with dynamic type support
    - `agmap`: Row-by-row transformation (UDTF)
    - `agreduce`: Aggregation across all rows (UDAF)
+   - `aggenerate`: Generate prototypical instances (UDTF)
 
 2. **Registry UDFs**: Auto-generated functions from Schema Registry
    - `agmap_<schema>`: Schema-specific row transformations
@@ -154,6 +156,155 @@ WITH sentiment_agg AS (
 SELECT
     JSON_VALUE(agg_result, '$.sentiment_label') as overall_sentiment,
     JSON_VALUE(agg_result, '$.sentiment_score') as overall_score,
+
+---
+
+### aggenerate - Instance Generation
+
+**Type:** UDTF (User-Defined Table Function)
+**Purpose:** Generate prototypical instances of a given type using LLM-powered generation
+
+#### Features
+
+- **Continuous Generation**: Generates instances continuously until stopped by LIMIT
+- **Dynamic Mode**: Define single-field types on-the-fly
+- **Registry Mode**: Use pre-registered schemas for multi-field generation
+- **Batch Processing**: Configurable batch size for efficient LLM calls
+- **Custom Instructions**: Guide generation with specific requirements
+
+#### Registration
+
+```sql
+CREATE TEMPORARY FUNCTION IF NOT EXISTS aggenerate
+AS 'aggenerate.aggenerate' LANGUAGE PYTHON;
+```
+
+#### Syntax
+
+```sql
+-- Dynamic mode (single field)
+SELECT T.field_name
+FROM LATERAL TABLE(aggenerate(
+    'field_name',
+    'field_type',
+    'optional_instructions',
+    batch_size
+)) AS T(field_name)
+LIMIT n;
+
+-- Registry mode (multiple fields)
+SELECT T.field1, T.field2, ...
+FROM LATERAL TABLE(aggenerate(
+    'SchemaName',
+    'registry'
+)) AS T(field1, field2, ...)
+LIMIT n;
+```
+
+#### Parameters
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `type_name` | STRING | Yes | - | Field name (dynamic) or schema name (registry) |
+| `field_type` | STRING | No | 'str' | Type: 'str', 'int', 'float', 'bool', or 'registry' |
+| `instructions` | STRING | No | None | Instructions to guide generation |
+| `batch_size` | INT | No | 10 | Number of instances per LLM call |
+
+#### Supported Types (Dynamic Mode)
+
+- `str`, `string` - String values
+- `int`, `integer` - Integer values
+- `float`, `double` - Float values
+- `bool`, `boolean` - Boolean values
+- `registry` - Use Schema Registry (multi-field)
+
+#### Examples
+
+**Generate Product Names:**
+```sql
+SELECT T.product_name
+FROM LATERAL TABLE(aggenerate(
+    'product_name',
+    'str',
+    'Creative tech product names'
+))
+AS T(product_name)
+LIMIT 10;
+```
+
+**Generate Ratings:**
+```sql
+SELECT T.rating
+FROM LATERAL TABLE(aggenerate(
+    'rating',
+    'float',
+    'Product ratings between 1.0 and 5.0'
+))
+AS T(rating)
+LIMIT 20;
+```
+
+**Generate from Registry Schema:**
+```sql
+SELECT
+    JSON_VALUE(T.result, '$.sentiment_label') as sentiment_label,
+    CAST(JSON_VALUE(T.result, '$.sentiment_score') AS DOUBLE) as sentiment_score
+FROM LATERAL TABLE(aggenerate('Sentiment', 'registry'))
+AS T(result)
+LIMIT 5;
+```
+
+**Generate with Custom Batch Size:**
+```sql
+SELECT T.company_name
+FROM LATERAL TABLE(aggenerate(
+    'company_name',
+    'str',
+    'Tech startup company names',
+    20  -- Generate 20 at a time
+))
+AS T(company_name)
+LIMIT 100;
+```
+
+**Create Test Data Table:**
+```sql
+CREATE TEMPORARY VIEW test_products AS
+SELECT T.product_name
+FROM LATERAL TABLE(aggenerate(
+    'product_name',
+    'str',
+    'Consumer electronics product names'
+))
+AS T(product_name)
+LIMIT 1000;
+```
+
+#### Use Cases
+
+1. **Test Data Generation**: Create synthetic data for testing pipelines
+2. **Data Augmentation**: Generate additional training examples
+3. **Prototyping**: Quickly populate tables with realistic data
+4. **Simulation**: Generate continuous streams of test events
+5. **Benchmarking**: Create large datasets for performance testing
+
+#### Important Notes
+
+- **LIMIT Required**: Always use LIMIT to control output; without it, generation continues indefinitely
+- **LLM Costs**: Each batch makes an LLM API call, which incurs costs
+- **Performance**: Generation is slower than reading from tables due to LLM calls
+- **Batch Size**: Larger batches are more efficient but take longer per call
+- **Instructions**: More specific instructions yield better results
+
+#### Comparison with Other UDFs
+
+| Feature | agmap | aggenerate |
+|---------|-------|------------|
+| **Input** | Existing data | None (generates new) |
+| **Output** | Transformed data | Generated instances |
+| **Use Case** | Transform existing rows | Create new data |
+| **LIMIT** | Optional | Required |
+
     JSON_VALUE(agg_result, '$.review_count') as total_reviews
 FROM sentiment_agg;
 ```
@@ -350,14 +501,17 @@ Builds and persists a vector search index from table rows.
 
 **Syntax:**
 ```sql
-build_search_index(text_column, 'index_name')
+build_search_index(text_column, 'index_name', override)
 ```
 
 **Parameters:**
 - `row_data` (STRING): Text data or "text|metadata_json" format
 - `index_name` (STRING): Name for the persistent index
+- `override` (BOOLEAN, optional): If true, rebuild existing index; if false, use existing (default: false)
 
 **Returns:** JSON string with status
+
+Success (new index):
 ```json
 {
   "status": "success",
@@ -367,19 +521,123 @@ build_search_index(text_column, 'index_name')
 }
 ```
 
+Index already exists (override=false):
+```json
+{
+  "status": "exists",
+  "message": "Index 'my_index' already exists. Using existing index.",
+  "index_name": "my_index"
+}
+```
+
 **Examples:**
 ```sql
--- Basic index building
-SELECT build_search_index(customer_review, 'reviews_index') as status
-FROM pr;
+-- Build index (use existing if present)
+WITH build_data AS (
+    SELECT build_search_index(customer_review, 'reviews_index', false) as json_result
+    FROM pr
+)
+SELECT
+    JSON_VALUE(json_result, '$.status') as status,
+    JSON_VALUE(json_result, '$.message') as message
+FROM build_data;
+
+-- Force rebuild existing index
+WITH build_data AS (
+    SELECT build_search_index(customer_review, 'reviews_index', true) as json_result
+    FROM pr
+)
+SELECT
+    JSON_VALUE(json_result, '$.status') as status,
+    JSON_VALUE(json_result, '$.num_items') as num_items
+FROM build_data;
 
 -- Filtered index
-SELECT build_search_index(customer_review, 'positive_reviews_index') as status
+SELECT build_search_index(customer_review, 'positive_reviews_index', false) as json_result
 FROM pr
 WHERE rating >= 4;
 ```
 
-##### 2. search_persisted_index() - UDTF
+##### 2. search_index_json() - UDAF (Recommended)
+
+Searches a persisted vector index and returns JSON results.
+
+**Syntax:**
+```sql
+search_index_json('index_name', 'query', k)
+```
+
+**Parameters:**
+- `index_name` (STRING): Name of the persisted index
+- `query` (STRING): Search query
+- `k` (INT, optional): Number of results (default: 10)
+
+**Returns:** JSON array of results
+
+**Examples:**
+```sql
+-- Search and explode results (RECOMMENDED PATTERN)
+SELECT text, idx
+FROM (
+    SELECT search_index_json('reviews_index', 'great service', 10) as results
+    FROM (VALUES (1))
+),
+LATERAL TABLE(explode_search_results(results)) AS T(text, idx);
+
+-- Get raw JSON results
+SELECT search_index_json('reviews_index', 'quality product', 5) as results
+FROM (VALUES (1));
+```
+
+##### 3. list_indexes() - UDAF
+
+Lists all persisted indexes as a comma-separated string.
+
+**Syntax:**
+```sql
+list_indexes()
+```
+
+**Returns:** Comma-separated string of index names
+
+**Examples:**
+```sql
+-- List all indexes
+SELECT list_indexes() as index_list FROM (VALUES (1));
+```
+
+##### 4. remove_search_index() - UDAF
+
+Removes a persisted vector search index and all its files.
+
+**Syntax:**
+```sql
+remove_search_index('index_name')
+```
+
+**Parameters:**
+- `index_name` (STRING): Name of the index to remove
+
+**Returns:** JSON string with status
+
+**Examples:**
+```sql
+-- Remove an index
+SELECT remove_search_index('old_reviews_index') as status FROM (VALUES (1));
+
+-- Check result
+WITH removal AS (
+    SELECT remove_search_index('reviews_index') as json_result FROM (VALUES (1))
+)
+SELECT
+    JSON_VALUE(json_result, '$.status') as status,
+    JSON_VALUE(json_result, '$.message') as message
+FROM removal;
+```
+
+##### 5. search_persisted_index() - UDTF (Legacy)
+
+⚠️ **Note:** This function may have issues. Use `search_index_json()` + `explode_search_results()` instead.
 
 Searches a persisted vector index.
 
@@ -394,24 +652,6 @@ LATERAL TABLE(search_persisted_index('index_name', 'query', k))
 - `k` (INT, optional): Number of results (default: 10)
 
 **Returns:** Multiple rows with (text, index, score)
-- `text` (STRING): The text content
-- `index` (INT): Original row index
-- `score` (DOUBLE): Similarity score (0.0 to 1.0)
-
-**Examples:**
-```sql
--- Basic search
-SELECT T.text, T.index, T.score
-FROM LATERAL TABLE(search_persisted_index('reviews_index', 'great service', 10))
-AS T(text, index, score);
-
--- With filtering
-SELECT T.text, T.score
-FROM LATERAL TABLE(search_persisted_index('reviews_index', 'quality product', 20))
-AS T(text, index, score)
-WHERE T.score > 0.7
-ORDER BY T.score DESC;
-```
 
 #### Installation
 
@@ -563,13 +803,14 @@ cd tools/agstream_manager
 
 ### Function Comparison
 
-| Feature | agmap | agreduce | agmap_registry | agreduce_registry | agsearch | agpersist_search |
-|---------|-------|----------|----------------|-------------------|----------|------------------|
-| **Type** | UDTF | UDAF | UDTF | UDAF | UDAF | UDAF + UDTF |
-| **Input** | One row | All rows | One row | All rows | All rows | All rows |
-| **Output** | Multiple rows | Single JSON | Multiple rows | Single JSON | JSON array | Multiple rows |
-| **Type Definition** | Manual | Manual | Auto (Schema) | Auto (Schema) | N/A | N/A |
-| **Persistence** | N/A | N/A | N/A | N/A | No | Yes |
+| Feature | agmap | agreduce | aggenerate | agmap_registry | agreduce_registry | agsearch | agpersist_search |
+|---------|-------|----------|------------|----------------|-------------------|----------|------------------|
+| **Type** | UDTF | UDAF | UDTF | UDTF | UDAF | UDAF | UDAF + UDTF |
+| **Input** | One row | All rows | None | One row | All rows | All rows | All rows |
+| **Output** | Multiple rows | Single JSON | Multiple rows | Multiple rows | Single JSON | JSON array | Multiple rows |
+| **Type Definition** | Manual | Manual | Manual/Registry | Auto (Schema) | Auto (Schema) | N/A | N/A |
+| **Persistence** | N/A | N/A | N/A | N/A | N/A | No | Yes |
+| **Use Case** | Transform | Aggregate | Generate | Transform | Aggregate | Search | Search |
 
 ### Registration Commands
 
@@ -577,6 +818,7 @@ cd tools/agstream_manager
 -- Core UDFs
 CREATE TEMPORARY SYSTEM FUNCTION agmap AS 'ag_operators.agmap' LANGUAGE PYTHON;
 CREATE TEMPORARY SYSTEM FUNCTION agreduce AS 'agreduce.agreduce' LANGUAGE PYTHON;
+CREATE TEMPORARY FUNCTION aggenerate AS 'aggenerate.aggenerate' LANGUAGE PYTHON;
 
 -- Registry UDFs (example)
 CREATE TEMPORARY SYSTEM FUNCTION agmap_sentiment AS 'agmap_registry.agmap_sentiment' LANGUAGE PYTHON;
@@ -629,6 +871,27 @@ SELECT T.text, T.score
 FROM LATERAL TABLE(search_persisted_index('reviews_index', 'fast delivery', 10))
 AS T(text, index, score)
 WHERE T.score > 0.5;
+```
+
+**Pattern 4: Generate Test Data**
+```sql
+-- Generate synthetic test data
+CREATE TEMPORARY VIEW test_reviews AS
+SELECT T.review_text
+FROM LATERAL TABLE(aggenerate(
+    'review_text',
+    'str',
+    'Product reviews for electronics, mix of positive and negative'
+))
+AS T(review_text)
+LIMIT 100;
+
+-- Use generated data in pipeline
+SELECT T.sentiment_label, COUNT(*) as count
+FROM test_reviews,
+LATERAL TABLE(agmap_sentiment(review_text))
+AS T(sentiment_label)
+GROUP BY T.sentiment_label;
 ```
 
 ---
@@ -784,7 +1047,7 @@ python scripts/generate_registry_udfs.py
 
 This guide covers all UDFs in AGStream:
 
-1. **Core UDFs** (`agmap`, `agreduce`) - Dynamic, flexible transformations
+1. **Core UDFs** (`agmap`, `agreduce`, `aggenerate`) - Dynamic, flexible transformations and generation
 2. **Registry UDFs** (`agmap_*`, `agreduce_*`) - Schema-based, type-safe operations
 3. **Vector Search UDFs** (`agsearch`, `agpersist_search`) - Semantic search capabilities
 4. **Build Optimization** - Efficient development workflows
@@ -792,6 +1055,7 @@ This guide covers all UDFs in AGStream:
 Choose the right tool for your use case:
 - Use **registry UDFs** for production workloads with stable schemas
 - Use **core UDFs** for ad-hoc analysis and dynamic type exploration
+- Use **aggenerate** for creating synthetic test data and prototyping
 - Use **agpersist_search** for repeated searches on static data
 - Use **agsearch** for one-time searches on dynamic data
 - Use **update_udf.sh** for rapid UDF development

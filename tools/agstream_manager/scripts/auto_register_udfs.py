@@ -104,6 +104,24 @@ def generate_registration_sql(functions: list[tuple[str, str]]) -> str:
     sql_statements.append("CREATE TEMPORARY SYSTEM FUNCTION IF NOT EXISTS list_indexes")
     sql_statements.append("AS 'agpersist_search.list_indexes' LANGUAGE PYTHON;")
     sql_statements.append("")
+    sql_statements.append(
+        "CREATE TEMPORARY SYSTEM FUNCTION IF NOT EXISTS search_persisted_index"
+    )
+    sql_statements.append(
+        "AS 'agpersist_search.search_persisted_index' LANGUAGE PYTHON;"
+    )
+    sql_statements.append("")
+    sql_statements.append(
+        "CREATE TEMPORARY SYSTEM FUNCTION IF NOT EXISTS remove_search_index"
+    )
+    sql_statements.append("AS 'agpersist_search.remove_search_index' LANGUAGE PYTHON;")
+    sql_statements.append("")
+
+    # Register AGGenerate
+    sql_statements.append("-- AGGenerate UDF (instance generation)")
+    sql_statements.append("CREATE TEMPORARY SYSTEM FUNCTION IF NOT EXISTS aggenerate")
+    sql_statements.append("AS 'aggenerate.aggenerate' LANGUAGE PYTHON;")
+    sql_statements.append("")
 
     # Register all registry mode UDTFs
     sql_statements.append("-- Registry Mode UDTFs (multi-field extraction)")

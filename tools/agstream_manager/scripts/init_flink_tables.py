@@ -123,6 +123,18 @@ def main():
     print("CREATE TEMPORARY SYSTEM FUNCTION IF NOT EXISTS list_indexes")
     print("AS 'agpersist_search.list_indexes' LANGUAGE PYTHON;")
     print("")
+    print("CREATE TEMPORARY SYSTEM FUNCTION IF NOT EXISTS search_persisted_index")
+    print("AS 'agpersist_search.search_persisted_index' LANGUAGE PYTHON;")
+    print("")
+    print("CREATE TEMPORARY SYSTEM FUNCTION IF NOT EXISTS remove_search_index")
+    print("AS 'agpersist_search.remove_search_index' LANGUAGE PYTHON;")
+    print("")
+
+    # Register AGGenerate function
+    print("-- Register AGGenerate Function")
+    print("CREATE TEMPORARY SYSTEM FUNCTION IF NOT EXISTS aggenerate")
+    print("AS 'aggenerate.aggenerate' LANGUAGE PYTHON;")
+    print("")
     print("-- All functions registered!")
     print("")
 

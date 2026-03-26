@@ -1,5 +1,14 @@
 -- Register AGPersist Search UDFs for persistent vector search operations
--- These UDFs allow building and searching persistent vector indexes that survive Flink restarts
+-- These UDFs allow building, searching, and managing persistent vector indexes that survive Flink restarts
+--
+-- Functions registered:
+-- 1. build_search_index - Build/update a persistent vector index (with override parameter)
+-- 2. search_persisted_index - Search a persisted index (UDTF)
+-- 3. search_index_json - Search returning JSON (UDAF, recommended)
+-- 4. list_search_indexes - List all indexes (UDTF)
+-- 5. list_indexes - List all indexes as comma-separated string (UDAF)
+-- 6. remove_search_index - Remove a persisted index (UDAF)
+-- 7. explode_search_results - Parse JSON search results (UDTF)
 
 -- Register the build_search_index UDAF
 -- Builds a persistent vector index from accumulated rows
@@ -29,6 +38,12 @@ LANGUAGE PYTHON;
 -- Returns comma-separated list of indexes
 CREATE TEMPORARY SYSTEM FUNCTION IF NOT EXISTS list_indexes
 AS 'agpersist_search.list_indexes'
+LANGUAGE PYTHON;
+
+-- Register the remove_search_index UDAF
+-- Removes a persisted vector search index and all its files
+CREATE TEMPORARY SYSTEM FUNCTION IF NOT EXISTS remove_search_index
+AS 'agpersist_search.remove_search_index'
 LANGUAGE PYTHON;
 
 -- Register explode_search_results from agsearch (for parsing JSON results)

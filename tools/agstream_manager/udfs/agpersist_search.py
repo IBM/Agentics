@@ -1,22 +1,34 @@
 """
 AGPersist Search - Persistent Vector Search Index for AGStream
 
-Provides two main functions:
+Provides main functions:
 1. build_search_index() - UDAF that builds and persists a vector search index
 2. search_persisted_index() - UDTF that searches a persisted index
+3. remove_search_index() - UDAF that removes a persisted index
+4. list_indexes() - UDAF that lists all persisted indexes
 
 This enables building vector indexes that persist across Flink sessions,
 allowing efficient reuse of indexes without rebuilding.
 
 Usage:
-    -- Build a persistent index from reviews
-    SELECT build_search_index(ROW(customer_review, review_id), 'reviews_index') as status
+    -- Build a persistent index from reviews (default: use existing if present)
+    SELECT build_search_index(customer_review, 'reviews_index') as status
+    FROM pr;
+
+    -- Build with override=true to rebuild existing index
+    SELECT build_search_index(customer_review, 'reviews_index', true) as status
     FROM pr;
 
     -- Search the persisted index
     SELECT T.text, T.index, T.score
     FROM LATERAL TABLE(search_persisted_index('reviews_index', 'great service', 10))
     AS T(text, index, score);
+
+    -- Remove an index
+    SELECT remove_search_index('reviews_index') as status FROM (VALUES (1));
+
+    -- List all indexes
+    SELECT list_indexes() as indexes FROM (VALUES (1));
 """
 
 import fcntl
@@ -265,6 +277,45 @@ class PersistentIndexStorage:
         """Check if an index exists."""
         return self._get_index_dir(index_name).exists()
 
+    def delete_index(self, index_name: str) -> bool:
+        """
+        Delete a persisted index and all its files.
+
+        Args:
+            index_name: Name of the index to delete
+
+        Returns:
+            True if deleted successfully, False if index doesn't exist
+        """
+        lock_handle = None
+        try:
+            # Check if index exists
+            index_dir = self._get_index_dir(index_name)
+            if not index_dir.exists():
+                print(f"Index '{index_name}' does not exist", file=sys.stderr)
+                return False
+
+            # Acquire lock
+            lock_handle = self.acquire_lock(index_name)
+
+            # Delete all files in the index directory
+            import shutil
+
+            shutil.rmtree(index_dir)
+
+            print(f"✓ Successfully deleted index '{index_name}'", file=sys.stderr)
+            return True
+
+        except Exception as e:
+            print(f"Error deleting index '{index_name}': {e}", file=sys.stderr)
+            import traceback
+
+            traceback.print_exc(file=sys.stderr)
+            return False
+
+        finally:
+            self.release_lock(lock_handle)
+
     def list_indexes(self) -> List[str]:
         """List all available indexes."""
         if not self.base_path.exists():
@@ -296,6 +347,29 @@ def get_storage():
     return _thread_local.storage
 
 
+def cleanup_resources():
+    """Clean up thread-local resources to prevent memory leaks."""
+    if hasattr(_thread_local, "embedder"):
+        try:
+            # Clear the model from memory
+            del _thread_local.embedder
+            print("✓ Cleaned up embedder model", file=sys.stderr)
+        except Exception as e:
+            print(f"Warning: Failed to cleanup embedder: {e}", file=sys.stderr)
+
+    if hasattr(_thread_local, "storage"):
+        try:
+            del _thread_local.storage
+            print("✓ Cleaned up storage", file=sys.stderr)
+        except Exception as e:
+            print(f"Warning: Failed to cleanup storage: {e}", file=sys.stderr)
+
+    # Force garbage collection
+    import gc
+
+    gc.collect()
+
+
 #######################
 ### Build Index UDAF ###
 #######################
@@ -308,6 +382,7 @@ class BuildIndexAccumulator:
         self.texts: List[str] = []
         self.metadata_list: List[Dict] = []
         self.index_name: str = None
+        self.override: bool = False
 
 
 class BuildSearchIndexFunction(AggregateFunction):
@@ -325,7 +400,13 @@ class BuildSearchIndexFunction(AggregateFunction):
         """Create a new accumulator."""
         return BuildIndexAccumulator()
 
-    def accumulate(self, acc: BuildIndexAccumulator, row_data: str, index_name: str):
+    def accumulate(
+        self,
+        acc: BuildIndexAccumulator,
+        row_data: str,
+        index_name: str,
+        override: bool = False,
+    ):
         """
         Accumulate a row.
 
@@ -333,6 +414,7 @@ class BuildSearchIndexFunction(AggregateFunction):
             acc: The accumulator
             row_data: ROW data as string (will be parsed)
             index_name: Name for the persistent index
+            override: If True, overwrite existing index; if False, use existing (default: False)
         """
         if row_data:
             # Parse the ROW data - expecting format like "text|metadata_json"
@@ -346,6 +428,7 @@ class BuildSearchIndexFunction(AggregateFunction):
 
         if acc.index_name is None:
             acc.index_name = index_name
+            acc.override = override
 
     def get_value(self, acc: BuildIndexAccumulator) -> str:
         """
@@ -358,14 +441,36 @@ class BuildSearchIndexFunction(AggregateFunction):
             return json.dumps({"status": "error", "message": "no_data"})
 
         try:
+            # Get embedder and storage
+            embedder = get_embedder()
+            storage = get_storage()
+
+            # Check if index already exists
+            if storage.index_exists(acc.index_name):
+                if not acc.override:
+                    # Index exists and override is False - use existing index
+                    print(
+                        f"ℹ️  Index '{acc.index_name}' already exists. Using existing index (override=False).",
+                        file=sys.stderr,
+                    )
+                    return json.dumps(
+                        {
+                            "status": "exists",
+                            "message": f"Index '{acc.index_name}' already exists. Using existing index.",
+                            "index_name": acc.index_name,
+                        }
+                    )
+                else:
+                    # Index exists but override is True - rebuild it
+                    print(
+                        f"⚠️  Index '{acc.index_name}' already exists. Overriding with new data (override=True).",
+                        file=sys.stderr,
+                    )
+
             print(
                 f"Building persistent index '{acc.index_name}' with {len(acc.texts)} items",
                 file=sys.stderr,
             )
-
-            # Get embedder and storage
-            embedder = get_embedder()
-            storage = get_storage()
 
             # Generate embeddings
             print(f"Generating embeddings...", file=sys.stderr)
@@ -427,6 +532,9 @@ class BuildSearchIndexFunction(AggregateFunction):
 
             traceback.print_exc(file=sys.stderr)
             return json.dumps({"status": "error", "message": str(e)})
+        finally:
+            # Clean up resources after building index
+            cleanup_resources()
 
     def merge(self, acc1: BuildIndexAccumulator, acc2: BuildIndexAccumulator):
         """Merge two accumulators."""
@@ -434,6 +542,7 @@ class BuildSearchIndexFunction(AggregateFunction):
         acc1.metadata_list.extend(acc2.metadata_list)
         if acc1.index_name is None:
             acc1.index_name = acc2.index_name
+            acc1.override = acc2.override
 
     def get_result_type(self):
         """Return the result type."""
@@ -446,6 +555,7 @@ class BuildSearchIndexFunction(AggregateFunction):
                 DataTypes.FIELD("texts", DataTypes.ARRAY(DataTypes.STRING())),
                 DataTypes.FIELD("metadata_list", DataTypes.ARRAY(DataTypes.STRING())),
                 DataTypes.FIELD("index_name", DataTypes.STRING()),
+                DataTypes.FIELD("override", DataTypes.BOOLEAN()),
             ]
         )
 
@@ -459,6 +569,7 @@ build_search_index = udaf(
             DataTypes.FIELD("texts", DataTypes.ARRAY(DataTypes.STRING())),
             DataTypes.FIELD("metadata_list", DataTypes.ARRAY(DataTypes.STRING())),
             DataTypes.FIELD("index_name", DataTypes.STRING()),
+            DataTypes.FIELD("override", DataTypes.BOOLEAN()),
         ]
     ),
     name="build_search_index",
@@ -535,6 +646,9 @@ def search_persisted_index(index_name, query, k=10):
 
         traceback.print_exc(file=sys.stderr)
         yield ("error: " + str(e), -1, 0.0)
+    finally:
+        # Clean up resources after searching
+        cleanup_resources()
 
 
 #######################
@@ -620,6 +734,9 @@ class SearchIndexJsonFunction(AggregateFunction):
 
             traceback.print_exc(file=sys.stderr)
             return json.dumps([{"text": f"error: {str(e)}", "index": -1}])
+        finally:
+            # Clean up resources after searching
+            cleanup_resources()
 
     def merge(self, acc1, acc2):
         if acc1.index_name is None:
@@ -702,6 +819,9 @@ def list_search_indexes():
         import traceback
 
         traceback.print_exc(file=sys.stderr)
+    finally:
+        # Clean up resources after listing indexes
+        cleanup_resources()
 
 
 #######################
@@ -761,6 +881,9 @@ class ListIndexesFunction(AggregateFunction):
 
             traceback.print_exc(file=sys.stderr)
             return f"error: {str(e)}"
+        finally:
+            # Clean up resources after listing indexes
+            cleanup_resources()
 
     def merge(self, acc1, acc2):
         if not acc1.called:
@@ -779,6 +902,118 @@ list_indexes = udaf(
     result_type=DataTypes.STRING(),
     accumulator_type=DataTypes.ROW([DataTypes.FIELD("called", DataTypes.BOOLEAN())]),
     name="list_indexes",
+)
+
+
+#######################
+### Remove Index UDAF ###
+#######################
+
+
+class RemoveIndexAccumulator:
+    """Accumulator for remove_search_index function."""
+
+    def __init__(self):
+        self.index_name = None
+
+
+class RemoveSearchIndexFunction(AggregateFunction):
+    """
+    UDAF that removes a persisted vector search index.
+
+    Deletes the index and all associated files from disk.
+
+    Usage:
+        SELECT remove_search_index('my_index') as status FROM (VALUES (1));
+
+    Returns:
+        JSON string with status information:
+        - {"status": "success", "index_name": "...", "message": "..."}
+        - {"status": "not_found", "index_name": "...", "message": "..."}
+        - {"status": "error", "message": "..."}
+    """
+
+    def create_accumulator(self):
+        return RemoveIndexAccumulator()
+
+    def accumulate(self, acc, index_name):
+        """
+        Accumulate function for remove_search_index.
+
+        Args:
+            acc: Accumulator
+            index_name: Name of the index to remove
+        """
+        if acc.index_name is None:
+            acc.index_name = index_name
+
+    def get_value(self, acc):
+        if not acc.index_name:
+            return json.dumps({"status": "error", "message": "No index name provided"})
+
+        try:
+            # Get storage backend
+            storage = get_storage()
+
+            # Check if index exists
+            if not storage.index_exists(acc.index_name):
+                print(f"Index '{acc.index_name}' does not exist", file=sys.stderr)
+                return json.dumps(
+                    {
+                        "status": "not_found",
+                        "index_name": acc.index_name,
+                        "message": f"Index '{acc.index_name}' does not exist",
+                    }
+                )
+
+            # Delete the index
+            print(f"Deleting index '{acc.index_name}'...", file=sys.stderr)
+            success = storage.delete_index(acc.index_name)
+
+            if success:
+                return json.dumps(
+                    {
+                        "status": "success",
+                        "index_name": acc.index_name,
+                        "message": f"Index '{acc.index_name}' deleted successfully",
+                    }
+                )
+            else:
+                return json.dumps(
+                    {
+                        "status": "error",
+                        "index_name": acc.index_name,
+                        "message": f"Failed to delete index '{acc.index_name}'",
+                    }
+                )
+
+        except Exception as e:
+            print(f"Error removing index: {e}", file=sys.stderr)
+            import traceback
+
+            traceback.print_exc(file=sys.stderr)
+            return json.dumps({"status": "error", "message": str(e)})
+        finally:
+            # Clean up resources after removing index
+            cleanup_resources()
+
+    def merge(self, acc1, acc2):
+        if acc1.index_name is None:
+            acc1.index_name = acc2.index_name
+
+    def get_result_type(self):
+        return DataTypes.STRING()
+
+    def get_accumulator_type(self):
+        return DataTypes.ROW([DataTypes.FIELD("index_name", DataTypes.STRING())])
+
+
+# Register the UDAF
+remove_search_index = udaf(
+    f=RemoveSearchIndexFunction(),
+    result_type=DataTypes.STRING(),
+    accumulator_type=DataTypes.ROW([DataTypes.FIELD("index_name", DataTypes.STRING())]),
+    name="remove_search_index",
 )
 
 

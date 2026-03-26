@@ -594,11 +594,12 @@
                                 </div>
                                 <div style="display: flex; gap: 5px; align-items: center;">
                                     <label style="font-size: 11px; margin: 0;">📏 Col Width:</label>
-                                    <input type="number" id="columnWidthInput" value="10" min="10" max="1000" style="width: 60px; font-size: 11px; padding: 4px;" />
+                                    <input type="number" id="columnWidthInput" value="20" min="10" max="1000" style="width: 60px; font-size: 11px; padding: 4px;" />
                                     <button class="btn btn-success" style="font-size: 11px; padding: 5px 10px;" onclick="setColumnWidth()">Set</button>
                                 </div>
                                 <button class="btn btn-secondary" style="font-size: 11px; padding: 5px 10px;" onclick="sendFlinkCommand('HELP;')">HELP</button>
                                 <button class="btn" style="font-size: 11px; padding: 5px 10px; background: #8b5cf6; color: white;" onclick="openExamplesModal()">📚 UDF Examples</button>
+                                <button class="btn" style="font-size: 11px; padding: 5px 10px; background: #10b981; color: white;" onclick="openPersistSearchModal()">💾 AGPersist Search</button>
                             </div>
                         </div>
                     </div>
@@ -798,20 +799,25 @@ LATERAL TABLE(explode_search_results(results)) AS T(text, idx);</pre>
                         <ul style="margin-left: 20px; line-height: 1.8;">
                             <li><code>build_search_index(customer_review, 'my_index')</code> - Creates a vector index named 'my_index' from the <code>customer_review</code> field</li>
                             <li>The index is persisted to disk at <code>/tmp/search_indexes/my_index.bin</code></li>
-                            <li>Once built, the index can be searched multiple times without rebuilding</li>
-                            <li>Returns a status message indicating success or failure</li>
+                            <li>Returns JSON with status, message, and index_name</li>
+                            <li>Use <code>JSON_VALUE()</code> to extract fields into separate columns</li>
                         </ul>
                         <p><strong>Use case:</strong> Building a searchable knowledge base from large datasets that you want to query repeatedly without the overhead of rebuilding embeddings each time.</p>
                     </div>
                     <div class="example-code">
                         <button class="copy-btn" onclick="copyToClipboard('example4')">📋 Copy</button>
-                        <pre id="example4">-- Build persistent index from first 10 reviews
-SELECT build_search_index(customer_review, 'my_index') as status
-FROM pr
-LIMIT 10;</pre>
+                        <pre id="example4">-- Build persistent index and extract status fields
+SELECT
+    JSON_VALUE(status, '$.status') AS status,
+    JSON_VALUE(status, '$.message') AS message,
+    JSON_VALUE(status, '$.index_name') AS index_name
+FROM (
+    SELECT build_search_index(customer_review, 'my_index') as status
+    FROM pr
+);</pre>
                     </div>
                     <div class="example-note">
-                        <strong>💡 Note:</strong> Make sure to register <code>build_search_index</code> UDF before running this query. The index will persist across Flink restarts if using a persistent volume.
+                        <strong>💡 Note:</strong> The function returns JSON, so use <code>JSON_VALUE()</code> to extract individual fields. The index will persist across Flink restarts if using a persistent volume.
                     </div>
                 </div>
 
@@ -876,6 +882,33 @@ FROM (VALUES (1));</pre>
                 </div>
 
                 <div class="example-section">
+                    <h3>✨ AGGENERATE - Generate Synthetic Data with JSON Mode</h3>
+                    <div class="example-description">
+                        <p><strong>What it does:</strong> Generates realistic synthetic data using LLM. The new JSON mode allows you to generate multi-field records without needing Schema Registry.</p>
+                        <p><strong>How it works:</strong></p>
+                        <ul style="margin-left: 20px; line-height: 1.8;">
+                            <li><code>aggenerate('5', 'Product_name:str,customer_review:str', '', 'json')</code> - Generates exactly 5 instances with specified fields</li>
+                            <li>Field format: <code>'field1:type1,field2:type2'</code> where types can be str, int, float, bool</li>
+                            <li>Returns JSON that you extract with <code>JSON_VALUE()</code></li>
+                            <li>The first parameter controls the exact number of rows generated - no LIMIT needed!</li>
+                        </ul>
+                        <p><strong>Use case:</strong> Creating test data, generating synthetic training datasets, populating tables with realistic examples, or prototyping data pipelines.</p>
+                    </div>
+                    <div class="example-code">
+                        <button class="copy-btn" onclick="copyToClipboard('example7')">📋 Copy</button>
+                        <pre id="example7">-- Generate 5 product reviews with multiple fields
+SELECT
+    JSON_VALUE(T.generated_text, '$.Product_name') AS Product_name,
+    JSON_VALUE(T.generated_text, '$.customer_review') AS customer_review
+FROM (VALUES (1)) AS dummy(x),
+LATERAL TABLE(aggenerate('5', 'Product_name:str,customer_review:str', '', 'json', 'Generate realistic product reviews')) AS T(generated_text);</pre>
+                    </div>
+                    <div class="example-note">
+                        <strong>💡 Tip:</strong> You can generate any fields you want: <code>'name:str,age:int,score:float,active:bool'</code>. The first parameter ('5') controls exactly how many rows are generated. No LIMIT clause needed! No Schema Registry needed!
+                    </div>
+                </div>
+
+                <div class="example-section">
                     <h3>📊 More Operators</h3>
                     <div class="example-description">
                         <p><strong>Available operators:</strong></p>
@@ -884,6 +917,7 @@ FROM (VALUES (1));</pre>
                             <li><code>agreduce</code> - Aggregate all rows into a single LLM-generated result</li>
                             <li><code>agsearch</code> - Semantic search with vector embeddings</li>
                             <li><code>agpersist_search</code> - Persistent vector search with caching</li>
+                            <li><code>aggenerate</code> - Generate synthetic data with LLM (shown above)</li>
                             <li>Registry UDFs - Pre-configured transformations from Schema Registry</li>
                         </ul>
                         <p>Use the "🔨 Rebuild UDFs" button to generate registry-based UDFs from your Schema Registry types!</p>
@@ -892,6 +926,222 @@ FROM (VALUES (1));</pre>
             </div>
         </div>
     </div>
+    <!-- AGPersist Search Modal -->
+    <div id="persistSearchModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>💾 AGPersist Search - Persistent Vector Search</h2>
+                <button class="modal-close" onclick="closePersistSearchModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="example-section">
+                    <h3>📖 Overview</h3>
+                    <div class="example-description">
+                        <p><strong>AGPersist Search</strong> provides persistent vector search indexes that survive Flink restarts. Build an index once, search it many times without rebuilding!</p>
+                        <p><strong>Available UDFs:</strong></p>
+                        <ul style="margin-left: 20px; line-height: 1.8;">
+                            <li><code>build_search_index()</code> - Build and persist a vector search index</li>
+                            <li><code>search_persisted_index()</code> - Search a persisted index (UDTF)</li>
+                            <li><code>remove_search_index()</code> - Remove a persisted index</li>
+                            <li><code>list_indexes()</code> - List all persisted indexes</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="example-section">
+                    <h3>🏗️ Build Index (Default: Use Existing)</h3>
+                    <div class="example-description">
+                        <p><strong>What it does:</strong> Builds a vector search index from text data and persists it to disk. If index exists, returns "exists" status and uses the existing index.</p>
+                        <p><strong>Parameters:</strong></p>
+                        <ul style="margin-left: 20px; line-height: 1.8;">
+                            <li><code>text_column</code> - Column containing text to index</li>
+                            <li><code>index_name</code> - Name for the persisted index</li>
+                            <li><code>override</code> - (optional, default=false) If true, rebuilds existing index</li>
+                        </ul>
+                    </div>
+                    <div class="example-code">
+                        <button class="copy-btn" onclick="copyToClipboard('persist1')">📋 Copy</button>
+                        <pre id="persist1">-- Build index (or use existing if present)
+WITH build_data AS (
+    SELECT build_search_index(customer_review, 'reviews_index') as json_result
+    FROM pr
+)
+SELECT
+    JSON_VALUE(json_result, '$.status') as status,
+    JSON_VALUE(json_result, '$.index_name') as index_name,
+    JSON_VALUE(json_result, '$.message') as message,
+    JSON_VALUE(json_result, '$.num_items') as num_items,
+    JSON_VALUE(json_result, '$.dimension') as dimension
+FROM build_data;</pre>
+                    </div>
+                    <div class="example-note">
+                        <strong>💡 Tip:</strong> If the index already exists, you'll see status="exists" and the existing index will be used. No rebuild needed!
+                    </div>
+                </div>
+
+                <div class="example-section">
+                    <h3>🔄 Build Index with Override</h3>
+                    <div class="example-description">
+                        <p><strong>What it does:</strong> Forces a rebuild of the index even if it already exists. Use this when your data has changed.</p>
+                    </div>
+                    <div class="example-code">
+                        <button class="copy-btn" onclick="copyToClipboard('persist2')">📋 Copy</button>
+                        <pre id="persist2">-- Force rebuild existing index
+WITH build_data AS (
+    SELECT build_search_index(customer_review, 'reviews_index', true) as json_result
+    FROM pr
+)
+SELECT
+    JSON_VALUE(json_result, '$.status') as status,
+    JSON_VALUE(json_result, '$.message') as message,
+    JSON_VALUE(json_result, '$.num_items') as num_items
+FROM build_data;</pre>
+                    </div>
+                </div>
+
+                <div class="example-section">
+                    <h3>🔍 Search Persisted Index</h3>
+                    <div class="example-description">
+                        <p><strong>What it does:</strong> Searches a persisted index and returns results as clean table rows.</p>
+                        <p><strong>How it works:</strong></p>
+                        <ul style="margin-left: 20px; line-height: 1.8;">
+                            <li><code>search_index_json()</code> - Searches the index and returns JSON results</li>
+                            <li><code>explode_search_results()</code> - Converts JSON array to table rows</li>
+                            <li>Same pattern as <code>agsearch</code> for consistency</li>
+                        </ul>
+                        <p><strong>Parameters:</strong></p>
+                        <ul style="margin-left: 20px; line-height: 1.8;">
+                            <li><code>index_name</code> - Name of the persisted index</li>
+                            <li><code>query</code> - Search query string</li>
+                            <li><code>k</code> - Number of results to return</li>
+                        </ul>
+                    </div>
+                    <div class="example-code">
+                        <button class="copy-btn" onclick="copyToClipboard('persist3')">📋 Copy</button>
+                        <pre id="persist3">-- Search the persisted index
+SELECT text, idx
+FROM (
+    SELECT search_index_json('reviews_index', 'great service', 10) as results
+    FROM (VALUES (1))
+),
+LATERAL TABLE(explode_search_results(results)) AS T(text, idx);</pre>
+                    </div>
+                    <div class="example-note">
+                        <strong>💡 Note:</strong> This is much faster than rebuilding the index for each query! Uses the same pattern as <code>agsearch</code>.
+                    </div>
+                </div>
+
+                <div class="example-section">
+                    <h3>📋 List All Indexes</h3>
+                    <div class="example-description">
+                        <p><strong>What it does:</strong> Lists all available persistent indexes as a comma-separated string.</p>
+                    </div>
+                    <div class="example-code">
+                        <button class="copy-btn" onclick="copyToClipboard('persist4')">📋 Copy</button>
+                        <pre id="persist4">-- List all available indexes
+SELECT list_indexes() as indexes FROM (VALUES (1));</pre>
+                    </div>
+                </div>
+
+                <div class="example-section">
+                    <h3>🗑️ Remove Index</h3>
+                    <div class="example-description">
+                        <p><strong>What it does:</strong> Removes a persisted index and all its files from disk.</p>
+                    </div>
+                    <div class="example-code">
+                        <button class="copy-btn" onclick="copyToClipboard('persist5')">📋 Copy</button>
+                        <pre id="persist5">-- Remove an index
+SELECT remove_search_index('reviews_index') as status FROM (VALUES (1));</pre>
+                    </div>
+                    <div class="example-note">
+                        <strong>💡 Tip:</strong> Returns JSON with status: "success", "not_found", or "error"
+                    </div>
+                </div>
+
+                <div class="example-section">
+                    <h3>🔄 Complete Workflow</h3>
+                    <div class="example-description">
+                        <p><strong>Example:</strong> Build, search, list, and remove in one workflow.</p>
+                    </div>
+                    <div class="example-code">
+                        <button class="copy-btn" onclick="copyToClipboard('persist6')">📋 Copy</button>
+                        <pre id="persist6">-- Step 1: Build index (use existing if present)
+WITH build_data AS (
+    SELECT build_search_index(customer_review, 'product_reviews', false) as json_result
+    FROM pr
+)
+SELECT JSON_VALUE(json_result, '$.status') as status FROM build_data;
+
+-- Step 2: Search the index
+SELECT text, idx
+FROM (
+    SELECT search_index_json('product_reviews', 'excellent quality', 5) as results
+    FROM (VALUES (1))
+),
+LATERAL TABLE(explode_search_results(results)) AS T(text, idx);
+
+-- Step 3: List all indexes
+SELECT list_indexes() as index_list FROM (VALUES (1));
+
+-- Step 4: Remove when done
+SELECT remove_search_index('product_reviews') as status FROM (VALUES (1));</pre>
+                    </div>
+                </div>
+
+                <div class="example-section">
+                    <h3>📝 Registration Required</h3>
+                    <div class="example-description">
+                        <p><strong>Before using AGPersist Search, register the functions:</strong></p>
+                    </div>
+                    <div class="example-code">
+                        <button class="copy-btn" onclick="copyToClipboard('persist7')">📋 Copy</button>
+                        <pre id="persist7">-- Register all AGPersist Search functions
+CREATE TEMPORARY SYSTEM FUNCTION IF NOT EXISTS build_search_index
+AS 'agpersist_search.build_search_index' LANGUAGE PYTHON;
+
+CREATE TEMPORARY SYSTEM FUNCTION IF NOT EXISTS search_index_json
+AS 'agpersist_search.search_index_json' LANGUAGE PYTHON;
+
+CREATE TEMPORARY SYSTEM FUNCTION IF NOT EXISTS list_indexes
+AS 'agpersist_search.list_indexes' LANGUAGE PYTHON;
+
+CREATE TEMPORARY SYSTEM FUNCTION IF NOT EXISTS remove_search_index
+AS 'agpersist_search.remove_search_index' LANGUAGE PYTHON;
+
+CREATE TEMPORARY SYSTEM FUNCTION IF NOT EXISTS explode_search_results
+AS 'agsearch.explode_search_results' LANGUAGE PYTHON;</pre>
+                    </div>
+                    <div class="example-note">
+                        <strong>💡 Or use:</strong> <code>SOURCE '/opt/flink/sql/register_agpersist_search.sql';</code>
+                    </div>
+                </div>
+
+                <div class="example-section">
+                    <h3>⚠️ Troubleshooting</h3>
+                    <div class="example-description">
+                        <p><strong>Common Issues:</strong></p>
+                        <ul style="margin-left: 20px; line-height: 1.8;">
+                            <li><strong>"No match found for function signature"</strong> → Register functions first (see above)</li>
+                            <li><strong>"Index already exists"</strong> → Normal! Use <code>override=true</code> to rebuild, or just use existing</li>
+                            <li><strong>"Process died with exit code 0"</strong> → Restart Flink: <code>./scripts/restart_flink.sh</code></li>
+                            <li><strong>OutOfMemoryError</strong> → Fixed! All UDFs now have proper memory cleanup</li>
+                            <li><strong>Reserved keyword error</strong> → Avoid using <code>result</code> as column alias, use <code>json_result</code> or <code>status</code></li>
+                            <li><strong>Check if index exists</strong> → Run <code>list_indexes()</code></li>
+                        </ul>
+                        <p><strong>Performance Notes:</strong></p>
+                        <ul style="margin-left: 20px; line-height: 1.8;">
+                            <li>Indexes persist at: <code>/opt/flink/indexes/</code> (in container)</li>
+                            <li>Indexes survive Flink restarts</li>
+                            <li>Building loads SentenceTransformer model (~300MB)</li>
+                            <li>Resources auto-cleanup after each operation</li>
+                            <li>Use <code>override=false</code> (default) to reuse existing indexes</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/python/python.min.js"></script>
@@ -1068,9 +1318,9 @@ FROM (VALUES (1));</pre>
 
                     let delay = 100;
 
-                    // Set default column width to 10
+                    // Set default column width to 20
                     setTimeout(() => {
-                        flinkWs.send(JSON.stringify({ type: 'input', data: 'SET sql-client.display.max-column-width = 10;\n' }));
+                        flinkWs.send(JSON.stringify({ type: 'input', data: 'SET sql-client.display.max-column-width = 20;\n' }));
                     }, delay);
                     delay += 100;
 
@@ -1837,6 +2087,14 @@ FROM (VALUES (1));</pre>
             document.getElementById('examplesModal').classList.remove('active');
         }
 
+        function openPersistSearchModal() {
+            document.getElementById('persistSearchModal').classList.add('active');
+        }
+
+        function closePersistSearchModal() {
+            document.getElementById('persistSearchModal').classList.remove('active');
+        }
+
         function copyToClipboard(elementId) {
             const element = document.getElementById(elementId);
             const text = element.textContent;
@@ -1860,9 +2118,13 @@ FROM (VALUES (1));</pre>
 
         // Close modal when clicking outside
         window.onclick = function(event) {
-            const modal = document.getElementById('examplesModal');
-            if (event.target === modal) {
+            const examplesModal = document.getElementById('examplesModal');
+            const persistSearchModal = document.getElementById('persistSearchModal');
+            if (event.target === examplesModal) {
                 closeExamplesModal();
+            }
+            if (event.target === persistSearchModal) {
+                closePersistSearchModal();
             }
         }
 
