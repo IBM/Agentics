@@ -285,6 +285,14 @@ start_services() {
     INIT_SCRIPT="$SCRIPT_DIR/init_flink_tables.py"
     SQL_FILE="/tmp/flink_init_tables.sql"
 
+    # Always create empty init file in container first (ensures it exists)
+    print_info "Creating empty init file in Flink container..."
+    if docker exec flink-jobmanager bash -c "echo '-- Flink SQL Initialization' > /tmp/init_tables.sql" 2>/dev/null; then
+        print_info "✓ Empty init file created"
+    else
+        print_warn "Could not create init file in container"
+    fi
+
     if [ -f "$INIT_SCRIPT" ]; then
         # Wait for AGStream Manager to be ready
         MAX_RETRIES=10
@@ -296,8 +304,7 @@ start_services() {
             fi
             RETRY=$((RETRY + 1))
             if [ $RETRY -eq $MAX_RETRIES ]; then
-                print_warn "AGStream Manager not responding, skipping table generation"
-                echo "-- Flink SQL Initialization (AGStream Manager not ready)" > "$SQL_FILE"
+                print_warn "AGStream Manager not responding, using empty init file"
                 break
             fi
             sleep 1
@@ -305,21 +312,19 @@ start_services() {
 
         if [ $RETRY -lt $MAX_RETRIES ]; then
             # Generate SQL from channels
-            python3 "$INIT_SCRIPT" > "$SQL_FILE" 2>/dev/null || {
-                print_warn "Could not generate table definitions"
-                echo "-- Flink SQL Initialization" > "$SQL_FILE"
-            }
-
-            # Copy to Flink container
-            if docker cp "$SQL_FILE" flink-jobmanager:/tmp/init_tables.sql 2>/dev/null; then
-                print_info "✓ Table definitions installed in Flink"
+            if python3 "$INIT_SCRIPT" > "$SQL_FILE" 2>/dev/null; then
+                # Copy to Flink container
+                if docker cp "$SQL_FILE" flink-jobmanager:/tmp/init_tables.sql 2>/dev/null; then
+                    print_info "✓ Table definitions installed in Flink"
+                else
+                    print_warn "Could not copy table definitions to Flink (using empty init file)"
+                fi
             else
-                print_warn "Could not copy table definitions to Flink"
+                print_warn "Could not generate table definitions (using empty init file)"
             fi
         fi
     else
-        print_warn "Table generation script not found, creating empty init file"
-        docker exec flink-jobmanager bash -c "echo '-- Flink SQL Initialization' > /tmp/init_tables.sql" 2>/dev/null || true
+        print_warn "Table generation script not found (using empty init file)"
     fi
 
     print_info "Services started successfully!"
@@ -644,8 +649,10 @@ start_persistence() {
         PYTHON_CMD="python3"
     fi
 
-    cd "$PROJECT_DIR"
-    nohup $PYTHON_CMD examples/streaming_agent/function_persistence_service.py > /tmp/persistence.log 2>&1 &
+    # Need to run from the agentics root directory (2 levels up from PROJECT_DIR)
+    AGENTICS_ROOT="$(cd "$PROJECT_DIR/../.." && pwd)"
+    cd "$AGENTICS_ROOT"
+    nohup $PYTHON_CMD tools/agstream_manager/backend/function_persistence_service.py > /tmp/persistence.log 2>&1 &
     echo $! > /tmp/persistence.pid
     sleep 2
 

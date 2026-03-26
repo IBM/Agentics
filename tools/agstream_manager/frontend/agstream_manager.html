@@ -118,6 +118,61 @@
         .listener-card.stopped { border-left-color: #ef4444; }
         .status-badge {
             display: inline-block; padding: 4px 12px; border-radius: 12px;
+        }
+        /* Modal Styles */
+        .modal {
+            display: none; position: fixed; z-index: 1000; left: 0; top: 0;
+            width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5);
+        }
+        .modal.active { display: block; }
+        .modal-content {
+            background-color: white; margin: 5% auto; padding: 0; border-radius: 12px;
+            width: 90%; max-width: 900px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: modalSlideIn 0.3s ease-out;
+        }
+        @keyframes modalSlideIn {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .modal-header {
+            padding: 20px 25px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; border-radius: 12px 12px 0 0; display: flex;
+            justify-content: space-between; align-items: center;
+        }
+        .modal-header h2 { margin: 0; font-size: 1.5em; }
+        .modal-close {
+            color: white; font-size: 28px; font-weight: bold; cursor: pointer;
+            background: none; border: none; padding: 0; line-height: 1;
+            transition: transform 0.2s ease;
+        }
+        .modal-close:hover { transform: scale(1.2); }
+        .modal-body {
+            padding: 25px; max-height: 70vh; overflow-y: auto;
+        }
+        .example-section {
+            margin-bottom: 25px; padding: 20px; background: #f9fafb;
+            border-radius: 8px; border-left: 4px solid #667eea;
+        }
+        .example-section h3 {
+            margin-bottom: 15px; color: #1f2937; font-size: 1.2em;
+        }
+        .example-description {
+            color: #4b5563; line-height: 1.6; margin-bottom: 15px;
+        }
+        .example-code {
+            background: #1f2937; color: #f9fafb; padding: 15px; border-radius: 6px;
+            overflow-x: auto; font-family: 'Courier New', monospace; font-size: 13px;
+            line-height: 1.5; position: relative;
+        }
+        .copy-btn {
+            position: absolute; top: 10px; right: 10px; background: #667eea;
+            color: white; border: none; padding: 6px 12px; border-radius: 4px;
+            cursor: pointer; font-size: 11px; transition: background 0.2s ease;
+        }
+        .copy-btn:hover { background: #5568d3; }
+        .example-note {
+            background: #fef3c7; color: #92400e; padding: 12px; border-radius: 6px;
+            margin-top: 15px; border-left: 4px solid #f59e0b; font-size: 0.9em;
             font-size: 12px; font-weight: 600;
         }
         .status-running { background: #d1fae5; color: #065f46; }
@@ -147,6 +202,7 @@
             <button class="main-nav-btn" onclick="switchMainSection('transductions')">⚡ Define Transductions</button>
             <button class="main-nav-btn" onclick="switchMainSection('listeners')">🎧 Manage Listeners</button>
             <button class="main-nav-btn" onclick="switchMainSection('flinksql')">🔍 Flink SQL</button>
+            <button class="main-nav-btn" onclick="switchMainSection('accesspoints')">🔗 Access Points</button>
         </div>
 
         <!-- Define Types Section -->
@@ -520,35 +576,6 @@
                             <h3 style="margin: 0; color: #1f2937;">Flink SQL Terminal</h3>
                             <div style="display: flex; gap: 10px;">
                                 <button class="btn btn-warning" onclick="restartFlink()" id="restartFlinkBtn" title="Restart Flink to clean up stuck jobs">🔄 Restart Flink</button>
-                                <button class="btn btn-info" onclick="rebuildUdfs()" id="rebuildUdfsBtn" title="Rebuild UDFs from Schema Registry types">🔨 Rebuild UDFs</button>
-                                <div class="btn-group" role="group">
-                                    <select class="form-select" id="udfSelector" style="max-width: 300px;">
-                                        <option value="">Select UDF to Register...</option>
-                                        <optgroup label="Core UDFs">
-                                            <option value="agmap">agmap (Dynamic Map)</option>
-                                            <option value="agreduce">agreduce (Aggregate Reduce)</option>
-                                        </optgroup>
-                                        <optgroup label="Registry UDTFs (Row-by-row)">
-                                            <option value="agmap_sentiment">agmap_sentiment</option>
-                                            <option value="agmap_productreview">agmap_productreview</option>
-                                            <option value="agmap_pr">agmap_pr</option>
-                                            <option value="agmap_s">agmap_s</option>
-                                            <option value="agmap_test_generation">agmap_test_generation</option>
-                                            <option value="agmap_electronics_reviews">agmap_electronics_reviews</option>
-                                            <option value="agmap_product_reviews">agmap_product_reviews</option>
-                                        </optgroup>
-                                        <optgroup label="Registry UDAFs (Aggregation)">
-                                            <option value="agreduce_sentiment">agreduce_sentiment</option>
-                                            <option value="agreduce_productreview">agreduce_productreview</option>
-                                            <option value="agreduce_pr">agreduce_pr</option>
-                                            <option value="agreduce_s">agreduce_s</option>
-                                            <option value="agreduce_test_generation">agreduce_test_generation</option>
-                                            <option value="agreduce_electronics_reviews">agreduce_electronics_reviews</option>
-                                            <option value="agreduce_product_reviews">agreduce_product_reviews</option>
-                                        </optgroup>
-                                    </select>
-                                    <button class="btn btn-primary" onclick="registerSelectedUdf()" id="registerUdfBtn" title="Register selected UDF">Register</button>
-                                </div>
                                 <button class="btn btn-success" onclick="startFlinkTerminal()" id="startTerminalBtn">▶️ Start Terminal</button>
                                 <button class="btn btn-danger" onclick="stopFlinkTerminal()" id="stopTerminalBtn" style="display: none;">⏹️ Stop Terminal</button>
                                 <button class="btn btn-secondary" onclick="clearFlinkTerminal()">🗑️ Clear</button>
@@ -560,21 +587,306 @@
                             <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
                                 <button class="btn btn-secondary" style="font-size: 11px; padding: 5px 10px;" onclick="sendFlinkCommand('SHOW TABLES;')">SHOW TABLES</button>
                                 <button class="btn btn-secondary" style="font-size: 11px; padding: 5px 10px;" onclick="sendFlinkCommand('SHOW FUNCTIONS;')">SHOW FUNCTIONS</button>
-                                <button class="btn btn-primary" style="font-size: 11px; padding: 5px 10px;" onclick="sendFlinkCommand('CREATE TEMPORARY SYSTEM FUNCTION agmap AS \'ag_operators.agmap\' LANGUAGE PYTHON;')">📝 Register agmap</button>
-                                <button class="btn btn-success" style="font-size: 11px; padding: 5px 10px;" onclick="sendFlinkCommand('CREATE TEMPORARY SYSTEM FUNCTION agreduce AS \'agreduce.agreduce\' LANGUAGE PYTHON;')">🔄 Register agreduce</button>
                                 <div style="display: flex; gap: 5px; align-items: center;">
                                     <label style="font-size: 11px; margin: 0;">⚡ Parallelism:</label>
-                                    <input type="number" id="parallelismInput" value="1" min="1" max="100" style="width: 60px; font-size: 11px; padding: 4px;" />
+                                    <input type="number" id="parallelismInput" value="5" min="1" max="100" style="width: 60px; font-size: 11px; padding: 4px;" />
                                     <button class="btn btn-success" style="font-size: 11px; padding: 5px 10px;" onclick="setParallelism()">Set</button>
                                 </div>
                                 <div style="display: flex; gap: 5px; align-items: center;">
                                     <label style="font-size: 11px; margin: 0;">📏 Col Width:</label>
-                                    <input type="number" id="columnWidthInput" value="100" min="20" max="1000" style="width: 60px; font-size: 11px; padding: 4px;" />
+                                    <input type="number" id="columnWidthInput" value="10" min="10" max="1000" style="width: 60px; font-size: 11px; padding: 4px;" />
                                     <button class="btn btn-success" style="font-size: 11px; padding: 5px 10px;" onclick="setColumnWidth()">Set</button>
                                 </div>
                                 <button class="btn btn-secondary" style="font-size: 11px; padding: 5px 10px;" onclick="sendFlinkCommand('HELP;')">HELP</button>
+                                <button class="btn" style="font-size: 11px; padding: 5px 10px; background: #8b5cf6; color: white;" onclick="openExamplesModal()">📚 UDF Examples</button>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Access Points Section -->
+        <div id="accessPointsSection" class="main-section">
+            <div class="main-content" style="grid-template-columns: 1fr;">
+                <div class="content-area">
+                    <h2 style="margin-bottom: 20px;">🔗 System Access Points</h2>
+
+                    <div style="background: #f9fafb; padding: 20px; border-radius: 8px; border-left: 4px solid #667eea; margin-bottom: 20px;">
+                        <h3 style="margin-bottom: 15px; color: #1f2937;">Web Interfaces</h3>
+                        <p style="color: #6b7280; margin-bottom: 20px;">
+                            Quick access to system web interfaces.
+                        </p>
+
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin-bottom: 30px;">
+                            <!-- Kafka UI -->
+                            <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb;">
+                                <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                                    <span style="font-size: 24px; margin-right: 10px;">🖥️</span>
+                                    <h4 style="margin: 0; color: #1f2937;">Kafka UI</h4>
+                                </div>
+                                <p style="color: #6b7280; font-size: 13px; margin-bottom: 10px;">Web interface for Kafka management</p>
+                                <button onclick="window.open('http://localhost:8080', '_blank')" class="btn btn-primary" style="font-size: 12px; padding: 8px 16px; width: 100%;">
+                                    🔗 Open http://localhost:8080
+                                </button>
+                            </div>
+
+                            <!-- Schema Registry UI -->
+                            <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb;">
+                                <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                                    <span style="font-size: 24px; margin-right: 10px;">📊</span>
+                                    <h4 style="margin: 0; color: #1f2937;">Schema Registry UI</h4>
+                                </div>
+                                <p style="color: #6b7280; font-size: 13px; margin-bottom: 10px;">Browse and manage schemas</p>
+                                <button onclick="openServiceInTab('http://localhost:8000')" class="btn btn-primary" style="font-size: 12px; padding: 8px 16px; width: 100%;">
+                                    🔗 Open http://localhost:8000
+                                </button>
+                            </div>
+
+                            <!-- Flink Web UI -->
+                            <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb;">
+                                <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                                    <span style="font-size: 24px; margin-right: 10px;">🌊</span>
+                                    <h4 style="margin: 0; color: #1f2937;">Flink Web UI</h4>
+                                </div>
+                                <p style="color: #6b7280; font-size: 13px; margin-bottom: 10px;">Monitor Flink jobs and tasks</p>
+                                <button onclick="openServiceInTab('http://localhost:8085')" class="btn btn-primary" style="font-size: 12px; padding: 8px 16px; width: 100%;">
+                                    🔗 Open http://localhost:8085
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Embedded Service Viewer -->
+                        <div id="serviceViewer" style="display: none; margin-top: 20px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <h4 style="margin: 0; color: #1f2937;" id="serviceViewerTitle">Service Viewer</h4>
+                                <button onclick="closeServiceViewer()" class="btn btn-secondary" style="font-size: 12px; padding: 6px 12px;">✕ Close</button>
+                            </div>
+                            <iframe id="serviceIframe" style="width: 100%; height: 600px; border: 2px solid #e5e7eb; border-radius: 8px; background: white;"></iframe>
+                        </div>
+
+                        <!-- Service Status Section -->
+                        <h3 style="margin: 30px 0 15px 0; color: #1f2937;">Service Status</h3>
+                        <div id="serviceStatusDisplay" style="margin-bottom: 20px;">
+                            <div style="text-align: center; padding: 20px;">
+                                <div class="spinner"></div>
+                                <p>Loading service status...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="background: #fef3c7; padding: 15px; border-radius: 8px; border-left: 4px solid #f59e0b; margin-bottom: 15px;">
+                        <p style="margin: 0; color: #92400e; font-size: 14px;">
+                            <strong>💡 Tip:</strong> All links open in new windows. Make sure the respective services are running before accessing them.
+                        </p>
+                    </div>
+
+                    <div style="background: #fee2e2; padding: 15px; border-radius: 8px; border-left: 4px solid #ef4444;">
+                        <h4 style="margin: 0 0 10px 0; color: #991b1b;">⚠️ Common Issues</h4>
+                        <div style="color: #991b1b; font-size: 13px; line-height: 1.6;">
+                            <p style="margin: 0 0 8px 0;"><strong>Kafka Connection Error:</strong> If you see "No resolvable bootstrap urls given in bootstrap.servers":</p>
+                            <ul style="margin: 5px 0 0 20px; padding: 0;">
+                                <li>Ensure Kafka is running on <code style="background: #fecaca; padding: 2px 6px; border-radius: 3px;">localhost:9092</code></li>
+                                <li>Check that Flink can access the <code style="background: #fecaca; padding: 2px 6px; border-radius: 3px;">.env</code> file with Kafka configuration</li>
+                                <li>Restart Flink using the "🔄 Restart Flink" button in the Flink SQL tab</li>
+                                <li>Verify all services are running: <code style="background: #fecaca; padding: 2px 6px; border-radius: 3px;">docker-compose ps</code></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- UDF Examples Modal -->
+    <div id="examplesModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📚 Agentics Operators (UDF) Examples</h2>
+                <button class="modal-close" onclick="closeExamplesModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="example-section">
+                    <h3>🎯 AGMAP - Sentiment Analysis</h3>
+                    <div class="example-description">
+                        <p><strong>What it does:</strong> Analyzes text using an LLM to extract structured information. This example extracts sentiment labels from customer reviews.</p>
+                        <p><strong>How it works:</strong></p>
+                        <ul style="margin-left: 20px; line-height: 1.8;">
+                            <li><code>agmap(customer_review, 'sentiment', 'str', 'prompt')</code> - Processes each review through an LLM with the given prompt</li>
+                            <li>Returns a single value per row (the sentiment label)</li>
+                            <li><code>AS T(sentiment)</code> - Names the output column "sentiment" (you can use any name)</li>
+                        </ul>
+                        <p><strong>Use case:</strong> Sentiment analysis, categorization, data extraction, summarization, or any LLM-based transformation on streaming data.</p>
+                    </div>
+                    <div class="example-code">
+                        <button class="copy-btn" onclick="copyToClipboard('example1')">📋 Copy</button>
+                        <pre id="example1">SELECT
+    customer_review,
+    sentiment
+FROM pr,
+LATERAL TABLE(agmap(
+    customer_review,
+    'sentiment',
+    'str',
+    'generate a sentiment label: positive, negative, or neutral'
+)) AS T(sentiment)
+LIMIT 5;</pre>
+                    </div>
+                    <div class="example-note">
+                        <strong>💡 Tip:</strong> You can extract any field by changing the parameters. For example: <code>agmap(text, 'category', 'str', 'extract product category')</code> or <code>agmap(review, 'rating', 'int', 'extract rating 1-5')</code>
+                    </div>
+                </div>
+
+                <div class="example-section">
+                    <h3>📋 AGMAP with Registry Types - Multiple Fields</h3>
+                    <div class="example-description">
+                        <p><strong>What it does:</strong> Uses a pre-defined type from Schema Registry to extract multiple structured fields at once. Returns JSON that you parse to get individual columns.</p>
+                        <p><strong>How it works:</strong></p>
+                        <ul style="margin-left: 20px; line-height: 1.8;">
+                            <li><code>agmap(customer_review, 'Sentiment', 'registry')</code> - Uses the "Sentiment" type from Schema Registry</li>
+                            <li>Returns JSON with multiple fields defined in the registry type (e.g., sentiment_label, sentiment_score)</li>
+                            <li><code>JSON_VALUE()</code> extracts individual fields from the JSON result</li>
+                            <li><code>CAST()</code> converts string values to appropriate types (DOUBLE, INT, etc.)</li>
+                        </ul>
+                        <p><strong>Use case:</strong> When you need multiple related fields extracted at once (sentiment + score, category + confidence, entity + type, etc.). More efficient than multiple separate agmap calls.</p>
+                    </div>
+                    <div class="example-code">
+                        <button class="copy-btn" onclick="copyToClipboard('example2')">📋 Copy</button>
+                        <pre id="example2">SELECT
+    customer_review,
+    JSON_VALUE(T.json_result, '$.sentiment_label') as sentiment_label,
+    CAST(JSON_VALUE(T.json_result, '$.sentiment_score') AS DOUBLE) as sentiment_score
+FROM pr,
+LATERAL TABLE(agmap(customer_review, 'Sentiment', 'registry')) AS T(json_result)
+LIMIT 5;</pre>
+                    </div>
+                    <div class="example-note">
+                        <strong>💡 Note:</strong> The 'Sentiment' type must exist in your Schema Registry. Use the "🔨 Rebuild UDFs" button to generate registry-based types, or create custom types in the Schema Manager tab.
+                    </div>
+                </div>
+
+                <div class="example-section">
+                    <h3>🔍 AGSEARCH with EXPLODE_SEARCH_RESULTS</h3>
+                    <div class="example-description">
+                        <p><strong>What it does:</strong> Performs semantic search on text data and explodes the results into individual rows, making it easy to work with search results in SQL.</p>
+                        <p><strong>How it works:</strong></p>
+                        <ul style="margin-left: 20px; line-height: 1.8;">
+                            <li><code>agsearch(customer_review, 'great service', 10)</code> - Searches the <code>customer_review</code> field for content semantically similar to "great service" and returns the top 10 matches</li>
+                            <li><code>LATERAL TABLE(explode_search_results(results))</code> - Explodes the search results array into individual rows</li>
+                            <li>Each row contains the matched <code>text</code> and its relevance <code>idx</code></li>
+                        </ul>
+                        <p><strong>Use case:</strong> Finding and ranking customer reviews that mention specific topics, extracting relevant feedback, or analyzing patterns in unstructured text.</p>
+                    </div>
+                    <div class="example-code">
+                        <button class="copy-btn" onclick="copyToClipboard('example3')">📋 Copy</button>
+                        <pre id="example3">SELECT text, idx
+FROM (
+    SELECT agsearch(customer_review, 'great service', 10) as results FROM pr
+),
+LATERAL TABLE(explode_search_results(results)) AS T(text, idx);</pre>
+                    </div>
+                    <div class="example-note">
+                        <strong>💡 Note:</strong> Make sure to register both <code>agsearch</code> and <code>explode_search_results</code> UDFs before running this query.
+                    </div>
+                </div>
+
+                <div class="example-section">
+                    <h3>💾 BUILD_SEARCH_INDEX - Create Persistent Vector Index</h3>
+                    <div class="example-description">
+                        <p><strong>What it does:</strong> Builds a persistent vector search index from your data that is saved to disk and can be reused across multiple queries without rebuilding.</p>
+                        <p><strong>How it works:</strong></p>
+                        <ul style="margin-left: 20px; line-height: 1.8;">
+                            <li><code>build_search_index(customer_review, 'my_index')</code> - Creates a vector index named 'my_index' from the <code>customer_review</code> field</li>
+                            <li>The index is persisted to disk at <code>/tmp/search_indexes/my_index.bin</code></li>
+                            <li>Once built, the index can be searched multiple times without rebuilding</li>
+                            <li>Returns a status message indicating success or failure</li>
+                        </ul>
+                        <p><strong>Use case:</strong> Building a searchable knowledge base from large datasets that you want to query repeatedly without the overhead of rebuilding embeddings each time.</p>
+                    </div>
+                    <div class="example-code">
+                        <button class="copy-btn" onclick="copyToClipboard('example4')">📋 Copy</button>
+                        <pre id="example4">-- Build persistent index from first 10 reviews
+SELECT build_search_index(customer_review, 'my_index') as status
+FROM pr
+LIMIT 10;</pre>
+                    </div>
+                    <div class="example-note">
+                        <strong>💡 Note:</strong> Make sure to register <code>build_search_index</code> UDF before running this query. The index will persist across Flink restarts if using a persistent volume.
+                    </div>
+                </div>
+
+                <div class="example-section">
+                    <h3>🔎 SEARCH_INDEX_JSON - Query Persistent Index</h3>
+                    <div class="example-description">
+                        <p><strong>What it does:</strong> Searches a previously built persistent vector index and returns results as JSON, which can be exploded into rows for further SQL processing.</p>
+                        <p><strong>How it works:</strong></p>
+                        <ul style="margin-left: 20px; line-height: 1.8;">
+                            <li><code>search_index_json('my_index', 'great service', 10)</code> - Searches the 'my_index' for content similar to "great service" and returns top 10 matches</li>
+                            <li><code>LATERAL TABLE(explode_search_results(results))</code> - Explodes the JSON results into individual rows</li>
+                            <li>Each row contains the matched <code>text</code> and its relevance <code>idx</code></li>
+                            <li>Much faster than <code>agsearch</code> for repeated queries on the same dataset</li>
+                        </ul>
+                        <p><strong>Use case:</strong> Running multiple different search queries against the same dataset efficiently, or building interactive search applications where the index is built once and queried many times.</p>
+                    </div>
+                    <div class="example-code">
+                        <button class="copy-btn" onclick="copyToClipboard('example5')">📋 Copy</button>
+                        <pre id="example5">-- Search the persistent index
+SELECT text, idx
+FROM (
+    SELECT search_index_json('my_index', 'great service', 10) as results
+    FROM (VALUES (1))
+),
+LATERAL TABLE(explode_search_results(results)) AS T(text, idx);</pre>
+                    </div>
+                    <div class="example-note">
+                        <strong>💡 Note:</strong> Make sure to register both <code>search_index_json</code> and <code>explode_search_results</code> UDFs, and build the index first using <code>build_search_index</code>.
+                    </div>
+                </div>
+
+                <div class="example-section">
+                    <h3>📋 LIST_INDEXES - View All Persistent Indexes</h3>
+                    <div class="example-description">
+                        <p><strong>What it does:</strong> Lists all available persistent vector search indexes, helping you discover what indexes exist before searching.</p>
+                        <p><strong>How it works:</strong></p>
+                        <ul style="margin-left: 20px; line-height: 1.8;">
+                            <li><code>list_indexes()</code> - Returns a comma-separated string of all index names (e.g., "index1,index2,index3")</li>
+                            <li>Simple syntax - just one function call with no parameters</li>
+                            <li>Returns empty string if no indexes exist</li>
+                            <li>Useful for verifying indexes were created successfully</li>
+                        </ul>
+                        <p><strong>Use case:</strong> Checking what indexes are available before searching, verifying index creation, discovering indexes in production environments, or validating index names before operations.</p>
+                    </div>
+                    <div class="example-code">
+                        <button class="copy-btn" onclick="copyToClipboard('example6')">📋 Copy</button>
+                        <pre id="example6">-- List all available indexes
+SELECT list_indexes() as indexes
+FROM (VALUES (1));
+
+-- Check if any indexes exist
+SELECT
+    CASE
+        WHEN list_indexes() = '' THEN 'No indexes found'
+        ELSE 'Indexes: ' || list_indexes()
+    END as status
+FROM (VALUES (1));</pre>
+                    </div>
+                    <div class="example-note">
+                        <strong>💡 Tip:</strong> Run this before <code>build_search_index</code> to see existing indexes, and after to verify your new index was created. Use <code>SPLIT(list_indexes(), ',')</code> to count or process individual index names.
+                    </div>
+                </div>
+
+                <div class="example-section">
+                    <h3>📊 More Operators</h3>
+                    <div class="example-description">
+                        <p><strong>Available operators:</strong></p>
+                        <ul style="margin-left: 20px; line-height: 1.8;">
+                            <li><code>agmap</code> - Row-by-row LLM transformations (shown above)</li>
+                            <li><code>agreduce</code> - Aggregate all rows into a single LLM-generated result</li>
+                            <li><code>agsearch</code> - Semantic search with vector embeddings</li>
+                            <li><code>agpersist_search</code> - Persistent vector search with caching</li>
+                            <li>Registry UDFs - Pre-configured transformations from Schema Registry</li>
+                        </ul>
+                        <p>Use the "🔨 Rebuild UDFs" button to generate registry-based UDFs from your Schema Registry types!</p>
                     </div>
                 </div>
             </div>
@@ -641,6 +953,22 @@
                 document.getElementById('flinkSqlSection').classList.add('active');
                 checkFlinkStatus();
                 initFlinkTerminal();
+            } else if (section === 'accesspoints') {
+                document.getElementById('accessPointsSection').classList.add('active');
+                // Auto-test services when opening Access Points tab
+                testBackendServices();
+                // Set up auto-refresh every 10 seconds
+                if (window.serviceStatusInterval) {
+                    clearInterval(window.serviceStatusInterval);
+                }
+                window.serviceStatusInterval = setInterval(() => {
+                    const accessPointsSection = document.getElementById('accessPointsSection');
+                    if (accessPointsSection && accessPointsSection.classList.contains('active')) {
+                        testBackendServices();
+                    } else {
+                        clearInterval(window.serviceStatusInterval);
+                    }
+                }, 10000);
             }
         }
 
@@ -734,6 +1062,30 @@
                 flinkWs.onopen = () => {
                     flinkTerminal.writeln('\x1b[32m✓ Connected to Flink SQL!\x1b[0m');
                     flinkTerminal.writeln('');
+
+                    // Send initialization commands
+                    flinkTerminal.writeln('\x1b[36mInitializing SQL shell with default settings...\x1b[0m');
+
+                    let delay = 100;
+
+                    // Set default column width to 10
+                    setTimeout(() => {
+                        flinkWs.send(JSON.stringify({ type: 'input', data: 'SET sql-client.display.max-column-width = 10;\n' }));
+                    }, delay);
+                    delay += 100;
+
+                    // Set default parallelism to 5
+                    setTimeout(() => {
+                        flinkWs.send(JSON.stringify({ type: 'input', data: 'SET parallelism.default = 5;\n' }));
+                    }, delay);
+                    delay += 100;
+
+                    setTimeout(() => {
+                        flinkTerminal.writeln('');
+                        flinkTerminal.writeln('\x1b[32m✓ Initialization complete!\x1b[0m');
+                        flinkTerminal.writeln('');
+                    }, delay);
+
 
                     // Set up input handler after connection
                     flinkTerminal.onData(data => {
@@ -832,6 +1184,59 @@
                 btn.disabled = false;
                 btn.innerHTML = originalText;
             }
+
+        async function recreateAllTables() {
+            const btn = document.getElementById('recreateTablesBtn');
+            const originalText = btn.innerHTML;
+
+            if (!confirm('This will recreate all Flink tables from Kafka topics using Schema Registry. Existing table definitions will be replaced. Continue?')) {
+                return;
+            }
+
+            try {
+                btn.disabled = true;
+                btn.innerHTML = '📋 Recreating...';
+
+                if (flinkTerminal) {
+                    flinkTerminal.writeln('\x1b[33m📋 Recreating all Flink tables from Kafka topics...\x1b[0m');
+                }
+
+                const response = await fetch(`${API_URL}/flink/recreate-tables`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    if (flinkTerminal) {
+                        flinkTerminal.writeln(`\x1b[32m✓ Successfully recreated ${data.tables_created} tables!\x1b[0m`);
+                        flinkTerminal.writeln('\x1b[36mℹ️ Run SHOW TABLES; to see all tables.\x1b[0m');
+                        if (data.sql) {
+                            flinkTerminal.writeln('\x1b[90m--- SQL Executed ---\x1b[0m');
+                            data.sql.split('\n').slice(0, 10).forEach(line => {
+                                if (line.trim()) flinkTerminal.writeln(`\x1b[90m${line}\x1b[0m`);
+                            });
+                            if (data.sql.split('\n').length > 10) {
+                                flinkTerminal.writeln('\x1b[90m... (truncated)\x1b[0m');
+                            }
+                        }
+                    }
+                    showFlinkSqlAlert(`✓ Successfully recreated ${data.tables_created} tables from Kafka topics!`, 'success');
+                } else {
+                    throw new Error(data.error || 'Failed to recreate tables');
+                }
+            } catch (error) {
+                console.error('Error recreating tables:', error);
+                if (flinkTerminal) {
+                    flinkTerminal.writeln(`\x1b[31m✗ Error: ${error.message}\x1b[0m`);
+                }
+                showFlinkSqlAlert(`✗ Error recreating tables: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
         }
 
         async function rebuildUdfs() {
@@ -994,15 +1399,471 @@
             const input = document.getElementById('columnWidthInput');
             const value = parseInt(input.value);
 
-            if (isNaN(value) || value < 20 || value > 1000) {
+            if (isNaN(value) || value < 10 || value > 1000) {
                 if (flinkTerminal) {
-                    flinkTerminal.writeln('\x1b[31m✗ Invalid column width. Must be between 20 and 1000.\x1b[0m');
+                    flinkTerminal.writeln('\x1b[31m✗ Invalid column width. Must be between 10 and 1000.\x1b[0m');
                 }
                 return;
             }
 
             const command = `SET 'sql-client.display.max-column-width' = '${value}';`;
             sendFlinkCommand(command);
+        }
+
+        // Service Testing Functions
+        async function testBackendServices() {
+            const statusDisplay = document.getElementById('serviceStatusDisplay');
+            statusDisplay.style.display = 'block';
+            statusDisplay.innerHTML = '<div style="text-align: center; padding: 20px;"><div class="spinner"></div><p>Testing services...</p></div>';
+
+            const services = [
+                { name: 'AGstream Manager', port: 5003, path: '/health', icon: '🎯' },
+                { name: 'Schema Registry', port: 8081, path: '/', icon: '📋' },
+                { name: 'Kafka UI', port: 8080, path: '/', icon: '🖥️' },
+                { name: 'Schema Registry UI', port: 8000, path: '/', icon: '📊' },
+                { name: 'Flink Cluster', port: 8085, path: '/config', icon: '🌊', checkResources: true }
+            ];
+
+            const results = [];
+
+            for (const service of services) {
+                const url = `http://localhost:${service.port}${service.path}`;
+                try {
+                    const testResult = await testPort(service.port);
+
+                    let resourceInfo = null;
+                    if (testResult && service.checkResources) {
+                        // Get Flink cluster resources
+                        resourceInfo = await getFlinkResources();
+                    }
+
+                    results.push({
+                        ...service,
+                        url: `http://localhost:${service.port}`,
+                        status: testResult ? 'online' : 'offline',
+                        resources: resourceInfo
+                    });
+                } catch (error) {
+                    results.push({
+                        ...service,
+                        url: `http://localhost:${service.port}`,
+                        status: 'offline',
+                        error: error.message
+                    });
+                }
+            }
+
+            displayServiceResults(results);
+        }
+
+        async function getFlinkResources() {
+            try {
+                // Get overview
+                const overviewResponse = await fetch('http://localhost:8085/overview', {
+                    method: 'GET',
+                    mode: 'cors'
+                });
+
+                if (!overviewResponse.ok) return null;
+
+                const overview = await overviewResponse.json();
+
+                // Get running jobs details
+                const jobsResponse = await fetch('http://localhost:8085/jobs', {
+                    method: 'GET',
+                    mode: 'cors'
+                });
+
+                let jobs = [];
+                if (jobsResponse.ok) {
+                    const jobsData = await jobsResponse.json();
+
+                    // Get details for each running job
+                    for (const job of jobsData.jobs || []) {
+                        if (job.status === 'RUNNING') {
+                            try {
+                                const jobDetailResponse = await fetch(`http://localhost:8085/jobs/${job.id}`, {
+                                    method: 'GET',
+                                    mode: 'cors'
+                                });
+
+                                if (jobDetailResponse.ok) {
+                                    const jobDetail = await jobDetailResponse.json();
+                                    jobs.push({
+                                        id: job.id,
+                                        name: jobDetail.name || 'Unknown',
+                                        state: jobDetail.state || job.status,
+                                        'start-time': job['start-time'],
+                                        duration: job.duration,
+                                        vertices: jobDetail.vertices || [],
+                                        'total-tasks': jobDetail.vertices ? jobDetail.vertices.reduce((sum, v) => sum + (v.parallelism || 0), 0) : 0
+                                    });
+                                }
+                            } catch (e) {
+                                console.error('Failed to get job details:', e);
+                            }
+                        }
+                    }
+                }
+
+                return {
+                    taskmanagers: overview['taskmanagers'] || 0,
+                    'slots-total': overview['slots-total'] || 0,
+                    'slots-available': overview['slots-available'] || 0,
+                    'jobs-running': overview['jobs-running'] || 0,
+                    'jobs-finished': overview['jobs-finished'] || 0,
+                    'jobs-failed': overview['jobs-failed'] || 0,
+                    jobs: jobs
+                };
+            } catch (error) {
+                console.error('Failed to get Flink resources:', error);
+            }
+            return null;
+        }
+
+        async function testPort(port) {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+                // Use no-cors mode to bypass CORS but still detect if port is open
+                const response = await fetch(`http://localhost:${port}`, {
+                    method: 'HEAD',
+                    mode: 'no-cors',
+                    signal: controller.signal,
+                    cache: 'no-store'
+                });
+
+                clearTimeout(timeoutId);
+
+                // In no-cors mode, response.type will be 'opaque' if successful
+                // If we get here without error, the port is responding
+                return true;
+            } catch (error) {
+                // Network error or timeout means port is not responding
+                if (error.name === 'AbortError') {
+                    return false; // Timeout
+                }
+                return false; // Connection refused or other network error
+            }
+        }
+
+        function displayServiceResults(results) {
+            const statusDisplay = document.getElementById('serviceStatusDisplay');
+
+            const onlineCount = results.filter(r => r.status === 'online').length;
+            const totalCount = results.length;
+
+            // Define which services have restart capabilities
+            const restartableServices = {
+                'AGstream Manager': { script: 'start-agstream-manager', type: 'local', container: null },
+                'Flink Web UI': { script: 'restart-flink', type: 'api', container: 'flink-jobmanager' },
+                'Kafka UI': { script: 'restart', type: 'docker', container: 'kafka-ui' },
+                'Schema Registry UI': { script: 'restart', type: 'docker', container: 'karapace-registry-ui' },
+                'Schema Registry': { script: 'restart', type: 'docker', container: 'karapace-schema-registry' }
+            };
+
+            let html = `
+                <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h4 style="margin: 0; color: #1f2937;">Service Status</h4>
+                        <span style="font-size: 14px; color: #6b7280;">${onlineCount}/${totalCount} services online</span>
+                    </div>
+                    <div style="display: grid; gap: 10px;">
+            `;
+
+            results.forEach(service => {
+                const statusColor = service.status === 'online' ? '#10b981' : '#ef4444';
+                const statusIcon = service.status === 'online' ? '✓' : '✗';
+                const statusText = service.status === 'online' ? 'Online' :
+                                 service.status === 'error' ? `Error (${service.statusCode})` : 'Offline';
+
+                const hasRestart = restartableServices[service.name];
+                const restartButton = hasRestart ?
+                    `<button onclick="restartService('${service.name}', '${hasRestart.script}', '${hasRestart.type}', '${hasRestart.container || ''}')"
+                             class="btn btn-warning" style="font-size: 11px; padding: 4px 10px; margin-left: 8px;">
+                        🔄 Restart
+                    </button>` : '';
+
+                // Build status alert HTML
+                let statusAlertHtml = '';
+                if (service.resources) {
+                    const isTaskManagerDead = service.resources.taskmanagers > 0 && service.resources['slots-total'] === 0;
+
+                    if (isTaskManagerDead) {
+                        statusAlertHtml = `
+                            <div style="margin-top: 6px; padding: 8px; background: #fee2e2; border: 2px solid #dc2626; border-radius: 3px;">
+                                <div style="color: #991b1b; font-weight: 700; font-size: 13px; margin-bottom: 6px;">
+                                    🚨 CRITICAL: TaskManager is DEAD!
+                                </div>
+                                <div style="color: #7f1d1d; font-size: 11px; margin-bottom: 8px;">
+                                    TaskManager container exists but has 0 slots. It likely crashed or ran out of memory.
+                                </div>
+                                <button onclick="restartTaskManager()" class="btn btn-danger" style="font-size: 11px; padding: 6px 12px; width: 100%;">
+                                    🔄 Restart TaskManager Now
+                                </button>
+                            </div>
+                        `;
+                    } else if (service.resources['slots-available'] === 0 && service.resources['slots-total'] > 0) {
+                        statusAlertHtml = '<div style="margin-top: 6px; padding: 6px; background: #fee2e2; color: #991b1b; font-weight: 600; border-radius: 3px; font-size: 12px;">⚠️ No available slots - cluster at full capacity!</div>';
+                    } else if (service.resources['slots-available'] > 0) {
+                        statusAlertHtml = `<div style="margin-top: 6px; padding: 6px; background: #d1fae5; color: #065f46; font-weight: 600; border-radius: 3px; font-size: 12px;">✅ ${service.resources['slots-available']} slots ready for new jobs</div>`;
+                    }
+                }
+
+                html += `
+                    <div style="padding: 10px; background: #f9fafb; border-radius: 6px; border-left: 3px solid ${statusColor};">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span style="font-size: 20px;">${service.icon}</span>
+                                <div>
+                                    <div style="font-weight: 600; color: #1f2937;">${service.name}</div>
+                                    <div style="font-size: 12px; color: #6b7280;">${service.url}</div>
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="color: ${statusColor}; font-weight: 600;">${statusIcon} ${statusText}</span>
+                                ${restartButton}
+                            </div>
+                        </div>
+                        ${service.resources ? `
+                            <div style="margin-top: 10px; padding: 10px; background: #e0f2fe; border-radius: 4px; border: 1px solid #0ea5e9;">
+                                <div style="font-weight: 600; color: #0369a1; margin-bottom: 6px; font-size: 13px;">📊 Flink Cluster Resources</div>
+                               <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; font-size: 12px;">
+                                   <div><strong>TaskManagers:</strong> ${service.resources.taskmanagers}</div>
+                                   <div><strong>Total Slots:</strong> ${service.resources['slots-total']}</div>
+                                   <div style="color: ${service.resources['slots-available'] > 0 ? '#059669' : '#dc2626'};">
+                                       <strong>Available Slots:</strong> ${service.resources['slots-available']}
+                                   </div>
+                                   <div><strong>Running Jobs:</strong> ${service.resources['jobs-running']}</div>
+                               </div>
+                               ${statusAlertHtml}
+                                ${service.resources.jobs && service.resources.jobs.length > 0 ? `
+                                    <div style="margin-top: 10px; border-top: 1px solid #0ea5e9; padding-top: 8px;">
+                                        <div style="font-weight: 600; color: #0369a1; margin-bottom: 6px; font-size: 12px;">🔄 Running Jobs</div>
+                                        ${service.resources.jobs.map(job => {
+                                            const duration = job.duration ? Math.floor(job.duration / 1000 / 60) : 0;
+                                            const durationText = duration > 60 ? `${Math.floor(duration/60)}h ${duration%60}m` : `${duration}m`;
+                                            return `
+                                                <div style="margin-bottom: 6px; padding: 6px; background: white; border-radius: 3px; border: 1px solid #bae6fd;">
+                                                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 4px;">
+                                                        <div style="font-weight: 600; font-size: 11px; color: #0c4a6e; flex: 1;">${job.name}</div>
+                                                        <a href="http://localhost:8085/#/job/${job.id}/overview" target="_blank"
+                                                           style="font-size: 10px; color: #0284c7; text-decoration: none; white-space: nowrap; margin-left: 8px;">
+                                                            View Details →
+                                                        </a>
+                                                    </div>
+                                                    <div style="font-size: 10px; color: #64748b;">
+                                                        <div><strong>Job ID:</strong> ${job.id.substring(0, 8)}...</div>
+                                                        <div><strong>State:</strong> ${job.state}</div>
+                                                        <div><strong>Total Tasks:</strong> ${job['total-tasks']}</div>
+                                                        <div><strong>Running Time:</strong> ${durationText}</div>
+                                                    </div>
+                                                    ${job['total-tasks'] === service.resources['slots-total'] ?
+                                                        '<div style="margin-top: 4px; padding: 4px; background: #fef3c7; color: #92400e; font-size: 10px; border-radius: 2px;">💡 This job is using all available slots</div>' :
+                                                        ''
+                                                    }
+                                                </div>
+                                            `;
+                                        }).join('')}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+
+            html += `
+                    </div>
+                    <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 12px; color: #6b7280;">Auto-refreshes every 10 seconds</span>
+                        <div>
+                            <button onclick="testBackendServices()" class="btn btn-secondary" style="font-size: 12px; padding: 6px 12px;">🔄 Refresh Now</button>
+                            <button onclick="restartAllServices()" class="btn btn-warning" style="font-size: 12px; padding: 6px 12px; margin-left: 8px;">🔄 Restart All Services</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            statusDisplay.innerHTML = html;
+        }
+
+        async function restartService(serviceName, script, type, container) {
+            if (!confirm(`Are you sure you want to restart ${serviceName}?`)) {
+                return;
+            }
+
+            const statusDisplay = document.getElementById('serviceStatusDisplay');
+            const originalContent = statusDisplay.innerHTML;
+            statusDisplay.innerHTML = '<div style="text-align: center; padding: 20px;"><div class="spinner"></div><p>Restarting ' + serviceName + '...</p></div>';
+
+            try {
+                if (type === 'api') {
+                    // Use API endpoint (for Flink)
+                    const response = await fetch(`${API_URL}/flink/restart`, {
+                        method: 'POST'
+                    });
+
+                    if (response.ok) {
+                        alert(`${serviceName} restart initiated successfully!`);
+                        // Wait a bit then refresh status
+                        setTimeout(() => testBackendServices(), 3000);
+                    } else {
+                        throw new Error(`Failed to restart: ${response.statusText}`);
+                    }
+                } else if (type === 'docker') {
+                    // For Docker services, show docker restart command
+                    alert(`To restart ${serviceName}, run this command in your terminal:\n\ndocker restart ${container}\n\nOr restart all services:\ncd tools/agstream_manager/scripts && ./manage_services_full.sh restart`);
+                    statusDisplay.innerHTML = originalContent;
+                } else {
+                    // For local services, show management script command
+                    alert(`To restart ${serviceName}, run this command in your terminal:\n\ncd tools/agstream_manager/scripts && ./manage_services_full.sh ${script}`);
+                    statusDisplay.innerHTML = originalContent;
+                }
+            } catch (error) {
+                alert(`Error restarting ${serviceName}: ${error.message}`);
+                statusDisplay.innerHTML = originalContent;
+            }
+
+        async function restartTaskManager() {
+            if (!confirm('⚠️ This will restart the Flink TaskManager container. Any running jobs will be interrupted. Continue?')) {
+                return;
+            }
+
+            try {
+                const statusDisplay = document.getElementById('serviceStatusDisplay');
+                const originalContent = statusDisplay.innerHTML;
+
+                statusDisplay.innerHTML = '<div style="text-align: center; padding: 20px;"><div class="spinner"></div><p>Restarting TaskManager...</p></div>';
+
+                const response = await fetch(`${API_URL}/flink/restart-taskmanager`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    statusDisplay.innerHTML = `
+                        <div style="background: #d1fae5; padding: 15px; border-radius: 8px; border-left: 4px solid #059669;">
+                            <div style="color: #065f46; font-weight: 600; margin-bottom: 8px;">✅ TaskManager Restarted Successfully!</div>
+                            <div style="color: #047857; font-size: 13px;">Waiting for TaskManager to register... (10 seconds)</div>
+                        </div>
+                    `;
+
+                    // Wait 10 seconds then refresh status
+                    setTimeout(() => {
+                        testBackendServices();
+                    }, 10000);
+                } else {
+                    throw new Error(data.error || 'Failed to restart TaskManager');
+                }
+            } catch (error) {
+                console.error('Error restarting TaskManager:', error);
+                alert(`❌ Error restarting TaskManager: ${error.message}\n\nTry using: docker restart flink-taskmanager`);
+                testBackendServices(); // Refresh to show current state
+            }
+        }
+        }
+
+        function restartAllServices() {
+            if (!confirm('Are you sure you want to restart ALL services? This will cause temporary downtime.')) {
+                return;
+            }
+
+            alert('To restart all services, run this command in your terminal:\n\ncd tools/agstream_manager/scripts && ./manage_services_full.sh restart\n\nThis will perform a quick restart of all Docker containers and local services.');
+        }
+
+        // Service Viewer Functions
+        function openServiceInTab(url) {
+            console.log('Opening service:', url);
+
+            const viewer = document.getElementById('serviceViewer');
+            const iframe = document.getElementById('serviceIframe');
+            const title = document.getElementById('serviceViewerTitle');
+
+            if (!viewer || !iframe || !title) {
+                console.error('Service viewer elements not found!');
+                alert('Error: Service viewer not found. Please refresh the page.');
+                return;
+            }
+
+            // Clear any previous content
+            iframe.src = '';
+
+            // Update title based on URL
+            let serviceName = 'Service';
+            if (url.includes(':8080')) {
+                serviceName = '🖥️ Kafka UI';
+            } else if (url.includes(':8000')) {
+                serviceName = '📊 Schema Registry UI';
+            } else if (url.includes(':8085')) {
+                serviceName = '🌊 Flink Web UI';
+            }
+            title.textContent = serviceName;
+
+            // Show the viewer first
+            viewer.style.display = 'block';
+            console.log('Viewer displayed');
+
+            // Set the iframe source after showing
+            setTimeout(() => {
+                iframe.src = url;
+                console.log('Iframe src set to:', url);
+            }, 100);
+
+            // Scroll to viewer
+            setTimeout(() => {
+                viewer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 200);
+        }
+
+        function closeServiceViewer() {
+            const viewer = document.getElementById('serviceViewer');
+            const iframe = document.getElementById('serviceIframe');
+
+            // Hide viewer and clear iframe
+            viewer.style.display = 'none';
+            iframe.src = '';
+        }
+
+        // Modal Functions
+        function openExamplesModal() {
+            document.getElementById('examplesModal').classList.add('active');
+        }
+
+        function closeExamplesModal() {
+            document.getElementById('examplesModal').classList.remove('active');
+        }
+
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            const text = element.textContent;
+
+            navigator.clipboard.writeText(text).then(() => {
+                // Show feedback
+                const btn = element.previousElementSibling;
+                const originalText = btn.textContent;
+                btn.textContent = '✓ Copied!';
+                btn.style.background = '#10b981';
+
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.style.background = '#667eea';
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                alert('Failed to copy to clipboard');
+            });
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('examplesModal');
+            if (event.target === modal) {
+                closeExamplesModal();
+            }
         }
 
         // Schema Manager Functions

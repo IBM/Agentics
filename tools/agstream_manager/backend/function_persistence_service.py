@@ -31,10 +31,11 @@ from flask_cors import CORS
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from persistent_function_store import PersistentFunctionStore
-
-from src.agentics.core.streaming_utils import get_atype_from_registry
-from src.agentics.core.transducible_functions import make_transducible_function
+from agentics.core.streaming.streaming_utils import get_atype_from_registry
+from agentics.core.transducible_functions import make_transducible_function
+from tools.agstream_manager.backend.persistent_function_store import (
+    PersistentFunctionStore,
+)
 
 # Configuration
 AGSTREAM_BACKENDS = os.getenv("AGSTREAM_BACKENDS", "./agstream-backends")

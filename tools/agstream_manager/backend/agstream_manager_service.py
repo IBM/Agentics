@@ -3104,6 +3104,57 @@ def register_udfs():
             jsonify({"success": False, "error": "Registration script timed out"}),
             500,
         )
+
+
+@app.route("/api/flink/restart-taskmanager", methods=["POST"])
+def restart_taskmanager():
+    """Restart only the Flink TaskManager container"""
+    try:
+        # Restart the TaskManager container
+        result = subprocess.run(
+            ["docker", "restart", "flink-taskmanager"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+
+        if result.returncode == 0:
+            return jsonify(
+                {
+                    "success": True,
+                    "message": "TaskManager restarted successfully",
+                    "output": result.stdout,
+                }
+            )
+        else:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": f"Failed to restart TaskManager: {result.stderr}",
+                    }
+                ),
+                500,
+            )
+
+    except subprocess.TimeoutExpired:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "TaskManager restart timed out after 30 seconds",
+                }
+            ),
+            500,
+        )
+    except Exception as e:
+        return (
+            jsonify(
+                {"success": False, "error": str(e), "traceback": traceback.format_exc()}
+            ),
+            500,
+        )
+
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -3184,15 +3235,158 @@ def launch_flink_shell():
         )
 
 
+@app.route("/api/flink/recreate-tables", methods=["POST"])
+def recreate_flink_tables():
+    """Recreate all Flink tables from Kafka topics via Schema Registry"""
+    try:
+        # Generate SQL statements using the init script
+        init_script = str(AGSTREAM_DIR / "scripts" / "init_flink_tables.py")
+
+        if not Path(init_script).exists():
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": f"Init script not found at {init_script}",
+                    }
+                ),
+                404,
+            )
+
+        # Run the script to generate SQL
+        result = subprocess.run(
+            [sys.executable, init_script],
+            capture_output=True,
+            text=True,
+            cwd=str(AGSTREAM_DIR.parent.parent),
+        )
+
+        if result.returncode != 0:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "Failed to generate table SQL",
+                        "stderr": result.stderr,
+                    }
+                ),
+                500,
+            )
+
+        # Filter out comments and empty lines to get just SQL statements
+        sql_statements = []
+        for line in result.stdout.split("\n"):
+            line = line.strip()
+            if line and not line.startswith("--"):
+                sql_statements.append(line)
+
+        sql_content = "\n".join(sql_statements)
+
+        if not sql_content.strip():
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "No SQL statements generated. Are there any channels registered?",
+                    }
+                ),
+                400,
+            )
+
+        # Write SQL to temp file
+        sql_file = "/tmp/flink_recreate_tables.sql"
+        with open(sql_file, "w") as f:
+            f.write(sql_content)
+
+        # Copy to Flink container
+        copy_result = subprocess.run(
+            ["docker", "cp", sql_file, "flink-jobmanager:/tmp/recreate_tables.sql"],
+            capture_output=True,
+            text=True,
+        )
+
+        if copy_result.returncode != 0:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "Failed to copy SQL file to Flink container",
+                        "stderr": copy_result.stderr,
+                    }
+                ),
+                500,
+            )
+
+        # Execute SQL statements in Flink
+        exec_result = subprocess.run(
+            [
+                "docker",
+                "exec",
+                "flink-jobmanager",
+                "bash",
+                "-c",
+                "./bin/sql-client.sh -f /tmp/recreate_tables.sql",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+
+        # Count how many tables were created
+        table_count = sql_content.count("CREATE TABLE")
+
+        return jsonify(
+            {
+                "success": True,
+                "message": f"Successfully recreated {table_count} tables",
+                "sql": sql_content,
+                "output": exec_result.stdout,
+                "tables_created": table_count,
+            }
+        )
+
+    except subprocess.TimeoutExpired:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Flink SQL execution timed out after 60 seconds",
+                }
+            ),
+            500,
+        )
+    except Exception as e:
+        return (
+            jsonify(
+                {"success": False, "error": str(e), "traceback": traceback.format_exc()}
+            ),
+            500,
+        )
+
+
 @sock.route("/api/flink/terminal")
 def flink_terminal(ws):
     """WebSocket endpoint for Flink SQL terminal - Direct docker exec approach"""
     try:
-        # Generate SQL init file first
+        # Ensure init file exists in container (create empty one first)
+        subprocess.run(
+            [
+                "docker",
+                "exec",
+                "flink-jobmanager",
+                "bash",
+                "-c",
+                "echo '-- Flink SQL Initialization' > /tmp/init_tables.sql",
+            ],
+            check=False,
+            capture_output=True,
+        )
+
+        # Generate SQL init file
         init_script = str(AGSTREAM_DIR / "scripts" / "init_flink_tables.py")
         sql_file = "/tmp/flink_init_tables.sql"
 
-        # Generate the SQL file
+        # Try to generate the SQL file
         result = subprocess.run(
             [init_script],
             capture_output=True,
@@ -3213,11 +3407,15 @@ def flink_terminal(ws):
             with open(sql_file, "w") as f:
                 f.write(sql_content)
 
-            # Copy to container
+            # Copy to container (if this fails, we still have the empty file)
             subprocess.run(
                 ["docker", "cp", sql_file, "flink-jobmanager:/tmp/init_tables.sql"],
                 check=False,
+                capture_output=True,
             )
+        else:
+            # If generation failed, log it but continue with empty init file
+            print(f"Warning: Could not generate init SQL: {result.stderr}")
 
         # Start docker exec with PTY
         master_fd, slave_fd = pty.openpty()

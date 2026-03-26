@@ -141,7 +141,6 @@ LIMIT 5;
 
 -- Example 2.3: Extract Emotion (String) with Detailed Description
 SELECT
-    Product_name,
     customer_review,
     JSON_VALUE(T.json_result, '$.emotion') as emotion
 FROM pr,
@@ -448,6 +447,518 @@ Extracting Results:
 - Use JSON_VALUE() to extract fields: JSON_VALUE(T.json_result, '$.field_name')
 - Cast as needed: CAST(JSON_VALUE(...) AS INT/DOUBLE/BOOLEAN)
 - AGMap returns 1 column, AGReduce returns JSON directly
+*/
+
+-- ============================================================================
+-- SECTION 5: AGSearch - Semantic Vector Search
+-- ============================================================================
+-- Performs vector-based semantic search on accumulated rows
+-- Uses sentence transformers for embeddings and HNSW for indexing
+-- Returns top-k most similar results to a query
+-- ============================================================================
+
+-- Example 5.1: Basic Semantic Search
+-- Search for reviews mentioning "great service"
+SELECT
+    JSON_VALUE(agsearch(customer_review, 'great service', 10), '$[0].text') as top_result,
+    JSON_VALUE(agsearch(customer_review, 'great service', 10), '$[0].index') as result_index
+FROM pr;
+
+-- Example 5.2: Search with Exploded Results (Multiple Rows)
+-- Use explode_search_results to get each result as a separate row
+-- First register the explode function:
+-- CREATE TEMPORARY FUNCTION IF NOT EXISTS explode_search_results
+-- AS 'agsearch.explode_search_results' LANGUAGE PYTHON;
+
+SELECT
+    text as matching_review,
+    idx as relevance_rank
+FROM (
+    SELECT agsearch(customer_review, 'excellent product quality', 10) as search_results
+    FROM pr
+),
+LATERAL TABLE(explode_search_results(search_results)) AS T(text, idx)
+LIMIT 5;
+
+-- Example 5.3: Search with Filtering
+-- Find reviews about "fast shipping" from positive reviews only
+SELECT
+    text,
+    idx
+FROM (
+    SELECT agsearch(customer_review, 'fast shipping', 5) as results
+    FROM pr
+    WHERE customer_review LIKE '%good%' OR customer_review LIKE '%great%'
+),
+LATERAL TABLE(explode_search_results(results)) AS T(text, idx)
+ORDER BY idx;
+
+-- Example 5.4: Multiple Searches in One Query
+-- Search for different topics and compare results
+SELECT
+    'quality' as search_topic,
+    text,
+    idx
+FROM (
+    SELECT agsearch(customer_review, 'product quality', 3) as results FROM pr
+),
+LATERAL TABLE(explode_search_results(results)) AS T(text, idx)
+UNION ALL
+SELECT
+    'service' as search_topic,
+    text,
+    idx
+FROM (
+    SELECT agsearch(customer_review, 'customer service', 3) as results FROM pr
+),
+LATERAL TABLE(explode_search_results(results)) AS T(text, idx)
+ORDER BY search_topic, idx;
+
+-- Example 5.5: Search by Product
+-- Find most relevant reviews for each product
+SELECT
+    Product_name,
+    text as relevant_review,
+    idx as rank
+FROM pr,
+LATERAL TABLE(explode_search_results(
+    (SELECT agsearch(customer_review, 'value for money', 3)
+     FROM pr p2
+     WHERE p2.Product_name = pr.Product_name)
+)) AS T(text, idx)
+GROUP BY Product_name, text, idx
+ORDER BY Product_name, idx;
+
+-- Example 5.6: Search with Top Results Only
+-- Get only the top 3 most relevant results
+SELECT
+    text,
+    idx,
+    LENGTH(text) as review_length
+FROM (
+    SELECT agsearch(customer_review, 'highly recommend', 10) as results
+    FROM pr
+),
+LATERAL TABLE(explode_search_results(results)) AS T(text, idx)
+WHERE idx < 3
+ORDER BY idx;
+
+-- Example 5.7: Search with Time Windows (for streaming data)
+-- Find relevant reviews in 5-minute windows
+-- Note: Requires event_time column in your table
+-- SELECT
+--     TUMBLE_START(event_time, INTERVAL '5' MINUTE) as window_start,
+--     text,
+--     idx
+-- FROM pr,
+-- LATERAL TABLE(explode_search_results(
+--     agsearch(customer_review, 'urgent issue', 5)
+-- )) AS T(text, idx)
+-- GROUP BY TUMBLE(event_time, INTERVAL '5' MINUTE), text, idx;
+
+-- Example 5.8: Combine Search with AGMap
+-- Extract sentiment from search results
+WITH search_results AS (
+    SELECT text
+    FROM (
+        SELECT agsearch(customer_review, 'disappointed', 5) as results
+        FROM pr
+    ),
+    LATERAL TABLE(explode_search_results(results)) AS T(text, idx)
+)
+SELECT
+    text,
+    JSON_VALUE(s.json_result, '$.sentiment') as sentiment
+FROM search_results,
+LATERAL TABLE(agmap(text, 'sentiment', 'str', 'positive, negative, or neutral')) AS s(json_result);
+
+-- Example 5.9: Search and Aggregate
+-- Find reviews about "durability" and create summary
+SELECT
+    JSON_VALUE(
+        agreduce(
+            text,
+            'durability_summary',
+            'str',
+            'Summarize what customers say about product durability'
+        ),
+        '$.durability_summary'
+    ) as summary
+FROM (
+    SELECT text
+    FROM (
+        SELECT agsearch(customer_review, 'durability long-lasting', 10) as results
+        FROM pr
+    ),
+    LATERAL TABLE(explode_search_results(results)) AS T(text, idx)
+);
+
+-- Example 5.10: Count Results by Keyword
+-- Analyze search results for specific keywords
+SELECT
+    COUNT(*) as total_results,
+    SUM(CASE WHEN text LIKE '%excellent%' THEN 1 ELSE 0 END) as has_excellent,
+    SUM(CASE WHEN text LIKE '%recommend%' THEN 1 ELSE 0 END) as has_recommend,
+    AVG(LENGTH(text)) as avg_review_length
+FROM (
+    SELECT agsearch(customer_review, 'best purchase', 20) as results
+    FROM pr
+),
+LATERAL TABLE(explode_search_results(results)) AS T(text, idx);
+
+-- ============================================================================
+-- AGSearch Quick Reference
+-- ============================================================================
+
+/*
+AGSearch Function:
+- Syntax: agsearch(text_column, 'search_query', max_results)
+- Returns: JSON array of results: [{"text": "...", "index": 0}, ...]
+- Uses: Sentence transformers for embeddings, HNSW for vector search
+- Best for: Finding semantically similar content, not exact matches
+
+Explode Search Results:
+- Syntax: LATERAL TABLE(explode_search_results(json_array)) AS T(text, idx)
+- Converts JSON array into multiple rows
+- Returns: (text STRING, index INT) for each result
+- Use with: WHERE idx < N to limit results, ORDER BY idx for ranking
+
+Performance Tips:
+1. Filter data before searching to reduce input size
+2. Use appropriate max_results (don't request more than needed)
+3. First execution downloads embedding model (~90MB, takes 30-60s)
+4. Subsequent executions are much faster (model cached)
+5. Each Flink task loads its own model copy (~400MB memory)
+
+Common Patterns:
+- Basic search: agsearch(column, 'query', 10)
+- With filtering: WHERE condition before search
+- Multiple rows: Use explode_search_results UDTF
+- Top N only: WHERE idx < N after explode
+- Combine with AGMap: Extract features from search results
+- Aggregate results: Use AGReduce on search output
+-- ============================================================================
+-- SECTION 6: AGPersist Search - Persistent Vector Search Indexes
+-- ============================================================================
+-- Build persistent vector indexes that survive Flink restarts
+-- Enables fast repeated searches without rebuilding indexes
+-- Indexes stored on disk and reused across queries
+-- ============================================================================
+
+-- Example 6.1: Build a Persistent Index
+-- Creates a vector index and saves it to disk
+-- First register the functions:
+-- CREATE TEMPORARY SYSTEM FUNCTION IF NOT EXISTS build_search_index
+-- AS 'agpersist_search.build_search_index' LANGUAGE PYTHON;
+
+SELECT build_search_index(customer_review, 'my_index') as status
+FROM pr
+LIMIT 10;
+
+-- Expected output: {"status": "success", "index_name": "my_index", "num_items": 10, "dimension": 384}
+
+-- Example 6.2: Search a Persistent Index
+-- Search the index built in Example 6.1
+-- Register the search functions:
+-- CREATE TEMPORARY SYSTEM FUNCTION IF NOT EXISTS search_index_json
+-- AS 'agpersist_search.search_index_json' LANGUAGE PYTHON;
+-- CREATE TEMPORARY SYSTEM FUNCTION IF NOT EXISTS explode_search_results
+-- AS 'agsearch.explode_search_results' LANGUAGE PYTHON;
+
+SELECT text, idx
+FROM (
+    SELECT search_index_json('my_index', 'great service', 10) as results
+    FROM (VALUES (1))
+),
+LATERAL TABLE(explode_search_results(results)) AS T(text, idx);
+
+-- Example 6.3: Build Index from Filtered Data
+-- Create index only from positive reviews
+SELECT build_search_index(customer_review, 'positive_reviews_index') as status
+FROM pr
+WHERE customer_review LIKE '%good%' OR customer_review LIKE '%great%' OR customer_review LIKE '%excellent%'
+LIMIT 50;
+
+-- Example 6.4: Build Category-Specific Indexes
+-- Create separate indexes for different products
+SELECT build_search_index(customer_review, CONCAT(Product_name, '_index')) as status
+FROM pr
+WHERE Product_name = 'Laptop'
+LIMIT 30;
+
+-- Example 6.5: Search Multiple Indexes
+-- Compare results across different indexes
+SELECT 'positive' as index_type, text, idx
+FROM (
+    SELECT search_index_json('positive_reviews_index', 'quality', 5) as results
+    FROM (VALUES (1))
+),
+LATERAL TABLE(explode_search_results(results)) AS T(text, idx)
+UNION ALL
+SELECT 'all_reviews' as index_type, text, idx
+FROM (
+    SELECT search_index_json('my_index', 'quality', 5) as results
+    FROM (VALUES (1))
+),
+LATERAL TABLE(explode_search_results(results)) AS T(text, idx)
+ORDER BY index_type, idx;
+
+-- Example 6.6: Build Larger Index
+-- Create comprehensive index from more data
+SELECT build_search_index(customer_review, 'reviews_full') as status
+FROM pr
+LIMIT 1000;
+
+-- Example 6.7: Search with Different Queries
+-- Run multiple searches on same index (very fast!)
+SELECT 'shipping' as topic, text
+FROM (
+    SELECT search_index_json('reviews_full', 'fast delivery shipping', 3) as results
+    FROM (VALUES (1))
+),
+LATERAL TABLE(explode_search_results(results)) AS T(text, idx)
+UNION ALL
+SELECT 'quality' as topic, text
+FROM (
+    SELECT search_index_json('reviews_full', 'excellent quality durable', 3) as results
+    FROM (VALUES (1))
+),
+LATERAL TABLE(explode_search_results(results)) AS T(text, idx)
+UNION ALL
+SELECT 'service' as topic, text
+FROM (
+    SELECT search_index_json('reviews_full', 'customer support helpful', 3) as results
+    FROM (VALUES (1))
+),
+LATERAL TABLE(explode_search_results(results)) AS T(text, idx);
+
+-- Example 6.8: Combine Persistent Search with AGMap
+-- Extract sentiment from persistent search results
+WITH search_results AS (
+    SELECT text
+    FROM (
+        SELECT search_index_json('reviews_full', 'disappointed unhappy', 5) as results
+        FROM (VALUES (1))
+    ),
+    LATERAL TABLE(explode_search_results(results)) AS T(text, idx)
+)
+SELECT
+    text,
+    JSON_VALUE(s.json_result, '$.sentiment') as sentiment
+FROM search_results,
+LATERAL TABLE(agmap(text, 'sentiment', 'str', 'positive, negative, or neutral')) AS s(json_result);
+
+-- Example 6.9: Aggregate Persistent Search Results
+-- Summarize what customers say about a topic
+SELECT
+    JSON_VALUE(
+        agreduce(
+            text,
+            'price_summary',
+            'str',
+            'Summarize what customers say about pricing and value'
+        ),
+        '$.price_summary'
+    ) as summary
+FROM (
+    SELECT text
+    FROM (
+        SELECT search_index_json('reviews_full', 'price value cost expensive cheap', 10) as results
+        FROM (VALUES (1))
+    ),
+    LATERAL TABLE(explode_search_results(results)) AS T(text, idx)
+);
+
+-- Example 6.10: Time-Based Index (for temporal analysis)
+-- Build daily indexes for tracking changes over time
+-- Note: Requires date column in your table
+-- SELECT build_search_index(
+--     customer_review,
+--     CONCAT('reviews_', CAST(CURRENT_DATE AS STRING))
+-- ) as status
+-- FROM pr
+-- WHERE DATE(review_date) = CURRENT_DATE
+-- LIMIT 100;
+
+-- ============================================================================
+-- AGPersist Search Quick Reference
+-- ============================================================================
+
+/*
+Build Persistent Index:
+- Syntax: build_search_index(text_column, 'index_name')
+- Returns: JSON with status, index_name, num_items, dimension
+- Storage: Default /tmp/agstream_indexes/ (set AGSTREAM_INDEX_PATH to customize)
+- First run: Downloads model (~90MB), takes 30-60s
+- Subsequent: Uses cached model, much faster
+
+Search Persistent Index:
+- Syntax: search_index_json('index_name', 'query', max_results)
+- Returns: JSON array compatible with explode_search_results
+- Usage: Same pattern as agsearch with explode_search_results
+- Performance: 50-100ms (vs seconds to rebuild index each time)
+- Speedup: 20-60x faster than non-persistent search
+
+Key Advantages:
+1. Build once, search many times
+2. Indexes survive Flink restarts (if using persistent storage)
+3. Share indexes across multiple queries/jobs
+4. Ideal for static or semi-static data
+5. Perfect for production workloads with repeated searches
+
+When to Use:
+- ✅ Running same/similar queries multiple times
+- ✅ Production workloads requiring fast response
+- ✅ Static or slowly-changing datasets
+- ✅ Need to share indexes across jobs
+
+When to Use Regular agsearch:
+- ✅ One-time ad-hoc queries
+- ✅ Rapidly changing data
+- ✅ Prototyping and exploration
+- ✅ Don't need to persist results
+
+Performance Comparison:
+- First search (persistent): ~2-3s (loads index from disk)
+- Subsequent searches: ~50-100ms ⚡
+- Non-persistent: Rebuilds index every time (~2-3s each)
+- Speedup: 20-60x for repeated queries
+
+Storage:
+- Default: /tmp/agstream_indexes/ (cleared on container restart)
+- Persistent: Mount volume and set AGSTREAM_INDEX_PATH
+- Index size: ~1-5MB per 1000 documents
+- Model cache: ~400MB per Flink task
+
+Common Patterns:
+1. Build filtered indexes: WHERE clause before build_search_index
+2. Category-specific: Use CONCAT(category, '_index') for index names
+3. Time-based: Include date in index name for temporal analysis
+4. Multiple searches: Reuse same index for different queries
+5. Combine with AGMap: Extract features from search results
+6. Aggregate results: Use AGReduce on search output
+*/
+
+*/
+
+-- ============================================================================
+-- SECTION 7: List Persistent Indexes
+-- ============================================================================
+-- View all available persistent search indexes
+-- Useful for discovering what indexes exist before searching
+-- ============================================================================
+
+-- Example 7.1: List All Indexes (Simple Syntax)
+-- Returns comma-separated string of all index names
+-- First register the function:
+-- CREATE TEMPORARY SYSTEM FUNCTION IF NOT EXISTS list_indexes
+-- AS 'agpersist_search.list_indexes' LANGUAGE PYTHON;
+
+SELECT list_indexes() as indexes
+FROM (VALUES (1));
+
+-- Expected output: "my_index,positive_reviews_index,reviews_full" or "" if no indexes
+
+-- Example 7.2: Check if Indexes Exist
+-- Verify if any indexes are available before searching
+SELECT
+    CASE
+        WHEN list_indexes() = '' THEN 'No indexes found - build one first!'
+        ELSE 'Indexes available: ' || list_indexes()
+    END as status
+FROM (VALUES (1));
+
+-- Example 7.3: Count Available Indexes
+-- Calculate how many indexes exist
+SELECT
+    CASE
+        WHEN list_indexes() = '' THEN 0
+        ELSE CARDINALITY(SPLIT(list_indexes(), ','))
+    END as index_count
+FROM (VALUES (1));
+
+-- Example 7.4: List Indexes as Separate Rows (Advanced)
+-- Use UDTF version for one row per index
+-- First register the UDTF:
+-- CREATE TEMPORARY SYSTEM FUNCTION IF NOT EXISTS list_search_indexes
+-- AS 'agpersist_search.list_search_indexes' LANGUAGE PYTHON;
+
+SELECT T.indexes
+FROM (VALUES (1)) AS dummy(x),
+LATERAL TABLE(list_search_indexes()) AS T(indexes)
+ORDER BY T.indexes;
+
+-- Example 7.5: Filter Indexes by Pattern
+-- Find indexes matching a specific pattern
+SELECT T.indexes
+FROM (VALUES (1)) AS dummy(x),
+LATERAL TABLE(list_search_indexes()) AS T(indexes)
+WHERE T.indexes LIKE '%review%';
+
+-- Example 7.6: Check for Specific Index
+-- Verify if a particular index exists
+SELECT
+    CASE
+        WHEN COUNT(*) > 0 THEN 'Index "my_index" exists'
+        ELSE 'Index "my_index" not found'
+    END as status
+FROM (VALUES (1)) AS dummy(x),
+LATERAL TABLE(list_search_indexes()) AS T(indexes)
+WHERE T.indexes = 'my_index';
+
+-- Example 7.7: List Indexes Before Building
+-- Good practice: check what exists before creating new index
+SELECT
+    'Existing indexes: ' || list_indexes() as before_build
+FROM (VALUES (1));
+
+-- Then build your new index:
+-- SELECT build_search_index(customer_review, 'new_index') as status FROM pr LIMIT 100;
+
+-- Then verify it was created:
+SELECT
+    'After build: ' || list_indexes() as after_build
+FROM (VALUES (1));
+
+-- ============================================================================
+-- List Indexes Quick Reference
+-- ============================================================================
+
+/*
+List Indexes Functions:
+
+1. Simple Syntax (UDAF):
+   - Function: list_indexes()
+   - Returns: Comma-separated string of index names
+   - Usage: SELECT list_indexes() FROM (VALUES (1));
+   - Best for: Quick checks, simple displays
+   - Example output: "index1,index2,index3"
+
+2. Advanced Syntax (UDTF):
+   - Function: list_search_indexes()
+   - Returns: One row per index
+   - Usage: LATERAL TABLE(list_search_indexes()) AS T(indexes)
+   - Best for: Filtering, joining, complex queries
+   - Requires: Dummy source table with VALUES (1)
+
+Common Use Cases:
+- ✅ Check what indexes exist before searching
+- ✅ Verify index was created successfully
+- ✅ Discover available indexes in production
+- ✅ Filter indexes by naming pattern
+- ✅ Count total number of indexes
+- ✅ Validate index names before operations
+
+Workflow:
+1. List indexes: SELECT list_indexes() FROM (VALUES (1));
+2. Build if needed: SELECT build_search_index(...) FROM table;
+3. Verify creation: SELECT list_indexes() FROM (VALUES (1));
+4. Search index: SELECT search_index_json('index_name', 'query', 10) ...
+
+Storage Location:
+- Default: /tmp/agstream_indexes/
+- Custom: Set AGSTREAM_INDEX_PATH environment variable
+- Persistent: Mount volume in docker-compose.yml
 */
 
 -- ============================================================================

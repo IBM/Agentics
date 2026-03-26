@@ -80,9 +80,8 @@ echo ""
 # Copy wheel to containers and install with uv (preserve original filename)
 WHEEL_NAME=$(basename "$WHEEL_FILE")
 
-echo "🔧 Cleaning up old agentics directories..."
-docker exec -u root flink-taskmanager rm -rf /opt/flink/agentics /opt/agentics
-docker exec -u root flink-jobmanager rm -rf /opt/flink/agentics /opt/agentics
+# Note: /opt/flink/agentics is baked into Docker image (read-only)
+# We don't need to clean it up - uv will install to site-packages instead
 
 echo "🔧 Installing Agentics in TaskManager with uv..."
 docker cp "$WHEEL_FILE" flink-taskmanager:/tmp/"$WHEEL_NAME"

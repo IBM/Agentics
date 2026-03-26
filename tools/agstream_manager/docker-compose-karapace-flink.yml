@@ -133,7 +133,15 @@ services:
         parallelism.default: 20
         taskmanager.numberOfTaskSlots: 20
         python.executable: /usr/bin/python3
+        jobmanager.memory.off-heap.size: 1024m
+        jobmanager.memory.jvm-metaspace.size: 512m
+        jobmanager.memory.jvm-overhead.max: 1024m
+        jobmanager.memory.process.size: 4096m
+        taskmanager.memory.jvm-metaspace.size: 512m
+        taskmanager.memory.jvm-overhead.max: 2048m
+        taskmanager.memory.process.size: 6144m
       - PYTHONPATH=/opt/flink/udfs
+      - AGSTREAM_INDEX_PATH=/opt/flink/indexes
       - CREWAI_TRACING_ENABLED=false
       - CREWAI_DISABLE_TELEMETRY=true
       - OTEL_SDK_DISABLED=true
@@ -143,9 +151,10 @@ services:
       - CREWAI_TRACING_DISABLED=true
     volumes:
       - ./flink-lib:/opt/flink-connectors
-      - ./tools/agstream_manager/udfs:/opt/flink/udfs
+      - ./udfs:/opt/flink/udfs
       - ../../.env:/opt/flink/.env:ro
       - ../../src/agentics:/opt/flink/agentics:ro
+      - ${AGSTREAM_INDEX_PATH:-./agstream_indexes}:/opt/flink/indexes
     networks:
       - karapace
     depends_on:
@@ -170,7 +179,11 @@ services:
         taskmanager.numberOfTaskSlots: 20
         parallelism.default: 20
         python.executable: /usr/bin/python3
+        taskmanager.memory.jvm-metaspace.size: 512m
+        taskmanager.memory.jvm-overhead.max: 2048m
+        taskmanager.memory.process.size: 6144m
       - PYTHONPATH=/opt/flink/udfs
+      - AGSTREAM_INDEX_PATH=/opt/flink/indexes
       - CREWAI_TRACING_ENABLED=false
       - CREWAI_DISABLE_TELEMETRY=true
       - OTEL_SDK_DISABLED=true
@@ -180,9 +193,11 @@ services:
       - CREWAI_TRACING_DISABLED=true
     volumes:
       - ./flink-lib:/opt/flink-connectors
-      - ./tools/agstream_manager/udfs:/opt/flink/udfs
+      - ./udfs:/opt/flink/udfs
       - ../../.env:/opt/flink/.env:ro
       - ../../src/agentics:/opt/flink/agentics:ro
+      - ${AGSTREAM_INDEX_PATH:-./agstream_indexes}:/opt/flink/indexes
+      - ${AGSTREAM_INDEX_PATH:-./agstream_indexes}:/opt/flink/indexes
     networks:
       - karapace
 

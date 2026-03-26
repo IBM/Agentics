@@ -34,14 +34,24 @@ fi
 echo ""
 echo "📋 Setting up initialization SQL in Flink container..."
 
-# Always create the init file in the container first
-docker exec flink-jobmanager bash -c "echo '-- Flink SQL Initialization' > /tmp/init_tables.sql" 2>/dev/null || true
+# Always create the init file in the container first (ensures it exists)
+if docker exec flink-jobmanager bash -c "echo '-- Flink SQL Initialization' > /tmp/init_tables.sql" 2>/dev/null; then
+    echo "✅ Created empty init file in container"
 
-# Try to copy our generated SQL if it exists
-if [ -f "$SQL_FILE" ] && docker cp "$SQL_FILE" flink-jobmanager:/tmp/init_tables.sql 2>/dev/null; then
-    echo "✅ Initialization SQL copied successfully"
+    # Try to copy our generated SQL if it exists
+    if [ -f "$SQL_FILE" ]; then
+        if docker cp "$SQL_FILE" flink-jobmanager:/tmp/init_tables.sql 2>/dev/null; then
+            echo "✅ Initialization SQL copied successfully"
+        else
+            echo "⚠️  Could not copy SQL file, using empty init file"
+        fi
+    else
+        echo "⚠️  No SQL file generated, using empty init file"
+    fi
 else
-    echo "⚠️  Using empty init file"
+    echo "❌ Error: Could not create init file in container"
+    echo "   Flink SQL client may fail to start"
+    echo "   Please ensure flink-jobmanager container is running"
 fi
 
 # Step 3: Start Flink SQL Client

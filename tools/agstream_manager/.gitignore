@@ -1,6 +1,7 @@
 # Runtime data directories
 kafka-data/
 agstream-backends/
+agstream_indexes/
 
 # Python cache
 __pycache__/

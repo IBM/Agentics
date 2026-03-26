@@ -64,6 +64,47 @@ def generate_registration_sql(functions: list[tuple[str, str]]) -> str:
     sql_statements.append("AS 'ag_operators.agmap' LANGUAGE PYTHON;")
     sql_statements.append("")
 
+    # Register AGReduce
+    sql_statements.append("-- AGReduce UDF (aggregation)")
+    sql_statements.append("CREATE TEMPORARY SYSTEM FUNCTION IF NOT EXISTS agreduce")
+    sql_statements.append("AS 'agreduce.agreduce' LANGUAGE PYTHON;")
+    sql_statements.append("")
+
+    # Register AGSearch
+    sql_statements.append("-- AGSearch UDF (vector search)")
+    sql_statements.append("CREATE TEMPORARY SYSTEM FUNCTION IF NOT EXISTS agsearch")
+    sql_statements.append("AS 'agsearch.agsearch' LANGUAGE PYTHON;")
+    sql_statements.append("")
+
+    # Register explode_search_results
+    sql_statements.append("-- Explode Search Results UDTF")
+    sql_statements.append(
+        "CREATE TEMPORARY SYSTEM FUNCTION IF NOT EXISTS explode_search_results"
+    )
+    sql_statements.append("AS 'agsearch.explode_search_results' LANGUAGE PYTHON;")
+    sql_statements.append("")
+
+    # Register AGPersist Search functions
+    sql_statements.append("-- AGPersist Search UDFs (persistent vector indexes)")
+    sql_statements.append(
+        "CREATE TEMPORARY SYSTEM FUNCTION IF NOT EXISTS build_search_index"
+    )
+    sql_statements.append("AS 'agpersist_search.build_search_index' LANGUAGE PYTHON;")
+    sql_statements.append("")
+    sql_statements.append(
+        "CREATE TEMPORARY SYSTEM FUNCTION IF NOT EXISTS search_index_json"
+    )
+    sql_statements.append("AS 'agpersist_search.search_index_json' LANGUAGE PYTHON;")
+    sql_statements.append("")
+    sql_statements.append(
+        "CREATE TEMPORARY SYSTEM FUNCTION IF NOT EXISTS list_search_indexes"
+    )
+    sql_statements.append("AS 'agpersist_search.list_search_indexes' LANGUAGE PYTHON;")
+    sql_statements.append("")
+    sql_statements.append("CREATE TEMPORARY SYSTEM FUNCTION IF NOT EXISTS list_indexes")
+    sql_statements.append("AS 'agpersist_search.list_indexes' LANGUAGE PYTHON;")
+    sql_statements.append("")
+
     # Register all registry mode UDTFs
     sql_statements.append("-- Registry Mode UDTFs (multi-field extraction)")
     for func_name, return_types in functions:

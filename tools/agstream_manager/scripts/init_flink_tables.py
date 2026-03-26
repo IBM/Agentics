@@ -94,6 +94,38 @@ def main():
     )
     print("")
 
+    # Register core agentics UDFs
+    print("-- Register Core Agentics UDFs")
+    print("CREATE TEMPORARY SYSTEM FUNCTION IF NOT EXISTS agmap")
+    print("AS 'ag_operators.agmap' LANGUAGE PYTHON;")
+    print("")
+    print("CREATE TEMPORARY SYSTEM FUNCTION IF NOT EXISTS agreduce")
+    print("AS 'agreduce.agreduce' LANGUAGE PYTHON;")
+    print("")
+    print("CREATE TEMPORARY SYSTEM FUNCTION IF NOT EXISTS agsearch")
+    print("AS 'agsearch.agsearch' LANGUAGE PYTHON;")
+    print("")
+    print("CREATE TEMPORARY SYSTEM FUNCTION IF NOT EXISTS explode_search_results")
+    print("AS 'explode_search_results.explode_search_results' LANGUAGE PYTHON;")
+    print("")
+
+    # Register persistent search functions
+    print("-- Register AGPersist Search Functions")
+    print("CREATE TEMPORARY SYSTEM FUNCTION IF NOT EXISTS build_search_index")
+    print("AS 'agpersist_search.build_search_index' LANGUAGE PYTHON;")
+    print("")
+    print("CREATE TEMPORARY SYSTEM FUNCTION IF NOT EXISTS search_index_json")
+    print("AS 'agpersist_search.search_index_json' LANGUAGE PYTHON;")
+    print("")
+    print("CREATE TEMPORARY SYSTEM FUNCTION IF NOT EXISTS list_search_indexes")
+    print("AS 'agpersist_search.list_search_indexes' LANGUAGE PYTHON;")
+    print("")
+    print("CREATE TEMPORARY SYSTEM FUNCTION IF NOT EXISTS list_indexes")
+    print("AS 'agpersist_search.list_indexes' LANGUAGE PYTHON;")
+    print("")
+    print("-- All functions registered!")
+    print("")
+
     for channel in channels:
         sql = generate_create_table_sql(channel, kafka_server, schema_registry_url)
         print(sql)
@@ -101,6 +133,10 @@ def main():
 
     print("-- All tables created! You can now query them:", file=sys.stderr)
     print("-- Example: SELECT * FROM Questions LIMIT 10;", file=sys.stderr)
+    print(
+        "-- Persistent Search: SELECT build_search_index(column, 'index_name') FROM table;",
+        file=sys.stderr,
+    )
 
 
 if __name__ == "__main__":

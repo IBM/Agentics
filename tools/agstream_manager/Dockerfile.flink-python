@@ -52,11 +52,11 @@ RUN uv pip install --system \
     numerize \
     hnswlib \
     scikit-learn \
+    sentence-transformers \
     requests
 
-# Copy agentics core modules (without installing the full package)
-COPY src/agentics /opt/flink/agentics
-ENV PYTHONPATH=/opt/flink:$PYTHONPATH
+# Note: Agentics will be installed via wheel after container starts
+# See: tools/agstream_manager/scripts/install_agentics_in_flink.sh
 
 # Create UDF directory
 RUN mkdir -p /opt/flink/udfs
