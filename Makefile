@@ -1,7 +1,7 @@
 # Agentics AGStream Makefile
 # Complete environment setup and management
 
-.PHONY: help install install-dev setup-env check-docker start-basic start-full stop clean test flink-sql status logs
+.PHONY: help install install-dev install-agentics install-agstream setup-env check-docker start-basic start-full stop clean test flink-sql status logs
 
 # Default target
 .DEFAULT_GOAL := help
@@ -17,10 +17,15 @@ help: ## Show this help message
 	@echo ""
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-20s$(NC) %s\n", $$1, $$2}'
 	@echo ""
+	@echo "$(YELLOW)Installation Options:$(NC)"
+	@echo "  make install-agentics    # Install core Agentics package only"
+	@echo "  make install-agstream    # Install Agentics + AGStream Manager"
+	@echo ""
 	@echo "$(YELLOW)Quick Start:$(NC)"
-	@echo "  make install        # Install dependencies"
-	@echo "  make start-full     # Start all services (with Flink)"
-	@echo "  make status         # Check service status"
+	@echo "  make install-agentics    # Install core package"
+	@echo "  make install-agstream    # Install with AGStream"
+	@echo "  make start-full          # Start all services (with Flink)"
+	@echo "  make status              # Check service status"
 	@echo ""
 
 check-python: ## Check Python version
@@ -33,7 +38,21 @@ check-python: ## Check Python version
 check-docker: ## Check Docker availability
 	@echo "$(GREEN)Checking Docker...$(NC)"
 	@docker --version > /dev/null 2>&1 || (echo "$(RED)Docker not found!$(NC)" && exit 1)
-	@docker ps > /dev/null 2>&1 || (echo "$(RED)Docker daemon not running!$(NC)" && exit 1)
+	@if ! docker ps > /dev/null 2>&1; then \
+		if [ "$$(uname)" = "Darwin" ] && command -v colima > /dev/null 2>&1; then \
+			echo "$(YELLOW)Docker daemon not accessible. Restarting Colima...$(NC)"; \
+			colima restart; \
+			echo "$(YELLOW)Waiting for Docker to be ready...$(NC)"; \
+			sleep 5; \
+			if ! docker ps > /dev/null 2>&1; then \
+				echo "$(RED)Docker daemon still not accessible after restart!$(NC)"; \
+				exit 1; \
+			fi; \
+		else \
+			echo "$(RED)Docker daemon not running!$(NC)"; \
+			exit 1; \
+		fi \
+	fi
 	@echo "$(GREEN)✓ Docker is running$(NC)"
 
 check-colima: ## Check if Colima is available (macOS)
@@ -54,16 +73,29 @@ setup-env: ## Set up environment file
 		echo "$(YELLOW)⚠ .env file already exists$(NC)"; \
 	fi
 
-install: check-python setup-env ## Install Agentics package and dependencies
-	@echo "$(GREEN)Installing Agentics...$(NC)"
-	pip install -e .
-	pip install flask-sock
-	@echo "$(GREEN)✓ Installation complete$(NC)"
+install-agentics: check-python setup-env ## Install core Agentics package only
+	@echo "$(GREEN)Installing core Agentics package with uv...$(NC)"
+	uv sync --no-dev
+	@echo "$(GREEN)✓ Core Agentics installation complete$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Core package installed. To install AGStream Manager, run:$(NC)"
+	@echo "  make install-agstream"
+
+install-agstream: check-python setup-env ## Install Agentics with AGStream Manager
+	@echo "$(GREEN)Installing Agentics with AGStream Manager using uv...$(NC)"
+	uv sync --no-dev --group agstream
+	@echo "$(GREEN)✓ Agentics with AGStream Manager installation complete$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Next steps:$(NC)"
+	@echo "  1. Start services: make start-full"
+	@echo "  2. Open UI:        make open-ui"
+	@echo "  3. Start Flink:    make flink-sql"
+
+install: install-agentics ## Alias for install-agentics (core package only)
 
 install-dev: check-python setup-env ## Install with development dependencies
-	@echo "$(GREEN)Installing Agentics (dev mode)...$(NC)"
-	pip install -e ".[dev]"
-	pip install flask-sock
+	@echo "$(GREEN)Installing Agentics (dev mode) with uv...$(NC)"
+	uv sync --group dev
 	@echo "$(GREEN)✓ Development installation complete$(NC)"
 
 start-docker: ## Start Docker/Colima if not running
@@ -78,7 +110,7 @@ start-docker: ## Start Docker/Colima if not running
 
 start-basic: check-docker ## Start basic stack (Kafka + Karapace + AGStream Manager)
 	@echo "$(GREEN)Starting basic stack...$(NC)"
-	./manage_services.sh start
+	cd tools/agstream_manager && ./scripts/manage_services.sh start
 	@echo ""
 	@echo "$(GREEN)✓ Services started!$(NC)"
 	@echo "$(YELLOW)Access Points:$(NC)"
@@ -88,7 +120,7 @@ start-basic: check-docker ## Start basic stack (Kafka + Karapace + AGStream Mana
 
 start-full: check-docker ## Start full stack (Kafka + Karapace + Flink + AGStream Manager)
 	@echo "$(GREEN)Starting full stack with Flink...$(NC)"
-	./manage_services_full.sh start
+	cd tools/agstream_manager && ./scripts/manage_services_full.sh start
 	@echo ""
 	@echo "$(GREEN)✓ Services started!$(NC)"
 	@echo "$(YELLOW)Access Points:$(NC)"
@@ -99,29 +131,29 @@ start-full: check-docker ## Start full stack (Kafka + Karapace + Flink + AGStrea
 
 stop: ## Stop all services
 	@echo "$(GREEN)Stopping services...$(NC)"
-	@if [ -f manage_services_full.sh ]; then \
-		./manage_services_full.sh stop 2>/dev/null || ./manage_services.sh stop; \
+	@if [ -f tools/agstream_manager/scripts/manage_services_full.sh ]; then \
+		cd tools/agstream_manager && ./scripts/manage_services_full.sh stop 2>/dev/null || ./scripts/manage_services.sh stop; \
 	else \
-		./manage_services.sh stop; \
+		cd tools/agstream_manager && ./scripts/manage_services.sh stop; \
 	fi
 	@echo "$(GREEN)✓ Services stopped$(NC)"
 
 restart-basic: ## Restart basic stack
 	@echo "$(GREEN)Restarting basic stack...$(NC)"
-	./manage_services.sh restart
+	cd tools/agstream_manager && ./scripts/manage_services.sh restart
 
 restart-full: ## Restart full stack
 	@echo "$(GREEN)Restarting full stack...$(NC)"
-	./manage_services_full.sh restart
+	cd tools/agstream_manager && ./scripts/manage_services_full.sh restart
 
 clean: stop ## Stop services and clean Kafka data
 	@echo "$(GREEN)Cleaning Kafka data...$(NC)"
-	./manage_services.sh clean-restart || ./manage_services_full.sh clean-restart
+	cd tools/agstream_manager && (./scripts/manage_services.sh clean-restart || ./scripts/manage_services_full.sh clean-restart)
 	@echo "$(GREEN)✓ Clean restart complete$(NC)"
 
 status: ## Show service status
 	@echo "$(GREEN)Service Status:$(NC)"
-	@./manage_services.sh status 2>/dev/null || ./manage_services_full.sh status 2>/dev/null || echo "$(RED)No services running$(NC)"
+	@cd tools/agstream_manager && (./scripts/manage_services.sh status 2>/dev/null || ./scripts/manage_services_full.sh status 2>/dev/null || echo "$(RED)No services running$(NC)")
 
 logs: ## Show AGStream Manager logs
 	@echo "$(GREEN)AGStream Manager Logs:$(NC)"
@@ -129,16 +161,16 @@ logs: ## Show AGStream Manager logs
 
 logs-kafka: ## Show Kafka logs
 	@echo "$(GREEN)Kafka Logs:$(NC)"
-	@docker compose -f docker-compose-karapace.yml logs -f kafka 2>/dev/null || \
-		docker compose -f docker-compose-karapace-flink.yml logs -f kafka
+	@cd tools/agstream_manager && (docker compose -f docker-compose-karapace.yml logs -f kafka 2>/dev/null || \
+		docker compose -f docker-compose-karapace-flink.yml logs -f kafka)
 
 logs-flink: ## Show Flink JobManager logs
 	@echo "$(GREEN)Flink JobManager Logs:$(NC)"
-	@docker compose -f docker-compose-karapace-flink.yml logs -f flink-jobmanager
+	@cd tools/agstream_manager && docker compose -f docker-compose-karapace-flink.yml logs -f flink-jobmanager
 
 flink-sql: ## Start Flink SQL client with auto-loaded tables
 	@echo "$(GREEN)Starting Flink SQL Client...$(NC)"
-	@./tools/agstream_manager/scripts/flink
+	@cd tools/agstream_manager && ./scripts/flink
 
 test: ## Run tests
 	@echo "$(GREEN)Running tests...$(NC)"
@@ -205,8 +237,8 @@ purge: stop ## Remove all data and containers
 	@read -p "Are you sure? [y/N] " -n 1 -r; \
 	echo; \
 	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
-		docker compose -f docker-compose-karapace.yml down -v 2>/dev/null || true; \
-		docker compose -f docker-compose-karapace-flink.yml down -v 2>/dev/null || true; \
+		cd tools/agstream_manager && docker compose -f docker-compose-karapace.yml down -v 2>/dev/null || true; \
+		cd tools/agstream_manager && docker compose -f docker-compose-karapace-flink.yml down -v 2>/dev/null || true; \
 		rm -rf agstream-backends/; \
 		echo "$(GREEN)✓ Purge complete$(NC)"; \
 	fi

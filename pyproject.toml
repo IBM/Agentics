@@ -1,7 +1,7 @@
 [project]
 name = "agentics-py"
-# version = "0.0.8"
-dynamic = ["version"]
+version = "0.4.0"
+# dynamic = ["version"]
 description = "Agentics is a Python framework that provides structured, scalable, and semantically grounded agentic computation."
 authors = [
     { name = "Alfio Gliozzo", email = "gliozzo@us.ibm.com" },

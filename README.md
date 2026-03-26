@@ -49,23 +49,90 @@ Workflows are expressed as **transformations between structured states**, with p
 
 ### Installation
 
-#### Core Framework
+Agentics offers two installation options using `uv` for fast, reliable dependency management:
+
+> **Note:** `uv` automatically creates and manages a `.venv` virtual environment for you - no need to create one manually!
+
+#### Option 1: Core Framework Only
+
+Install just the core Agentics package for basic agentic computation:
 
 ```bash
-# Install from PyPI
+# From PyPI (using pip)
 pip install agentics-py
 
-# Or install from source with uv (recommended)
+# Or from source with uv (recommended)
 git clone https://github.com/IBM/agentics.git
 cd agentics
-uv sync  # Installs core framework only (excludes tools/)
+make install-agentics
+# Equivalent to: uv sync --no-dev
+# This automatically creates .venv/ and installs dependencies
 ```
 
-**Note:** The core framework is lightweight and does not include heavy dependencies like Kafka, Flink, or Docling. These are available as separate add-on packages.
+After installation, activate the virtual environment:
+```bash
+source .venv/bin/activate  # On macOS/Linux
+# or
+.venv\Scripts\activate     # On Windows
+```
 
-#### Add-on Packages
+This installs the lightweight core framework without heavy dependencies like Kafka, Flink, or streaming components.
 
-Each tool in `tools/` has its own isolated environment with tool-specific dependencies:
+#### Option 2: Core + AGStream Manager
+
+Install Agentics with AGStream Manager for real-time streaming capabilities:
+
+```bash
+# From source with uv
+git clone https://github.com/IBM/agentics.git
+cd agentics
+make install-agstream
+# Equivalent to: uv sync --no-dev --group agstream
+# This automatically creates .venv/ and installs all dependencies
+```
+
+After installation, activate the virtual environment:
+```bash
+source .venv/bin/activate  # On macOS/Linux
+# or
+.venv\Scripts\activate     # On Windows
+```
+
+Then start the services (Docker/Colima will be automatically managed):
+```bash
+make start-full
+# This will:
+# - Check if Docker is running
+# - Automatically restart Colima if needed (macOS)
+# - Start Kafka, Flink, and AGStream Manager
+```
+
+This installs:
+- Core Agentics framework
+- AGStream Manager dependencies (Kafka, Flask, WebSocket support)
+- All required streaming components
+
+**Quick Installation Reference:**
+```bash
+make install-agentics    # Core package only (uv sync --no-dev)
+make install-agstream    # Core + AGStream Manager (uv sync --no-dev --group agstream)
+make install-dev         # Development mode (uv sync --group dev)
+```
+
+**Service Management:**
+```bash
+make start-full          # Start all services (auto-restarts Colima if needed)
+make stop                # Stop all services
+make status              # Check service status
+make open-ui             # Open AGStream Manager UI
+make flink-sql           # Start Flink SQL client
+```
+
+> **💡 Tip:** `uv` handles virtual environment creation automatically, and `make start-full` handles Docker/Colima automatically on macOS!
+
+#### Additional Tools
+
+Each tool in `tools/` has its own isolated environment:
 
 **AGStream Manager** - Real-time streaming with Kafka & Flink
 ```bash
@@ -79,7 +146,7 @@ cd tools/dockling_kg_extractor
 uv sync  # Installs docling, docling-core, fastapi, uvicorn
 ```
 
-See individual tool documentation for details:
+See individual tool documentation:
 - [AGStream Manager Installation](tools/agstream_manager/INSTALL.md)
 - [Dockling KG Extractor Installation](tools/dockling_kg_extractor/INSTALL.md)
 
