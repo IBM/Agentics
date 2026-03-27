@@ -97,7 +97,6 @@ docs = [
     "pymdown-extensions",
 ]
 rhel = [
-    "chromadb>=1.1.0",
     "pysqlite3-binary>=0.5.4; sys_platform == 'linux'",
 ]
 
