@@ -21,7 +21,7 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
 
       - name: Cache uv virtualenv
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .venv
           key: uv-venv-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
@@ -33,7 +33,7 @@ jobs:
           uv tool install --with pre-commit-uv pre-commit
 
       - name: Setup pre-commit cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/pre-commit
           key: pre-commit-3|${{ env.pythonLocation }}|${{ hashFiles('.pre-commit-config.yaml') }}
@@ -72,7 +72,7 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
 
       - name: Cache uv virtualenv
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .venv
           key: uv-venv-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
