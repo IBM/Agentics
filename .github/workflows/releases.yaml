@@ -30,7 +30,7 @@ jobs:
       release-method: ${{ steps.check-commit.outputs.release-method || steps.check-tag.outputs.release-method }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -131,7 +131,7 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
