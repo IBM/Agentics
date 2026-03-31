@@ -10,13 +10,13 @@ from pytest_subtests.plugin import SubTests
 # TODO: @gliozzo provide small and fast to run examples
 # @pytest.mark.skip(reason="Failing in actions with mellea warning")
 @pytest.mark.parametrize(
-    "file_to_test",
+    "file_to_test,custom_timeout",
     [
-        "tests/official_tests/hello_world.py",
-        "tests/official_tests/transducible_functions.py",
+        ("tests/official_tests/hello_world.py", None),
+        ("tests/official_tests/transducible_functions.py", None),
         # "examples/hello_world.py",
-        "examples/emotion_extractor.py",
-        "examples/generate_tweets.py",
+        ("examples/emotion_extractor.py", 60),  # Processes 10 chunks
+        ("examples/generate_tweets.py", None),
         # "examples/mcp_server_example.py",
         # "examples/agentics_web_search_report.py",
     ],
@@ -24,6 +24,7 @@ from pytest_subtests.plugin import SubTests
 def test_parametrized_examples(
     git_root_path: "Path",
     file_to_test: str,
+    custom_timeout: int,
     ctx: Context,
     timeout_value: int,
     llm_provider: None,
@@ -32,13 +33,15 @@ def test_parametrized_examples(
     Allows to select which tests to run the parametrized list of tests
     """
     py_to_test = git_root_path / file_to_test
+    # Use custom timeout if provided, otherwise use default
+    actual_timeout = custom_timeout if custom_timeout is not None else timeout_value
 
     with ctx.cd(git_root_path):
         try:
             run_result = ctx.run(
                 f"uv run {py_to_test}",
                 warn=True,
-                timeout=timeout_value,
+                timeout=actual_timeout,
                 in_stream=False,
             )
             assert run_result is not None
@@ -48,7 +51,7 @@ def test_parametrized_examples(
 
         except CommandTimedOut:
             raise pytest.fail(
-                reason=f"Running {file_to_test} took more than {timeout_value} seconds"
+                reason=f"Running {file_to_test} took more than {actual_timeout} seconds"
             )
 
 
