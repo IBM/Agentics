@@ -42,11 +42,15 @@ check-docker: ## Check Docker availability
 		if [ "$$(uname)" = "Darwin" ] && command -v colima > /dev/null 2>&1; then \
 			echo "$(YELLOW)Docker daemon not accessible. Restarting Colima...$(NC)"; \
 			colima restart; \
-			echo "$(YELLOW)Waiting for Docker to be ready...$(NC)"; \
-			sleep 5; \
+			echo "$(YELLOW)Waiting for Docker to be ready (30 seconds)...$(NC)"; \
+			sleep 30; \
 			if ! docker ps > /dev/null 2>&1; then \
-				echo "$(RED)Docker daemon still not accessible after restart!$(NC)"; \
-				exit 1; \
+				echo "$(YELLOW)Docker still initializing, waiting 10 more seconds...$(NC)"; \
+				sleep 10; \
+				if ! docker ps > /dev/null 2>&1; then \
+					echo "$(RED)Docker daemon still not accessible after restart!$(NC)"; \
+					exit 1; \
+				fi; \
 			fi; \
 		else \
 			echo "$(RED)Docker daemon not running!$(NC)"; \

@@ -96,30 +96,33 @@ start_services() {
         print_warn "Colima is not running. Starting Colima..."
         colima start
         colima_was_stopped=true
-        sleep 10
+        print_info "Waiting for Colima to fully initialize (30 seconds)..."
+        sleep 30
     fi
 
-    # Verify Docker daemon is accessible with multiple checks
+    # Verify Docker daemon is accessible and fully ready
     local docker_ok=false
-    local max_retries=2
+    local max_retries=3
     local retry=0
 
     while [ $retry -le $max_retries ]; do
-        if docker ps > /dev/null 2>&1 && docker info > /dev/null 2>&1; then
+        # Test both basic connectivity and image operations
+        if docker ps > /dev/null 2>&1 && docker images > /dev/null 2>&1; then
             docker_ok=true
             break
         fi
 
         if [ $retry -lt $max_retries ]; then
             if [ "$colima_was_stopped" = true ] && [ $retry -eq 0 ]; then
-                # Just started Colima, give it more time before restarting
-                print_warn "Docker daemon initializing, waiting longer..."
-                sleep 10
+                # Just started Colima, give it more time
+                print_warn "Docker daemon still initializing, waiting 15 more seconds..."
+                sleep 15
             else
                 # Colima was already running but Docker not responding - restart needed
-                print_warn "Docker daemon not responding (attempt $((retry+1))/$((max_retries+1))). Restarting Colima..."
+                print_warn "Docker daemon not responding. Restarting Colima..."
                 colima restart
-                sleep 15
+                print_info "Waiting for Colima restart (30 seconds)..."
+                sleep 30
             fi
         fi
         retry=$((retry+1))
@@ -180,6 +183,24 @@ start_services() {
     kill_port 5003  # AGstream Manager
 
     cd "$PROJECT_DIR"
+
+    # Final verification right before docker compose
+    print_info "Final Docker verification before starting services..."
+    local final_check=0
+    while [ $final_check -lt 3 ]; do
+        if docker ps > /dev/null 2>&1 && docker images > /dev/null 2>&1; then
+            break
+        fi
+        print_warn "Docker daemon not ready, waiting 5 seconds..."
+        sleep 5
+        final_check=$((final_check + 1))
+    done
+
+    if ! docker ps > /dev/null 2>&1; then
+        print_error "Docker daemon lost connection before starting services"
+        print_error "Please run 'colima restart' and try again"
+        exit 1
+    fi
 
     print_info "Starting Docker Compose services (Kafka + Flink + UIs)..."
     docker compose -f "$COMPOSE_FILE" up -d
