@@ -90,7 +90,7 @@ class AG(BaseModel, Generic[T]):
         None,
         description="""this is the type in common among all element of the list""",
     )
-    atype_code: Type[BaseModel] = Field(
+    atype_code: str = Field(
         None,
         description="""Python code for the used type""",
     )
@@ -1252,9 +1252,38 @@ class AG(BaseModel, Generic[T]):
         Returns:
             AG: a new Agentics object with states of type `new_atype`.
         """
-        new_ag = deepcopy(self)
-        new_ag.atype = new_atype
-        new_ag.states = []
+        # Create a new AG instance by copying only serializable fields
+        # Avoid deepcopy to prevent issues with thread locks in LLM objects
+        init_params = {
+            "atype": new_atype,
+            "states": [],
+            "tools": self.tools,
+            "transduce_fields": self.transduce_fields,
+            "instructions": self.instructions,
+            "transduction_type": self.transduction_type,
+            "llm": self.llm,  # Reuse the same LLM instance
+            "provide_explanations": self.provide_explanations,
+            "explanations": self.explanations,
+            "reasoning": self.reasoning,
+            "max_iter": self.max_iter,
+            "transient_pbar": self.transient_pbar,
+            "transduction_logs_path": self.transduction_logs_path,
+            "prompt_template": self.prompt_template,
+            "transduction_timeout": self.transduction_timeout,
+            "verbose_transduction": self.verbose_transduction,
+            "verbose_agent": self.verbose_agent,
+            "areduce_batch_size": self.areduce_batch_size,
+            "amap_batch_size": self.amap_batch_size,
+            "areduce_batches": copy(self.areduce_batches),
+            "save_amap_batches_to_path": self.save_amap_batches_to_path,
+            "crew_prompt_params": copy(self.crew_prompt_params) if self.crew_prompt_params else None,
+            "vector_store": self.vector_store,
+        }
+        # Only include atype_code if it's not None (to avoid validation error)
+        if self.atype_code is not None:
+            init_params["atype_code"] = self.atype_code
+        
+        new_ag = AG(**init_params)
 
         for state in self.states:
             data = state.model_dump()

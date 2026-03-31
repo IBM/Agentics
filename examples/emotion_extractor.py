@@ -48,7 +48,7 @@ async def main():
 
     emotion_detector.verbose_transduction = True
     emotions = await (
-        emotion_detector << split_into_chunks(text, chunk_size=1000)[:100]
+        emotion_detector << split_into_chunks(text, chunk_size=1000)[:10]
     )
 
     emotions.pretty_print()

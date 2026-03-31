@@ -542,7 +542,7 @@ from typing import Type
 from pydantic import BaseModel, create_model
 
 from agentics import AG
-
+from agentics.core.atype import AGString
 
 async def generate_prototypical_instances(
     type: Type[BaseModel],
@@ -550,27 +550,29 @@ async def generate_prototypical_instances(
     llm: Any = AG.get_llm_provider(),
     instructions: str = None,
 ) -> list[BaseModel]:
-
+    
     DynamicModel = create_model(
-        "ListOfObjectsOfGivenType",
-        instances=(list[type] | None, None),  # REQUIRED field
-    )
-    full_instructions = f"""
-              Generate list of {n_instances} random instances of the following type
-              {type.model_json_schema()}.
-              fill all attributed for each generated instance
-              """
-    if instructions:
-        full_instructions += "Adhere to the following instructions \n" + instructions
-
-    target = AG(
-        atype=DynamicModel,
-        instructions=full_instructions,
-        llm=llm,
-    )
-    generated = await (target << "   ")
-    return generated.states[0].instances
-
+            "ListOfObjectsOfGivenType",
+            instances=(list[type] | None, None),  # REQUIRED field
+        )
+    if llm:
+    
+        full_instructions = f"""
+                Generate list of {n_instances} random instances of the following type
+                {type.model_json_schema()}.
+                fill all attributed for each generated instance
+                """
+        if instructions:
+            full_instructions += "Adhere to the following instructions \n" + instructions
+    
+        target = AG(
+            atype=DynamicModel,
+            instructions=full_instructions,
+            llm=llm,
+        )
+        generated = await (target << AGString(string =" "))
+        return generated.states[0].instances
+    else: return [DynamicModel()]
 
 from typing import Any, Awaitable, Protocol
 
