@@ -36,7 +36,7 @@ dependencies = [
     "numerize>=0.12",
     "hnswlib>=0.8.0",
     "jsonfinder",
-    "litellm",
+    "litellm>=1.80.0,<1.82.7",
     "mellea",
     "plotly>=6.5.0",
     "rich>=13.0.0,<14.0.0",

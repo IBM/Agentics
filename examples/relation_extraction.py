@@ -57,7 +57,8 @@ async def relation_extracton_map_reduce(
     clusters = [
         InputTerms(terms=[x.value for x in cluster.states]) for cluster in clusters_ags
     ]
-    ontologies = await extract_relations(clusters)
+    ontologies_result = await extract_relations(clusters)
+    ontologies = [ont.value for ont in ontologies_result]
     final_ontology = Ontology()
     final_ontology.entities = list(
         set([entity for ontology in ontologies for entity in (ontology.entities or [])])
@@ -74,7 +75,7 @@ async def relation_extracton_map_reduce(
     return final_ontology
 
 
-async def evaluate_relation_extraction(outout_file: str = None, n_terms=10000):
+async def evaluate_relation_extraction(outout_file: str = None, n_terms=500):
     terms = random_frequent_terms(n=n_terms)
     # for i in range(1000, 1001, 500):
 

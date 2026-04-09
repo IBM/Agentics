@@ -124,7 +124,7 @@ requires-dist = [
     { name = "json-schema-to-pydantic", specifier = ">=0.3.0,<0.4.0" },
     { name = "jsonfinder" },
     { name = "langchain-huggingface", specifier = ">=0.2.0,<0.3.0" },
-    { name = "litellm" },
+    { name = "litellm", specifier = ">=1.80.0,<1.82.7" },
     { name = "loguru", specifier = ">=0.7.3,<0.8.0" },
     { name = "mcp", specifier = ">=1.13.1,<2.0.0" },
     { name = "mellea" },
