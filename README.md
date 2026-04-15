@@ -134,12 +134,6 @@ make flink-sql           # Start Flink SQL client
 
 Each tool in `tools/` has its own isolated environment:
 
-**AGStream Manager** - Real-time streaming with Kafka & Flink
-```bash
-cd tools/agstream_manager
-uv sync  # Installs kafka-python, confluent-kafka, flask, streamlit
-```
-
 **Dockling Knowledge Graph Extractor** - Document-to-KG extraction
 ```bash
 cd tools/dockling_kg_extractor
@@ -147,7 +141,6 @@ uv sync  # Installs docling, docling-core, fastapi, uvicorn
 ```
 
 See individual tool documentation:
-- [AGStream Manager Installation](tools/agstream_manager/INSTALL.md)
 - [Dockling KG Extractor Installation](tools/dockling_kg_extractor/INSTALL.md)
 
 ### Environment Setup
@@ -229,28 +222,6 @@ python examples/generate_tweets.py
 
 ## 🛠️ Agentics Tools
 
-The [`tools/`](tools/) directory contains production-ready applications built with Agentics. Each tool is a separate package with its own dependencies, installed independently from the core framework.
-
-### 🌊 AGStream Manager
-**Real-time streaming agent framework** with Kafka, Flink SQL, and schema registry integration.
-
-**Features:**
-- 📨 **Topic Management**: Create and manage Kafka topics with type associations
-- ⚡ **Transducible Functions**: Define AI-powered transformations between typed streams
-- 🎧 **Listener Orchestration**: Start, stop, and monitor streaming listeners
-- 📊 **Schema Registry**: Automatic Avro schema management with Karapace
-- 🔄 **Type Safety**: Automatic type matching ensures compatible topic connections
-- 🐳 **Docker Integration**: Kafka and Schema Registry via Docker Compose
-
-**Quick Start:**
-```bash
-cd tools/agstream_manager
-uv sync
-./manage_services_full.sh start  # Starts Kafka, Schema Registry, and web UI
-```
-
-**📖 Documentation**: [`tools/agstream_manager/README.md`](tools/agstream_manager/README.md)
-
 ### 📚 Dockling Knowledge Graph Extractor
 **Document-to-knowledge-graph extraction** powered by Docling and Agentics.
 
@@ -321,15 +292,11 @@ uv run pytest tests/test_specific_module.py -v
 
 ### AGStream Tests
 
-AGStream tests require Kafka and Schema Registry services:
+AGStream tests require Kafka and Schema Registry services.
+Refer to AGStream documentation for service setup.
 
 ```bash
-# Start services
-cd tools/agstream_manager
-./manage_services_full.sh start
-
 # Run AGStream integration tests
-cd ../..
 uv run python tests/agstream_tests/test_agstream_integration.py
 ```
 

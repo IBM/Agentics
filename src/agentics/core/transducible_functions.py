@@ -756,7 +756,7 @@ from agentics import AG
 async def generate_prototypical_instances(
     type: Type[BaseModel],
     n_instances: int = 10,
-    llm: Any = None,
+    llm: Any = AG.get_llm_provider(),
     instructions: str = None,
 ) -> list[BaseModel]:
 

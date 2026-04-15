@@ -33,4 +33,12 @@ try:
 except:
     pass
 
-from .core import *
+# Import full AG class by default for backward compatibility
+# This allows "from agentics import AG" to work as expected
+from agentics.core.agentics import AG
+
+__all__ = ["AG"]
+
+# Note: AG is the full-featured class (backward compatible)
+# For fast loading in UDFs or performance-critical scenarios:
+#   from agentics.fast_ag import AG  # Fast loading (defers heavy imports)

@@ -8,15 +8,11 @@ This guide explains how to run all tests in the Agentics project using the `uv` 
 ```bash
 # Core tests only (~30 seconds)
 uv run pytest tests/ -m core -v
-
-# Quick Flink diagnostic test (~10 seconds)
-cd tools/agstream_manager && ./scripts/run_flink_tests.sh test_agmap_simple.py
 ```
 
-**For full test suite (~15-20 minutes):**
+**For full test suite:**
 ```bash
 uv run pytest tests/ -v
-cd tools/agstream_manager && ./scripts/run_flink_tests.sh
 ```
 
 ## Test Organization
@@ -25,7 +21,6 @@ Tests are organized into two main categories:
 
 1. **Core Tests** - Framework tests that don't require Kafka/Flink infrastructure (~30 seconds)
 2. **AGStream Tests** - Integration tests that require running Kafka/Flink services (~2 minutes)
-3. **Flink Container Tests** - UDF tests with real LLM API calls (~10-15 minutes) ⚠️ SLOW
 
 ## Prerequisites
 
@@ -37,11 +32,8 @@ uv sync --all-groups
 
 ### For AGStream Tests
 ```bash
-# Start Kafka/Flink services
-cd tools/agstream_manager
-./manage_services.sh start
-
-# Wait for services to be ready (check with docker ps)
+# AGStream tests require Kafka/Flink services to be running
+# Refer to AGStream documentation for service setup
 ```
 
 ## Running Tests
@@ -73,44 +65,6 @@ uv run pytest tests/test_package.py -v
 uv run pytest tests/agstream_tests/test_agstream_integration.py -v
 ```
 
-### 5. Run Tests in AGStream Manager Directory
-
-The `tools/agstream_manager/tests/` directory contains tests that must run inside the Flink Docker container because they require `pyflink` and access to Flink's environment.
-
-#### Run Quick Diagnostic Test (Recommended First)
-```bash
-cd tools/agstream_manager
-./scripts/run_flink_tests.sh test_agmap_simple.py
-```
-This runs 1 test in ~10 seconds to verify setup.
-
-#### Run All Flink Container Tests (SLOW - 10-15 minutes)
-```bash
-cd tools/agstream_manager
-./scripts/run_flink_tests.sh
-```
-⚠️ **Warning:** These tests make real LLM API calls and take 10-15 minutes to complete.
-
-#### Run Specific Flink Container Test
-```bash
-cd tools/agstream_manager
-# Quick diagnostic (1 test, ~10s)
-./scripts/run_flink_tests.sh test_agmap_simple.py
-
-# Python function tests (18 tests, ~5-10min) - SLOW
-./scripts/run_flink_tests.sh test_agmap_agreduce.py
-
-# SQL tests (10+ tests, ~3-5min) - SLOW
-./scripts/run_flink_tests.sh test_agmap_agreduce_sql.py
-```
-
-#### What the Script Does
-1. Checks if Flink container is running
-2. Installs pytest in the container if needed
-3. Sets up the test environment (PYTHONPATH, symlinks)
-4. Copies test files to `/opt/flink/tests/`
-5. Runs tests with proper environment variables
-6. Cleans up test files after completion
 
 ## Test Markers
 
@@ -121,17 +75,13 @@ Tests use pytest markers for categorization:
 
 ## Common Issues
 
-### Issue: "ModuleNotFoundError: No module named 'pyflink'"
-**Solution:** These tests must run inside the Flink container using `run_flink_tests.sh`
-
 ### Issue: "Connection refused" or Kafka errors
-**Solution:** Start services with `cd tools/agstream_manager && ./manage_services.sh start`
+**Solution:** Ensure Kafka/Flink services are running (refer to AGStream documentation)
 
 ### Issue: Tests hang or timeout
 **Solution:**
 - Check API keys are set in `.env` file
-- AGMap/AGReduce tests make real LLM API calls and can take 5-30 seconds each
-- Use the diagnostic test to verify connectivity: `./scripts/run_flink_tests.sh test_agmap_simple.py`
+- Some tests make real LLM API calls and can take 5-30 seconds each
 
 ### Issue: "kafka-python-ng" not found
 **Solution:** Run `uv sync --all-groups` from project root
@@ -140,10 +90,6 @@ Tests use pytest markers for categorization:
 
 - **Core tests**: ~10-30 seconds (no LLM calls)
 - **AGStream integration tests**: ~1-2 minutes (includes Kafka operations)
-- **Flink container tests**: ~3-5 minutes (includes LLM API calls)
-  - `test_agmap_simple.py`: ~2 minutes (1 test, 120s timeout)
-  - `test_agmap_agreduce.py`: ~2-3 minutes (8 tests with LLM calls)
-  - `test_agmap_agreduce_sql.py`: ~1-2 minutes (4 SQL tests with Flink)
 
 ## Environment Variables
 
@@ -165,13 +111,8 @@ For CI/CD pipelines:
 # Run only core tests (fast, no infrastructure)
 uv run pytest tests/ -m core -v
 
-# For full testing, start services first
-cd tools/agstream_manager
-./manage_services.sh start
-cd ../..
+# For full testing (requires services)
 uv run pytest tests/ -v
-cd tools/agstream_manager
-./scripts/run_flink_tests.sh
 ```
 
 ## Test Coverage
@@ -210,5 +151,3 @@ uv run pytest tests/test_file.py --pdb
 | Core only | `uv run pytest tests/ -m core -v` | None | ~30s |
 | AGStream only | `uv run pytest tests/ -m agstream -v` | Services running | ~2min |
 | All project tests | `uv run pytest tests/ -v` | Services running | ~3min |
-| Flink container tests | `cd tools/agstream_manager && ./scripts/run_flink_tests.sh` | Services running | ~10min |
-| Everything | Run all commands above | Services running | ~15min |

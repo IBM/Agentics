@@ -21,7 +21,6 @@ dependencies = [
     "crewai[google-genai]",
     "langchain-huggingface (>=0.2.0,<0.3.0)",
     "openapi-python-client (>=0.24.3,<0.25.0)",
-    "streamlit (>=1.45.1,<2.0.0)",
     "pyyaml (>=6.0.2,<7.0.0)",
     # "aiosqlite (>=0.21.0,<0.22.0)",
     "openai (>=1.88.0,<2.0.0)",
@@ -44,7 +43,6 @@ dependencies = [
     "fastavro>=1.9.0,<2.0.0",
     "flask-sock>=0.7.0",
     "authlib>=1.3.0",
-    "kafka-python>=2.0.2",
 ]
 
 
@@ -87,10 +85,6 @@ dev = [
   "pytest-subtests>=0.15.0",
   "hunter>=3.9.0",
 ]
-agstream = [
-  "kafka-python-ng>=2.2.0",
-  "python-dotenv>=1.0.0",
-]
 docling = [
   "langchain-docling >=0.2.0,<0.3.0"
 ]
@@ -101,7 +95,7 @@ docs = [
     "pymdown-extensions",
 ]
 rhel = [
-    "chromadb>=1.1.0",
+    #"chromadb>=1.1.0",
     "pysqlite3-binary>=0.5.4; sys_platform == 'linux'",
 ]
 

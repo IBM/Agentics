@@ -18,7 +18,6 @@ Integration tests that require Kafka, Schema Registry (Karapace), and optionally
 
 **Test Locations:**
 - `tests/agstream_tests/` - Core AGStream integration tests
-- `tools/agstream_manager/tests/` - AGStream Manager and Flink SQL tests
 
 **Running AGStream Tests:**
 
@@ -31,8 +30,7 @@ uv run pytest -m agstream
 ```
 
 **Important Notes:**
-- Some tests in `tools/agstream_manager/tests/` require Flink-specific modules (`pyflink`, `semantic_operators`) that are only available in the Flink Docker container
-- These tests are designed to run inside the Flink environment or can be run as standalone scripts
+- Some tests require Flink-specific modules (`pyflink`, `semantic_operators`) that are only available in the Flink Docker container
 - Tests that can run outside Flink will execute normally with `pytest -m agstream`
 
 **Test Coverage:**
@@ -66,47 +64,6 @@ uv sync --group agstream
 uv run pytest -m agstream
 ```
 
-**AGStream Manager Tests (from tools/agstream_manager):**
-
-```bash
-cd tools/agstream_manager
-uv sync --all-groups
-```
-
-**Run tests locally (without Flink):**
-```bash
-# These tests work without Flink Docker environment
-uv run pytest tests/test_create_listener.py
-uv run pytest tests/test_listener_persistence.py
-uv run pytest tests/test_schema_manager.py
-uv run pytest tests/test_topic_deletion.py
-```
-
-**Run Flink-dependent tests (requires Flink Docker environment):**
-
-```bash
-# Start Flink services first
-cd tools/agstream_manager
-./manage_services.sh start
-
-# Use the helper script to run tests in Flink container
-./scripts/run_flink_tests.sh
-
-# Or run specific test
-./scripts/run_flink_tests.sh test_schema_enforcement.py
-```
-
-**Tests requiring Flink Docker environment:**
-- `test_schema_enforcement.py` - Schema enforcement with pyflink
-
-The helper script automatically:
-- Installs pytest in the Flink container
-- Sets up the correct PYTHONPATH
-- Copies tests to the container
-- Runs the tests
-- Cleans up afterwards
-
-See [Flink Tests Guide](../tools/agstream_manager/tests/FLINK_TESTS.md) for detailed instructions.
 
 ### Run Tests with Verbose Output
 ```bash
@@ -133,13 +90,8 @@ uv run pytest --timeout=60
 In addition to core requirements:
 - Kafka running on localhost:9092
 - Schema Registry (Karapace) on localhost:8081
-- AGStream Manager service on localhost:5003 (optional for some tests)
 
-To start the required infrastructure:
-```bash
-cd tools/agstream_manager
-./manage_services.sh start
-```
+Refer to AGStream documentation for infrastructure setup.
 
 ## Test Reports
 

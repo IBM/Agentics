@@ -113,8 +113,7 @@ def main():
 
     print("🔍 Now you can query with Flink SQL:")
     print()
-    print("1. Start Flink SQL client:")
-    print("   cd tools/agstream_manager/scripts && ./flink_sql.sh")
+    print("1. Start Flink SQL client (refer to Flink documentation)")
     print()
     print("2. Create tables:")
     print()

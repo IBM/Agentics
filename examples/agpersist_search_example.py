@@ -257,11 +257,8 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\nError: {e}")
         print("\nNote: This example requires:")
-        print("  1. AGStream Manager running")
-        print("  2. Flink SQL environment configured")
-        print("  3. UDFs registered in Flink")
-        print("\nFor a simpler example, see the SQL examples in:")
-        print("  tools/agstream_manager/sql/agpersist_search_examples.sql")
+        print("  1. Flink SQL environment configured")
+        print("  2. UDFs registered in Flink")
 
     # Uncomment to run simple example
     # simple_example()

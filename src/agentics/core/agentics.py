@@ -128,6 +128,10 @@ class AG(BaseModel, Generic[T]):
     transduction_timeout: float | None = 300
     verbose_transduction: bool = True
     verbose_agent: bool = False
+    batch_mode: bool = Field(
+        default=False,
+        description="When True, suppresses all interactive prompts and runs in non-interactive batch mode. Useful for automated testing and production environments.",
+    )
     areduce_batch_size: Optional[int] = Field(
         None,
         description="The size of the bathes to be used when transduction type is areduce",

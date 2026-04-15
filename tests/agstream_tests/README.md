@@ -6,9 +6,8 @@ Integration tests for AGStream functionality.
 
 **Required Dependencies:**
 ```bash
-# Install AGStream dependencies (kafka, flink)
-cd tools/agstream_manager
-uv sync
+# Install AGStream dependencies
+uv sync --group agstream
 ```
 
 **Required Services:**
@@ -39,15 +38,9 @@ The integration test suite covers:
 
 ## Troubleshooting
 
-### Start Services
-```bash
-cd /Users/gliozzo/Code/agentics911/agentics
-./manage_services_full.sh start
-```
-
 ### Check Schema Registry
 ```bash
 curl http://localhost:8081/subjects
 ```
 
-For detailed AGStream documentation, see [`tools/agstream_manager/README.md`](../../tools/agstream_manager/README.md).
+Refer to AGStream documentation for service setup and detailed information.

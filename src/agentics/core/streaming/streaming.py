@@ -19,8 +19,22 @@ logging.getLogger("kafka.conn").setLevel(
 )  # Suppress IPv6 ECONNREFUSED errors
 logging.getLogger("kafka").setLevel(logging.WARNING)
 
-# PyFlink imports for the listener
-from pyflink.datastream.functions import MapFunction
+# PyFlink imports for the listener (optional - only needed for Flink streaming)
+try:
+    from pyflink.datastream.functions import MapFunction
+
+    PYFLINK_AVAILABLE = True
+except ImportError:
+    # Create a dummy base class when pyflink is not available
+    class MapFunction:
+        """Dummy MapFunction base class when pyflink is not installed"""
+
+        def map(self, value):
+            raise NotImplementedError(
+                "PyFlink is not installed. Install apache-flink to use Flink streaming features."
+            )
+
+    PYFLINK_AVAILABLE = False
 
 from agentics.core.atype import (
     make_all_fields_optional,
@@ -2028,8 +2042,21 @@ class AGStream(AG):
         """
         import time as _time_module
 
-        from pyflink.datastream import RuntimeExecutionMode, StreamExecutionEnvironment
-        from pyflink.table import EnvironmentSettings, StreamTableEnvironment
+        try:
+            from pyflink.datastream import (
+                RuntimeExecutionMode,
+                StreamExecutionEnvironment,
+            )
+            from pyflink.table import EnvironmentSettings, StreamTableEnvironment
+        except ImportError:
+            raise ImportError(
+                "PyFlink is required for transducible_function_listener. "
+                "This method creates a Flink streaming job and requires apache-flink to be installed. "
+                "Install it with: pip install apache-flink\n\n"
+                "Note: apache-flink has strict pandas version requirements (<1.4.0) which conflict "
+                "with the modern pandas version used by agentics. For most use cases, you don't need "
+                "this method - Flink UDFs run in Docker containers where pyflink is pre-installed."
+            )
 
         # ------------------------------------------------------------------
         # Validate the transducible function
@@ -2161,17 +2188,13 @@ class AGStream(AG):
         settings = EnvironmentSettings.in_streaming_mode()
         table_env = StreamTableEnvironment.create(env, settings)
 
-        # Add Kafka connector JAR - use project's tools/agstream_manager/flink-lib directory
+        # Add Kafka connector JAR
         import pathlib
 
         # Go up 4 levels: streaming.py -> core -> agentics -> src -> workspace root
         project_root = pathlib.Path(__file__).parent.parent.parent.parent
         flink_jar = (
-            project_root
-            / "tools"
-            / "agstream_manager"
-            / "flink-lib"
-            / "flink-sql-connector-kafka-3.3.0-1.18.jar"
+            project_root / "flink-lib" / "flink-sql-connector-kafka-3.3.0-1.18.jar"
         )
 
         if not flink_jar.exists():
