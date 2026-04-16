@@ -79,7 +79,7 @@ show-llms = "agentics.scripts.show_llms:main"
 
 [dependency-groups]
 dev = [
-  "pytest >=8.4.0,<9",
+  "pytest >=9.0.3,<10",
   "black[jupyter]>=25.1.0,<26",
   "isort >=6.0.1,<7",
   "pre-commit >=4.2.0,<5",
