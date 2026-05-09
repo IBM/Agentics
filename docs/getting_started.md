@@ -34,7 +34,7 @@ Agentics is a lightweight, Python-native framework for building structured, agen
 
 ### 🎯 Set Environment Variables
 
-Create a `.env` file in the root directory with your environment variables. See `.env.sample` for an example.
+Create a `.env` file in the root directory with your environment variables. See `.env_sample` for an example.
 
 Set Up LLM provider, Chose one of the following: 
 
@@ -78,9 +78,9 @@ ollama pull ollama/deepseek-r1:latest
 test hello world example (need to set up llm credentials first)
 
 ```bash
-python python examples/hello_world.py
-python examples/self_transduction.py
-python examples/agentics_web_search_report.py
+uv run python examples/hello_world.py
+uv run python examples/self_transduction.py
+uv run python examples/agentics_web_search_report.py
 
 ```
 
