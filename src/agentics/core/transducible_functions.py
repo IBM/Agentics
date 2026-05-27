@@ -293,7 +293,7 @@ def transducible(
     areduce: bool = False,
     tools: list[Any] | None = [],
     enforce_output_type: bool = False,
-    llm: Any = AG.get_llm_provider(),
+    llm: Any = None,
     reasoning: bool = False,
     max_iter: int = 10,
     verbose_transduction: bool = True,
@@ -345,22 +345,25 @@ def transducible(
         else:
             SourceModel = list(input_types.values())[0]
 
-        # Template AGs
-        target_ag_template = AG(
-            atype=TargetModel,
-            transduction_type="areduce" if areduce else "amap",
-            tools=tools,
-            llm=llm,
-            reasoning=reasoning,
-            max_iter=max_iter,
-            verbose_agent=verbose_agent,
-            verbose_transduction=verbose_transduction,
-            amap_batch_size=batch_size,
-            transduction_timeout=timeout,
-            save_amap_batches_to_path=persist_output,
-            provide_explanations=provide_explanation,
-            prompt_template=prompt_template,
-        )
+            # Resolve LLM at runtime if not provided
+            resolved_llm = llm if llm is not None else AG.get_llm_provider()
+
+            # Template AGs
+            target_ag_template = AG(
+                atype=TargetModel,
+                transduction_type="areduce" if areduce else "amap",
+                tools=tools,
+                llm=resolved_llm,
+                reasoning=reasoning,
+                max_iter=max_iter,
+                verbose_agent=verbose_agent,
+                verbose_transduction=verbose_transduction,
+                amap_batch_size=batch_size,
+                transduction_timeout=timeout,
+                save_amap_batches_to_path=persist_output,
+                provide_explanations=provide_explanation,
+                prompt_template=prompt_template,
+            )
         source_ag_template = AG(
             atype=SourceModel,
             amap_batch_size=batch_size,

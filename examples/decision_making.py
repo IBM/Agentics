@@ -23,7 +23,6 @@ class DecisionOutcome(BaseModel):
 decision_making = DecisionOutcome << With(
     DecisionMakingTask & DecisionMakingCase,
     provide_explanation=True,
-    llm="watsonx/openai/gpt-oss-120b",
 )
 
 task = DecisionMakingTask(

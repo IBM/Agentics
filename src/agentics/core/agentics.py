@@ -30,7 +30,7 @@ from crewai.llms.base_llm import BaseLLM
 from langchain_core.prompts import PromptTemplate
 from loguru import logger
 from pandas import DataFrame
-from pydantic import BaseModel, Field, ValidationError, create_model
+from pydantic import BaseModel, Field, ValidationError, create_model, model_validator
 
 from agentics.core.async_executor import (
     PydanticTransducerCrewAI,
@@ -106,7 +106,14 @@ class AG(BaseModel, Generic[T]):
         "amap",
         description="Type of transduction to be used, amap, areduce",
     )
-    llm: Any = Field(default_factory=get_llm_provider, exclude=True)
+    llm: Any = Field(default=None, exclude=True)
+
+    @model_validator(mode="after")
+    def _resolve_llm(self):
+        """Resolve LLM at runtime if not set"""
+        if self.llm is None:
+            object.__setattr__(self, "llm", get_llm_provider())
+        return self
 
     provide_explanations: bool = False
     explanations: Optional[list[Explanation]] = None

@@ -1,5 +1,10 @@
-# CRITICAL: Suppress CrewAI prompts BEFORE any imports
+# CRITICAL: Load .env file FIRST, then suppress CrewAI prompts BEFORE any imports
 import os
+
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 os.environ["CREWAI_TRACING_ENABLED"] = "false"
 os.environ["CREWAI_DISABLE_TELEMETRY"] = "true"
