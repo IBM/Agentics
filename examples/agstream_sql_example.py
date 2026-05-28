@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-AGStreamSQL Example - Flink SQL Compatible Streaming
+AGStream Example - Flink SQL Compatible Streaming
 
-Demonstrates how to use AGStreamSQL for Flink SQL-compatible data streaming.
-AGStreamSQL uses Avro format and sends only state data (no envelope) for direct SQL access.
+Demonstrates how to use AGStream for Flink SQL-compatible data streaming.
+AGStream uses Avro format and sends only state data (no envelope) for direct SQL access.
 """
 
 import logging
@@ -17,7 +17,7 @@ os.environ["LIBRDKAFKA_LOG_LEVEL"] = "0"  # 0=EMERG, 7=DEBUG
 
 from pydantic import BaseModel
 
-from agentics.core import AGStreamSQL
+from agentics.core import AGStream
 
 
 # Define your data model
@@ -40,13 +40,13 @@ class Answer(BaseModel):
 
 def main():
     print("=" * 70)
-    print("AGStreamSQL Example - Flink SQL Compatible Streaming")
+    print("AGStream Example - Flink SQL Compatible Streaming")
     print("=" * 70)
     print()
 
-    # Create AGStreamSQL instance for questions
-    print("📝 Creating AGStreamSQL for questions...")
-    questions_stream = AGStreamSQL(
+    # Create AGStream instance for questions
+    print("📝 Creating AGStream for questions...")
+    questions_stream = AGStream(
         atype=Question,
         topic="questions_sql",
         kafka_server="localhost:9092",
@@ -73,9 +73,9 @@ def main():
     print(f"✅ Produced {len(message_ids)} questions")
     print()
 
-    # Create AGStreamSQL instance for answers
-    print("📝 Creating AGStreamSQL for answers...")
-    answers_stream = AGStreamSQL(
+    # Create AGStream instance for answers
+    print("📝 Creating AGStream for answers...")
+    answers_stream = AGStream(
         atype=Answer,
         topic="answers_sql",
         kafka_server="localhost:9092",

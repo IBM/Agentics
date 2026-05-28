@@ -9,21 +9,19 @@ Note: These imports will fail gracefully if streaming dependencies are not insta
 
 # Try to import streaming modules, but don't fail if dependencies are missing
 try:
-    from .agstream_sql import AGStreamSQL
+    from .agstream_sql import AGStream  # Renamed from AGStreamSQL
     from .flink_listener_manager import FlinkListenerManager
     from .flink_sql_connector import FlinkSQLAutoConnector, create_flink_sql_environment
     from .listener_manager import ListenerInfo, ListenerManager
-    from .streaming import AGStream
     from .streaming_utils import *
 
     __all__ = [
-        "AGStreamSQL",
+        "AGStream",
         "FlinkListenerManager",
         "FlinkSQLAutoConnector",
         "create_flink_sql_environment",
         "ListenerInfo",
         "ListenerManager",
-        "AGStream",
     ]
 except ImportError as e:
     # Streaming dependencies not available

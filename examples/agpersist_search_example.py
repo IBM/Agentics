@@ -14,7 +14,7 @@ import os
 import time
 from pathlib import Path
 
-from agentics.core.streaming import AGStreamSQL
+from agentics.core.streaming import FlinkSQLAutoConnector
 
 # Set custom index storage path (optional)
 os.environ["AGSTREAM_INDEX_PATH"] = str(Path.home() / "agstream_indexes")
@@ -27,12 +27,13 @@ def main():
     print("AGPersist Search Example")
     print("=" * 60)
 
-    # Initialize AGStream SQL
-    agstream = AGStreamSQL()
+    # Initialize Flink SQL connector
+    connector = FlinkSQLAutoConnector()
+    table_env = connector.get_queryable_environment()
 
     # Register the persistent search functions
     print("\n1. Registering persistent search functions...")
-    agstream.execute_sql(
+    table_env.execute_sql(
         """
         CREATE TEMPORARY FUNCTION IF NOT EXISTS build_search_index
         AS 'agpersist_search.build_search_index'
@@ -40,7 +41,7 @@ def main():
     """
     )
 
-    agstream.execute_sql(
+    table_env.execute_sql(
         """
         CREATE TEMPORARY FUNCTION IF NOT EXISTS search_persisted_index
         AS 'agpersist_search.search_persisted_index'
@@ -54,7 +55,7 @@ def main():
     print("   (This may take a moment on first run to download the model)")
 
     # Create sample data table
-    agstream.execute_sql(
+    table_env.execute_sql(
         """
         CREATE TABLE IF NOT EXISTS sample_reviews (
             review_id INT,
@@ -72,7 +73,7 @@ def main():
 
     # Build the index
     start_time = time.time()
-    result = agstream.execute_sql(
+    result = table_env.execute_sql(
         """
         SELECT build_search_index(review_text, 'sample_reviews_index') as status
         FROM sample_reviews
@@ -98,7 +99,7 @@ def main():
         print(f"\n   Query: '{query}'")
         start_time = time.time()
 
-        results = agstream.execute_sql(
+        results = table_env.execute_sql(
             f"""
             SELECT T.text, T.score
             FROM LATERAL TABLE(search_persisted_index('sample_reviews_index', '{query}', 5))
@@ -123,7 +124,7 @@ def main():
     persistent_times = []
     for i in range(5):
         start_time = time.time()
-        agstream.execute_sql(
+        table_env.execute_sql(
             """
             SELECT T.text, T.score
             FROM LATERAL TABLE(search_persisted_index('sample_reviews_index', 'quality', 10))
@@ -149,7 +150,7 @@ def main():
 
     for category in categories:
         print(f"   Building index for: {category}")
-        agstream.execute_sql(
+        table_env.execute_sql(
             f"""
             SELECT build_search_index(review_text, '{category}_reviews_index') as status
             FROM sample_reviews
@@ -165,7 +166,7 @@ def main():
     query = "great quality"
 
     for category in categories:
-        results = agstream.execute_sql(
+        results = table_env.execute_sql(
             f"""
             SELECT '{category}' as category, T.text, T.score
             FROM LATERAL TABLE(search_persisted_index('{category}_reviews_index', '{query}', 3))
@@ -210,16 +211,17 @@ def simple_example():
     print("\nSimple Example: Build and Search")
     print("-" * 40)
 
-    agstream = AGStreamSQL()
+    connector = FlinkSQLAutoConnector()
+    table_env = connector.get_queryable_environment()
 
     # Register functions
-    agstream.execute_sql(
+    table_env.execute_sql(
         """
         CREATE TEMPORARY FUNCTION IF NOT EXISTS build_search_index
         AS 'agpersist_search.build_search_index' LANGUAGE PYTHON
     """
     )
-    agstream.execute_sql(
+    table_env.execute_sql(
         """
         CREATE TEMPORARY FUNCTION IF NOT EXISTS search_persisted_index
         AS 'agpersist_search.search_persisted_index' LANGUAGE PYTHON
@@ -228,7 +230,7 @@ def simple_example():
 
     # Build index
     print("Building index...")
-    agstream.execute_sql(
+    table_env.execute_sql(
         """
         SELECT build_search_index(customer_review, 'my_index') as status
         FROM pr
@@ -237,7 +239,7 @@ def simple_example():
 
     # Search index
     print("Searching index...")
-    results = agstream.execute_sql(
+    results = table_env.execute_sql(
         """
         SELECT T.text, T.score
         FROM LATERAL TABLE(search_persisted_index('my_index', 'great service', 5))

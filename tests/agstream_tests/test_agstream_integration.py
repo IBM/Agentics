@@ -55,7 +55,7 @@ from pydantic import BaseModel, Field
 
 # Only import streaming modules if kafka is available
 if KAFKA_AVAILABLE:
-    from agentics.core.streaming.agstream_sql import AGStreamSQL
+    from agentics.core.streaming.agstream_sql import AGStream
 
 from agentics.core.transducible_functions import Transduce, transducible
 
@@ -127,8 +127,8 @@ class AGStreamTestSuite:
         self.print_test("Schema Registration")
 
         try:
-            # Create AGStreamSQL instances which should register schemas
-            q_stream = AGStreamSQL(
+            # Create AGStream instances which should register schemas
+            q_stream = AGStream(
                 atype=Question,
                 topic=TEST_INPUT_TOPIC,
                 kafka_server=KAFKA_SERVER,
@@ -137,7 +137,7 @@ class AGStreamTestSuite:
                 num_partitions=1,
             )
 
-            a_stream = AGStreamSQL(
+            a_stream = AGStream(
                 atype=Answer,
                 topic=TEST_OUTPUT_TOPIC,
                 kafka_server=KAFKA_SERVER,
@@ -161,7 +161,7 @@ class AGStreamTestSuite:
         self.print_test("Message Production (Avro Format)")
 
         try:
-            q_stream = AGStreamSQL(
+            q_stream = AGStream(
                 atype=Question,
                 topic=TEST_INPUT_TOPIC,
                 kafka_server=KAFKA_SERVER,
@@ -195,7 +195,7 @@ class AGStreamTestSuite:
         self.print_test("Message Consumption (Avro Format)")
 
         try:
-            q_stream = AGStreamSQL(
+            q_stream = AGStream(
                 atype=Question,
                 topic=TEST_INPUT_TOPIC,
                 kafka_server=KAFKA_SERVER,
@@ -262,14 +262,14 @@ class AGStreamTestSuite:
 
         try:
             # Create streams
-            q_stream = AGStreamSQL(
+            q_stream = AGStream(
                 atype=Question,
                 topic=TEST_INPUT_TOPIC,
                 kafka_server=KAFKA_SERVER,
                 schema_registry_url=SCHEMA_REGISTRY_URL,
             )
 
-            a_stream = AGStreamSQL(
+            a_stream = AGStream(
                 atype=Answer,
                 topic=TEST_OUTPUT_TOPIC,
                 kafka_server=KAFKA_SERVER,

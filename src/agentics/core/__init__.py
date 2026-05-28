@@ -18,11 +18,10 @@ except ImportError:
 
 from .agentics import AG
 
-# Optional streaming imports (require Kafka and Flink dependencies)
+# Optional streaming imports (require Kafka dependencies)
 try:
     from .streaming import (
         AGStream,
-        AGStreamSQL,
         FlinkListenerManager,
         FlinkSQLAutoConnector,
         ListenerInfo,
@@ -31,8 +30,7 @@ try:
     )
 except ImportError as e:
     # Streaming features not available without required dependencies
-    # Install with: pip install kafka-python confluent-kafka apache-flink
-    AGStreamSQL = None
+    # Install with: pip install kafka-python confluent-kafka
     FlinkListenerManager = None
     FlinkSQLAutoConnector = None
     create_flink_sql_environment = None

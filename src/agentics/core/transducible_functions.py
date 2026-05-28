@@ -549,7 +549,7 @@ def make_transducible_function(
     if function_code:
         _auto_fn = import_last_function_from_code(function_code)
 
-        _auto_fn.__doc__ = _auto_fn.__doc__ + instructions
+        _auto_fn.__doc__ = (_auto_fn.__doc__ or "") + (instructions or "")
         _auto_fn.__source__ = function_code
 
     elif InputModel and OutputModel:

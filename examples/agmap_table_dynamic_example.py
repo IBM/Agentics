@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from pydantic import BaseModel
 
-from agentics.core import AGStreamSQL
+from agentics.core import AGStream
 
 
 class Review(BaseModel):
@@ -50,9 +50,9 @@ def main():
         ),
     ]
 
-    # Create AGStreamSQL and produce reviews
-    print("📝 Creating AGStreamSQL for reviews...")
-    reviews_stream = AGStreamSQL(
+    # Create AGStream and produce reviews
+    print("📝 Creating AGStream for reviews...")
+    reviews_stream = AGStream(
         atype=Review,
         topic="product_reviews_dynamic",
         kafka_server="localhost:9092",

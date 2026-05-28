@@ -1,7 +1,7 @@
 """
-AGStreamSQL - Flink SQL Compatible Streaming for Agentics
+AGStream - Flink SQL Compatible Streaming for Agentics
 
-A simplified AGStream variant optimized for Flink SQL queries.
+Streaming implementation optimized for Flink SQL queries.
 Uses Avro format and sends only state data (no envelope) for direct SQL access.
 """
 
@@ -154,15 +154,12 @@ def register_avro_schema(
         return None
 
 
-class AGStreamSQL:
+class AGStream:
     """
-    Simplified AGStream for Flink SQL compatibility.
+    AGStream - Kafka streaming for Agentics with Avro serialization.
 
-    Key differences from AGStream:
-    - Uses Avro format instead of JSON Schema
-    - Sends only state data (no envelope) for direct SQL access
-    - Optimized for Flink SQL queries
-    - Simpler API focused on streaming use cases
+    Provides simple, efficient streaming with Avro format for Flink SQL compatibility.
+    Uses direct state serialization (no envelope) for optimal performance.
 
     Example:
         >>> from pydantic import BaseModel
@@ -172,7 +169,7 @@ class AGStreamSQL:
         ...     timestamp: int
         >>>
         >>> # Create stream
-        >>> stream = AGStreamSQL(
+        >>> stream = AGStream(
         ...     atype=Question,
         ...     topic="questions",
         ...     schema_registry_url="http://localhost:8081"
@@ -212,7 +209,7 @@ class AGStreamSQL:
         consumer_group: Optional[str] = None,
     ):
         """
-        Initialize AGStreamSQL.
+        Initialize AGStream.
 
         Args:
             atype: Pydantic model class for the data
@@ -463,7 +460,7 @@ class AGStreamSQL:
     def listen(
         self,
         transduction_fn: Optional[callable] = None,
-        output_stream: Optional["AGStreamSQL"] = None,
+        output_stream: Optional["AGStream"] = None,
         timeout_ms: int = 1000,
         max_iterations: Optional[int] = None,
         verbose: bool = False,
@@ -479,7 +476,7 @@ class AGStreamSQL:
             transduction_fn: Function to apply to each consumed message.
                 Should accept a Pydantic model instance and return a Pydantic model instance.
                 If None, messages are only consumed (no transduction).
-            output_stream: AGStreamSQL instance for producing results.
+            output_stream: AGStream instance for producing results.
                 If None, results are not produced (consume-only mode).
             timeout_ms: Consumer poll timeout in milliseconds (default: 1000).
             max_iterations: Maximum number of consume iterations. None means run forever.
@@ -494,7 +491,7 @@ class AGStreamSQL:
             KeyboardInterrupt: When user interrupts the listener.
 
         Example:
-            >>> from agentics.core.agstream_sql import AGStreamSQL
+            >>> from agentics.core.streaming import AGStream
             >>> from agentics.core.streaming_utils import get_atype_from_registry
             >>> from agentics.core.transducible_functions import make_transducible_function
             >>> import asyncio
@@ -511,12 +508,12 @@ class AGStreamSQL:
             ... )
             >>>
             >>> # Create streams
-            >>> input_stream = AGStreamSQL(
+            >>> input_stream = AGStream(
             ...     atype=Question,
             ...     topic="Q",
             ...     consumer_group="qa-listener"
             ... )
-            >>> output_stream = AGStreamSQL(
+            >>> output_stream = AGStream(
             ...     atype=Answer,
             ...     topic="A"
             ... )
@@ -535,7 +532,7 @@ class AGStreamSQL:
         import time
 
         if verbose:
-            print(f"🎧 Starting AGStreamSQL listener...")
+            print(f"🎧 Starting AGStream listener...")
             print(f"   Input topic: {self.topic}")
             if output_stream:
                 print(f"   Output topic: {output_stream.topic}")
