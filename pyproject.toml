@@ -38,7 +38,7 @@ dependencies = [
     "litellm>=1.80.0,<1.82.7",
     "mellea",
     "plotly>=6.5.0",
-    "rich>=13.0.0,<14.0.0",
+    "rich>=15.0.0,<15.1.0",
     "duckdb>=1.4.3",
     "pandas>=2",
     "async-lru>=2.0.5",
