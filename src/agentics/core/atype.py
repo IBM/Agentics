@@ -1,16 +1,14 @@
 import csv
-import datetime
+import html
+import io
 import json
-import types
+import os
 from typing import (
-    Annotated,
+    IO,
     Any,
     Dict,
     List,
-    Literal,
-    Mapping,
     Optional,
-    Sequence,
     Set,
     Tuple,
     Type,
@@ -21,6 +19,7 @@ from typing import (
 
 import pandas as pd
 from pydantic import BaseModel, Field, create_model
+from pydantic._internal._model_construction import ModelMetaclass
 
 from agentics.core.utils import sanitize_dict_keys, sanitize_field_name
 
@@ -44,12 +43,6 @@ def copy_attribute_values(
     source_value = getattr(state, source_attribute)
     setattr(state, target_attribute, source_value)
     return state
-
-
-from typing import Type
-
-import pandas as pd
-from pydantic import BaseModel
 
 
 def get_pydantic_fields(atype: Type[BaseModel]):
@@ -101,11 +94,6 @@ def get_active_fields(state: BaseModel, allowed_fields: Set[str] = None) -> Set[
         k for k, v in state.model_dump().items() if v is not None and v != ""
     }
     return active_fields & allowed_fields if allowed_fields else active_fields
-
-
-import io
-import os
-from typing import IO
 
 
 def pydantic_model_from_csv(
@@ -467,9 +455,6 @@ def normalize_type_label(label: str | None) -> tuple[str, bool]:
     return (_base_normalize(s), False)
 
 
-import html
-
-
 def pydantic_to_markdown(obj: BaseModel, title: str | None = None) -> str:
     """
     Pretty-print a Pydantic model instance as a Markdown table,
@@ -498,10 +483,6 @@ def pydantic_to_markdown(obj: BaseModel, title: str | None = None) -> str:
         lines.append(f"| `{key}` | {formatted} |")
 
     return "\n".join(lines)
-
-
-from pydantic import BaseModel, create_model
-from pydantic._internal._model_construction import ModelMetaclass
 
 
 def _check_compatibility(A, B):
@@ -716,9 +697,6 @@ def project_as_superclass(Model: type[BaseModel], selected_fields):
     globals_dict[Model.__name__] = NewModel
 
     return Projected
-
-
-from pydantic import BaseModel, create_model
 
 
 def project_as_superclass(Model: type[BaseModel], selected_fields):
