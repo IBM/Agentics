@@ -75,7 +75,7 @@ jobs:
 
           echo "✓ Stable release from main branch - proceeding"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: v${{ steps.version.outputs.version }}
           fetch-depth: 0
