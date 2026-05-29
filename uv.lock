@@ -58,7 +58,6 @@ dependencies = [
     { name = "duckdb" },
     { name = "fastapi-sso" },
     { name = "google" },
-    { name = "hnswlib" },
     { name = "ipywidgets" },
     { name = "json-schema-to-pydantic" },
     { name = "jsonfinder" },
@@ -78,8 +77,15 @@ dependencies = [
     { name = "streamlit" },
 ]
 
+[package.optional-dependencies]
+vector-store = [
+    { name = "hnswlib" },
+    { name = "scikit-learn" },
+]
+
 [package.dev-dependencies]
 dev = [
+    { name = "agentics-py", extra = ["vector-store"] },
     { name = "black", extra = ["jupyter"] },
     { name = "hunter" },
     { name = "invoke" },
@@ -119,11 +125,11 @@ requires-dist = [
     { name = "duckdb", specifier = ">=1.4.3" },
     { name = "fastapi-sso", specifier = ">=0.10.0" },
     { name = "google", specifier = ">=3.0.0,<4.0.0" },
-    { name = "hnswlib", specifier = ">=0.8.0" },
+    { name = "hnswlib", marker = "extra == 'vector-store'", specifier = ">=0.8.0" },
     { name = "ipywidgets", specifier = ">=8.1.7" },
     { name = "json-schema-to-pydantic", specifier = ">=0.4.11,<0.5.0" },
     { name = "jsonfinder" },
-    { name = "langchain-huggingface", specifier = ">=0.2.0,<0.3.0" },
+    { name = "langchain-huggingface", specifier = ">=0.3.1,<0.4.0" },
     { name = "litellm", specifier = ">=1.80.0,<1.82.7" },
     { name = "loguru", specifier = ">=0.7.3,<0.8.0" },
     { name = "mcp", specifier = ">=1.13.1,<2.0.0" },
@@ -136,11 +142,14 @@ requires-dist = [
     { name = "pydantic" },
     { name = "pyyaml", specifier = ">=6.0.2,<7.0.0" },
     { name = "rich", specifier = ">=13.0.0,<14.0.0" },
+    { name = "scikit-learn", marker = "extra == 'vector-store'", specifier = ">=1.0.0" },
     { name = "streamlit", specifier = ">=1.45.1,<2.0.0" },
 ]
+provides-extras = ["vector-store"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "agentics-py", extras = ["vector-store"] },
     { name = "black", extras = ["jupyter"], specifier = ">=26.3.1,<27" },
     { name = "hunter", specifier = ">=3.9.0" },
     { name = "invoke", specifier = ">=2.2.0" },
@@ -2204,18 +2213,16 @@ wheels = [
 
 [[package]]
 name = "langchain-huggingface"
-version = "0.2.0"
+version = "0.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "huggingface-hub" },
     { name = "langchain-core" },
-    { name = "sentence-transformers" },
     { name = "tokenizers" },
-    { name = "transformers" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/41/a9/37f23321b776fe40a6b15a6476bc8537d255581793a3accc001725edd8bd/langchain_huggingface-0.2.0.tar.gz", hash = "sha256:609acbfbade749bffa22acffd46d9e924a58e96cc59215d0562b8e9215b210f5", size = 24799, upload-time = "2025-05-07T19:44:23.032Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3f/15/f832ae485707bf52f9a8f055db389850de06c46bc6e3e4420a0ef105fbbf/langchain_huggingface-0.3.1.tar.gz", hash = "sha256:0a145534ce65b5a723c8562c456100a92513bbbf212e6d8c93fdbae174b41341", size = 25154, upload-time = "2025-07-22T17:22:26.77Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0b/76/eb08f7b87f3377ced3800b2896841ccdcde3e246f46523946ecf092447e6/langchain_huggingface-0.2.0-py3-none-any.whl", hash = "sha256:eed1fdfe51d16d761499fa754491a1a4dcb61798c1e5516335071d1dad852a41", size = 27329, upload-time = "2025-05-07T19:44:21.758Z" },
+    { url = "https://files.pythonhosted.org/packages/bf/26/7c5d4b4d3e1a7385863acc49fb6f96c55ccf941a750991d18e3f6a69a14a/langchain_huggingface-0.3.1-py3-none-any.whl", hash = "sha256:de10a692dc812885696fbaab607d28ac86b833b0f305bccd5d82d60336b07b7d", size = 27609, upload-time = "2025-07-22T17:22:25.282Z" },
 ]
 
 [[package]]
@@ -4722,25 +4729,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/62/96/c418c322730b385e81d4ab462e68dd48bb2dbda4d8efa17cad2ca468d9ac/semchunk-2.2.2.tar.gz", hash = "sha256:940e89896e64eeb01de97ba60f51c8c7b96c6a3951dfcf574f25ce2146752f52", size = 12271, upload-time = "2024-12-17T22:54:30.332Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/76/84/94ca7896c7df20032bcb09973e9a4d14c222507c0aadf22e89fa76bb0a04/semchunk-2.2.2-py3-none-any.whl", hash = "sha256:94ca19020c013c073abdfd06d79a7c13637b91738335f3b8cdb5655ee7cc94d2", size = 10271, upload-time = "2024-12-17T22:54:27.689Z" },
-]
-
-[[package]]
-name = "sentence-transformers"
-version = "5.2.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "huggingface-hub" },
-    { name = "scikit-learn" },
-    { name = "scipy" },
-    { name = "torch", version = "2.2.2", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'" },
-    { name = "torch", version = "2.9.1", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine != 'x86_64' or sys_platform != 'darwin'" },
-    { name = "tqdm" },
-    { name = "transformers" },
-    { name = "typing-extensions" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/a2/a1/64e7b111e753307ffb7c5b6d039c52d4a91a47fa32a7f5bc377a49b22402/sentence_transformers-5.2.0.tar.gz", hash = "sha256:acaeb38717de689f3dab45d5e5a02ebe2f75960a4764ea35fea65f58a4d3019f", size = 381004, upload-time = "2025-12-11T14:12:31.038Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/40/d0/3b2897ef6a0c0c801e9fecca26bcc77081648e38e8c772885ebdd8d7d252/sentence_transformers-5.2.0-py3-none-any.whl", hash = "sha256:aa57180f053687d29b08206766ae7db549be5074f61849def7b17bf0b8025ca2", size = 493748, upload-time = "2025-12-11T14:12:29.516Z" },
 ]
 
 [[package]]

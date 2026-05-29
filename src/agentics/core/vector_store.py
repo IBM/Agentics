@@ -1,12 +1,7 @@
 from typing import List
 
-import hnswlib
 import numpy as np
 from pydantic import BaseModel, ConfigDict
-
-# from sentence_transformers import SentenceTransformer
-from sklearn.cluster import KMeans
-from sklearn.preprocessing import normalize
 
 
 # ---- 1) Embedder (local) ----
@@ -31,8 +26,6 @@ class LocalEmbedder:
 from typing import Any, Dict, List
 
 from pydantic import BaseModel, ConfigDict
-from sklearn.cluster import KMeans
-from sklearn.preprocessing import normalize
 
 
 class HNSWStore:
@@ -45,6 +38,8 @@ class HNSWStore:
         ef_construction: int = 200,
         ef_search: int = 200,
     ):
+        import hnswlib
+
         space = "cosine" if metric == "cosine" else "l2"
         self.metric = metric
         self.dim = dim
@@ -128,7 +123,11 @@ class VectorStore(BaseModel):
 
         X = np.vstack(self.store._vectors).astype(np.float32)
         if normalize_vectors and self.store.metric == "cosine":
+            from sklearn.preprocessing import normalize
+
             X = normalize(X)
+
+        from sklearn.cluster import KMeans
 
         km = KMeans(n_clusters=k, random_state=42, n_init="auto")
         labels = km.fit_predict(X)

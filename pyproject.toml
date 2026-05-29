@@ -19,7 +19,7 @@ dependencies = [
     "crewai[tools]",
     "crewai-tools[mcp]",
     "crewai[google-genai]",
-    "langchain-huggingface (>=0.2.0,<0.3.0)",
+    "langchain-huggingface (>=0.3.1,<0.4.0)",
     "openapi-python-client (>=0.28.4,<0.29.0)",
     "streamlit (>=1.45.1,<2.0.0)",
     "pyyaml (>=6.0.2,<7.0.0)",
@@ -34,7 +34,6 @@ dependencies = [
     "ipywidgets>=8.1.7",
     "aiosqlite>=0.21.0",
     "numerize>=0.12",
-    "hnswlib>=0.8.0",
     "jsonfinder",
     "litellm>=1.80.0,<1.82.7",
     "mellea",
@@ -48,6 +47,12 @@ dependencies = [
 ]
 
 
+
+[project.optional-dependencies]
+vector-store = [
+    "hnswlib>=0.8.0",
+    "scikit-learn>=1.0.0",
+]
 
 [tool.uv]
 package = true
@@ -79,6 +84,7 @@ show-llms = "agentics.scripts.show_llms:main"
 
 [dependency-groups]
 dev = [
+  "agentics-py[vector-store]",
   "pytest >=9.0.3,<10",
   "black[jupyter]>=26.3.1,<27",
   "isort >=6.0.1,<7",
