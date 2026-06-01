@@ -1,8 +1,14 @@
+import ast
 import asyncio
 import datetime
+import hashlib
 import inspect
+import json
+import math
 import os
 import re
+import textwrap
+import types
 from collections.abc import Iterable
 from typing import (
     Annotated,
@@ -27,8 +33,8 @@ from typing import (
 import httpx
 import pandas as pd
 from dotenv import load_dotenv
+from jsonfinder import jsonfinder
 from loguru import logger
-from numerize.numerize import numerize
 from openai import APIStatusError, AsyncOpenAI
 from pydantic import BaseModel, Field, create_model
 from pydantic.fields import FieldInfo
@@ -164,9 +170,6 @@ def sanitize_field_name(name: str) -> str:
         return name
     # Otherwise, remove all non-alphanumeric and non-underscore characters
     return re.sub(r"[^\w]", "", name)
-
-
-import math
 
 
 def sanitize_dict_keys(obj):
@@ -433,11 +436,6 @@ def make_states_list_model(item_type: Type[A]) -> Type[BaseModel]:
     )
 
 
-import json
-
-from jsonfinder import jsonfinder
-
-
 def extract_json_objects(text: str, expected_type: Type) -> List[BaseModel]:
     """
     Scan `text` and return a list of (start_index, end_index, parsed_obj)
@@ -488,12 +486,6 @@ def llm_friendly_json(model: type[BaseModel]) -> str:
 
     # Return pretty-formatted JSON string
     return json.dumps(simple, indent=4)
-
-
-import ast
-import textwrap
-import types
-from typing import Callable
 
 
 def import_last_function_from_code(code: str) -> Callable:
@@ -581,9 +573,6 @@ def import_last_function_from_code(code: str) -> Callable:
     fn.__source_types__ = {"source": source_code, "target": target_code}
 
     return fn
-
-
-import hashlib
 
 
 def compute_function_hash(
@@ -674,11 +663,6 @@ def get_function_io_types(
     output_type = hints.get("return", Any)
 
     return input_types, output_type
-
-
-from typing import Optional, Type
-
-from pydantic import BaseModel, create_model
 
 
 def make_transduction_type(
