@@ -1,9 +1,8 @@
 # Put this at the top of your script
-import asyncio
 import logging
 import os
 import warnings
-from typing import Optional, Type
+from typing import Type
 
 os.environ["TQDM_DISABLE"] = "1"
 
@@ -21,9 +20,8 @@ def no_bar(iterable=None, *args, **kwargs):
 # Override only the *function*, not the module, not the class
 tqdm.tqdm = no_bar
 
-import mellea
-from mellea.stdlib.sampling import RejectionSamplingStrategy
-from pydantic import BaseModel
+import mellea  # noqa: E402
+from pydantic import BaseModel  # noqa: E402
 
 # Silence asyncio’s “Unclosed client session” ERROR logs
 logging.getLogger("asyncio").setLevel(logging.CRITICAL)

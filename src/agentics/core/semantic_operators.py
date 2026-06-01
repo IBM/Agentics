@@ -5,11 +5,10 @@
 # sem_agg 	Aggregate across all records (e.g. for summarization)
 # sem_topk 	Order the records by some natural language sorting criteria
 # sem_join 	Join two datasets based on a natural language predicate
-import pathlib
 from typing import Type
 
 import pandas as pd
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from agentics import AG
 from agentics.core.atype import create_pydantic_model
