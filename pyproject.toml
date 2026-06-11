@@ -99,7 +99,7 @@ dev = [
   "hunter>=3.9.0",
 ]
 docling = [
-  "langchain-docling >=0.2.0,<0.3.0"
+  "langchain-docling >=2.0.0,<2.1.0"
 ]
 docs = [
     "mkdocs>=1.6.1",
