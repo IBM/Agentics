@@ -136,7 +136,7 @@ requires-dist = [
     { name = "mellea" },
     { name = "numerize", specifier = ">=0.12" },
     { name = "openai", specifier = ">=1.88.0,<2.0.0" },
-    { name = "openapi-python-client", specifier = ">=0.28.4,<0.29.0" },
+    { name = "openapi-python-client", specifier = ">=0.29.0,<0.30.0" },
     { name = "pandas", specifier = ">=2" },
     { name = "plotly", specifier = ">=6.5.0" },
     { name = "pydantic" },
@@ -3161,7 +3161,7 @@ wheels = [
 
 [[package]]
 name = "openapi-python-client"
-version = "0.28.4"
+version = "0.29.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "attrs" },
@@ -3169,15 +3169,14 @@ dependencies = [
     { name = "httpx" },
     { name = "jinja2" },
     { name = "pydantic" },
-    { name = "python-dateutil" },
     { name = "ruamel-yaml" },
     { name = "ruff" },
     { name = "shellingham" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7b/cf/c9278f87a8454cef126fb2594bc32472d681957ea03b8de68d304107a459/openapi_python_client-0.28.4.tar.gz", hash = "sha256:f78dfab5e21652806b17af07c16187b5911138fc526229126953c1b7b37d2b88", size = 125974, upload-time = "2026-05-11T19:44:08.427Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/63/f6/67dfe73b5073251b6e2aba3d67191819798dd33dd09fcb2d12242662a960/openapi_python_client-0.29.0.tar.gz", hash = "sha256:4ff439a63765aaef548e69c4eedd86dfad57891dc322709450af0c2c9a72a23e", size = 125697, upload-time = "2026-05-30T20:32:10.533Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/07/59/016bf13a3bfb85a0d890d492cc9fc65ccefa53ecc5eba3c9a049e5ea6317/openapi_python_client-0.28.4-py3-none-any.whl", hash = "sha256:6bb87dbb05f88e5ab5ba4e5902f0c85ea53e666d3646be49ea2bb19bc8b5bb85", size = 183212, upload-time = "2026-05-11T19:44:07.005Z" },
+    { url = "https://files.pythonhosted.org/packages/fb/d1/7391a205622c40b8e9d1b79b892b4944d6e3637674b47a56196e2c96c5d1/openapi_python_client-0.29.0-py3-none-any.whl", hash = "sha256:1085864c1e0a42fb50e1f5eb84363b19de07ebfb8a3f82a146c8529b948b8f12", size = 182954, upload-time = "2026-05-30T20:32:09.037Z" },
 ]
 
 [[package]]
