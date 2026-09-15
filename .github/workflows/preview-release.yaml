@@ -20,12 +20,12 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -42,7 +42,7 @@ jobs:
         id: version
         run: |
           VERSION=$(python -c "import sys; sys.path.insert(0, 'src'); from importlib.metadata import version; print(version('agentics-py'))" 2>/dev/null || echo "unknown")
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Built preview version: $VERSION"
 
       - name: Publish package distributions to PyPI

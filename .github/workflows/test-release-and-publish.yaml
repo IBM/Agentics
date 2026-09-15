@@ -39,16 +39,16 @@ jobs:
         run: |
           if [[ "${{ github.event_name }}" == "release" ]]; then
             VERSION="${{ github.event.release.tag_name }}"
-            VERSION="${VERSION#v}"  # Remove leading 'v'
-            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            VERSION="${VERSION#v}"
+            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
             IS_PRERELEASE="${{ github.event.release.prerelease }}"
-            echo "is-prerelease=$IS_PRERELEASE" >> $GITHUB_OUTPUT
-            echo "source=github-ui" >> $GITHUB_OUTPUT
+            echo "is-prerelease=$IS_PRERELEASE" >> "$GITHUB_OUTPUT"
+            echo "source=github-ui" >> "$GITHUB_OUTPUT"
           else
-            echo "version=${{ needs.release.outputs.next-version }}" >> $GITHUB_OUTPUT
-            IS_PRERELEASE="${{ needs.release.outputs.prerelease == 'true' }}"
-            echo "is-prerelease=$IS_PRERELEASE" >> $GITHUB_OUTPUT
-            echo "source=commit-message" >> $GITHUB_OUTPUT
+            echo "version=${{ needs.release.outputs.next-version }}" >> "$GITHUB_OUTPUT"
+            IS_PRERELEASE="false"
+            echo "is-prerelease=$IS_PRERELEASE" >> "$GITHUB_OUTPUT"
+            echo "source=commit-message" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Validate prerelease constraint
@@ -75,13 +75,13 @@ jobs:
 
           echo "✓ Stable release from main branch - proceeding"
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: v${{ steps.version.outputs.version }}
           fetch-depth: 0
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v8.1.0
+        uses: astral-sh/setup-uv@v10.1.0
         with:
           python-version: "3.12"
           enable-cache: true
