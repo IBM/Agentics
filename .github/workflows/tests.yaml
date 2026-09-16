@@ -12,7 +12,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -21,10 +21,10 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
 
       - name: Cache uv virtualenv
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: .venv
-          key: uv-venv-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+          key: uv-venv-${{ runner.os }}-${{ hashFiles('uv.lock') }}
           restore-keys: |
             uv-venv-${{ runner.os }}-
 
@@ -33,7 +33,7 @@ jobs:
           uv tool install --with pre-commit-uv pre-commit
 
       - name: Setup pre-commit cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.cache/pre-commit
           key: pre-commit-3|${{ env.pythonLocation }}|${{ hashFiles('.pre-commit-config.yaml') }}
@@ -42,11 +42,11 @@ jobs:
         id: merge-base
         run: |
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            MERGE_BASE=$(git merge-base origin/${{ github.base_ref }} HEAD)
+            MERGE_BASE=$(git merge-base "origin/${{ github.base_ref }}" HEAD)
           else
             MERGE_BASE=$(git rev-parse HEAD^)
           fi
-          echo "merge-base=$MERGE_BASE" >> $GITHUB_OUTPUT
+          echo "merge-base=$MERGE_BASE" >> "$GITHUB_OUTPUT"
         shell: bash
 
       - name: Run pre-commit on changed files
@@ -65,17 +65,17 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Install uv (curl method)
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
 
       - name: Cache uv virtualenv
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: .venv
-          key: uv-venv-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+          key: uv-venv-${{ runner.os }}-${{ hashFiles('uv.lock') }}
           restore-keys: |
             uv-venv-${{ runner.os }}-
 
