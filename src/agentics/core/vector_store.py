@@ -1,4 +1,4 @@
-from typing import List
+from typing import Any, Dict, List
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict
@@ -21,11 +21,6 @@ class LocalEmbedder:
             texts, normalize_embeddings=False, convert_to_numpy=True
         )
         return vecs.astype(np.float32)
-
-
-from typing import Any, Dict, List
-
-from pydantic import BaseModel, ConfigDict
 
 
 class HNSWStore:

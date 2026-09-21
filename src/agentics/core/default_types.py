@@ -1,7 +1,6 @@
-from dataclasses import asdict, is_dataclass
-from typing import Any, Callable, Generic, List, Optional, Type, TypeVar, Union
+from typing import Callable, List, Optional, Type, TypeVar, Union
 
-from pydantic import BaseModel, Field, create_model
+from pydantic import BaseModel, Field
 
 
 class Astr(BaseModel):

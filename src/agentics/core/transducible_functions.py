@@ -1,23 +1,24 @@
-import types
-from typing import Any, Callable, Optional
-
-from dotenv import load_dotenv
-from pydantic import BaseModel
-
-from agentics.core.agentics import AG
-from agentics.core.utils import (
-    import_last_function_from_code,
-    import_pydantic_from_code,
-)
-
-load_dotenv()
 import functools
 import inspect
 import logging
-from typing import Any, Callable, Tuple, get_args
+import types
+from typing import Any, Callable, Optional, Protocol, Type, get_args
 
+from dotenv import load_dotenv
+from pydantic import BaseModel, create_model
+from pydantic._internal._model_construction import ModelMetaclass  # Pydantic v2
+
+from agentics.core.agentics import AG
+from agentics.core.atype import AGString
 from agentics.core.default_types import GeneratedAtype
-from agentics.core.utils import get_function_io_types, percent_non_empty_fields
+from agentics.core.utils import (
+    get_function_io_types,
+    import_last_function_from_code,
+    import_pydantic_from_code,
+    percent_non_empty_fields,
+)
+
+load_dotenv()
 
 logging.getLogger("huggingface_hub.utils._http").setLevel(logging.ERROR)
 
@@ -377,10 +378,6 @@ def With(model, **kwargs):
     return TransductionConfig(model, **kwargs)
 
 
-from pydantic import BaseModel
-from pydantic._internal._model_construction import ModelMetaclass  # Pydantic v2
-
-
 def _function_lshift(f, InputType):
     """
     f << X   =   composition
@@ -537,44 +534,38 @@ async def semantic_merge(instance1: BaseModel, instance2: BaseModel) -> BaseMode
     return merged_instance[0]
 
 
-from typing import Type
-
-from pydantic import BaseModel, create_model
-
-from agentics import AG
-from agentics.core.atype import AGString
-
 async def generate_prototypical_instances(
     type: Type[BaseModel],
     n_instances: int = 10,
     llm: Any = AG.get_llm_provider(),
     instructions: str = None,
 ) -> list[BaseModel]:
-    
+
     DynamicModel = create_model(
-            "ListOfObjectsOfGivenType",
-            instances=(list[type] | None, None),  # REQUIRED field
-        )
+        "ListOfObjectsOfGivenType",
+        instances=(list[type] | None, None),  # REQUIRED field
+    )
     if llm:
-    
+
         full_instructions = f"""
                 Generate list of {n_instances} random instances of the following type
                 {type.model_json_schema()}.
                 fill all attributed for each generated instance
                 """
         if instructions:
-            full_instructions += "Adhere to the following instructions \n" + instructions
-    
+            full_instructions += (
+                "Adhere to the following instructions \n" + instructions
+            )
+
         target = AG(
             atype=DynamicModel,
             instructions=full_instructions,
             llm=llm,
         )
-        generated = await (target << AGString(string =" "))
+        generated = await (target << AGString(string=" "))
         return generated.states[0].instances
-    else: return [DynamicModel()]
-
-from typing import Any, Awaitable, Protocol
+    else:
+        return [DynamicModel()]
 
 
 class TransducibleFn(Protocol):

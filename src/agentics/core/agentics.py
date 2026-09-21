@@ -9,7 +9,6 @@ from copy import copy, deepcopy
 from functools import partial, reduce
 from typing import (
     Any,
-    Callable,
     Dict,
     Generic,
     List,
@@ -35,7 +34,6 @@ from pydantic import BaseModel, Field, ValidationError, create_model
 from agentics.core.async_executor import (
     PydanticTransducerCrewAI,
     PydanticTransducerMellea,
-    PydanticTransducerVLLM,
     aMap,
 )
 from agentics.core.atype import (
@@ -1143,7 +1141,7 @@ class AG(BaseModel, Generic[T]):
     def merge_states(self, other: AG) -> AG:
         """
         Merge states of two AGs pairwise.
-        
+
         The 'other' AG's fields take precedence over 'self' fields when there are conflicts.
         This ensures that newly generated data (other) overwrites existing data (self).
         """
@@ -1276,13 +1274,15 @@ class AG(BaseModel, Generic[T]):
             "amap_batch_size": self.amap_batch_size,
             "areduce_batches": copy(self.areduce_batches),
             "save_amap_batches_to_path": self.save_amap_batches_to_path,
-            "crew_prompt_params": copy(self.crew_prompt_params) if self.crew_prompt_params else None,
+            "crew_prompt_params": (
+                copy(self.crew_prompt_params) if self.crew_prompt_params else None
+            ),
             "vector_store": self.vector_store,
         }
         # Only include atype_code if it's not None (to avoid validation error)
         if self.atype_code is not None:
             init_params["atype_code"] = self.atype_code
-        
+
         new_ag = AG(**init_params)
 
         for state in self.states:
